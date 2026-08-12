@@ -76,6 +76,25 @@ export default function RecordScreen() {
     return () => clearInterval(timer);
   }, [recording]);
 
+  // Leaving without recording or typing anything should not leave an empty row.
+  useEffect(
+    () => () => {
+      const id = reportRef.current?.id;
+      if (!id) return;
+      const state = useReports.getState();
+      const latest = state.current?.id === id ? state.current : null;
+      if (
+        latest &&
+        latest.rawInput.trim().length === 0 &&
+        !latest.narrative &&
+        !latest.audioUri
+      ) {
+        void state.remove(id);
+      }
+    },
+    [],
+  );
+
   const startRecording = async () => {
     try {
       await recorder.prepareToRecordAsync();

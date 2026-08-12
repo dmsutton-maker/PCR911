@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
 import { describeError } from '@/ai/client';
@@ -52,6 +52,7 @@ export default function NotesScreen() {
   const [practiceMode, setPracticeMode] = useState(practiceModeDefault);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const createdId = useRef<string | null>(null);
 
   const mode: CaptureMode =
     params.mode === 'dictation' ? 'dictation' : params.mode === 'live' ? 'live' : 'bullets';
@@ -71,6 +72,7 @@ export default function NotesScreen() {
         report = await open(params.id);
       } else {
         report = await startReport({ org, captureMode: mode, practiceMode: practiceModeDefault });
+        createdId.current = report.id;
       }
       if (cancelled || !report) return;
       setText(report.rawInput);
@@ -84,6 +86,21 @@ export default function NotesScreen() {
     // changing settings mid-capture does not retroactively rewrite the draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Backing out of a capture that was never typed into should not leave an
+  // empty "Untitled capture" row on the home screen.
+  useEffect(
+    () => () => {
+      const id = createdId.current;
+      if (!id) return;
+      const state = useReports.getState();
+      const latest = state.current?.id === id ? state.current : null;
+      if (latest && latest.rawInput.trim().length === 0 && !latest.narrative) {
+        void state.remove(id);
+      }
+    },
+    [],
+  );
 
   const scope = useMemo(() => checkScope(text), [text]);
 
