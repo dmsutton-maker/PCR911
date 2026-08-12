@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Switch, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Switch, View } from 'react-native';
 
 import {
   Banner,
@@ -18,6 +18,7 @@ import { APPLIES_TO_LABELS } from '@/domain/requiredSpecifics';
 import type { RequiredSpecific } from '@/domain/types';
 import { useSettings } from '@/state/settingsStore';
 import { colors, space, type } from '@/theme';
+import { confirm, notify } from '@/util/dialog';
 
 const APPLIES_OPTIONS: RequiredSpecific['appliesTo'][] = [
   'always',
@@ -50,7 +51,7 @@ export default function SpecificsScreen() {
 
   const submitNew = () => {
     if (!draft.label.trim() || !draft.criterion.trim()) {
-      Alert.alert('Needs a label and a requirement', 'Both are used to check the narrative.');
+      notify('Needs a label and a requirement', 'Both are used to check the narrative.');
       return;
     }
     addSpecific({
@@ -211,16 +212,15 @@ export default function SpecificsScreen() {
         <Button
           label="Restore built-in defaults"
           variant="secondary"
-          onPress={() =>
-            Alert.alert(
-              'Restore defaults?',
-              'Built-in items go back to their shipped wording and are re-enabled. Your custom items are kept.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Restore', onPress: restoreDefaultSpecifics },
-              ],
-            )
-          }
+          onPress={async () => {
+            const ok = await confirm({
+              title: 'Restore defaults?',
+              message:
+                'Built-in items go back to their shipped wording and are re-enabled. Your custom items are kept.',
+              confirmLabel: 'Restore',
+            });
+            if (ok) restoreDefaultSpecifics();
+          }}
         />
       </Screen>
     </KeyboardAvoidingView>

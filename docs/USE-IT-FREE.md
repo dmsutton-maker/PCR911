@@ -77,9 +77,17 @@ When I push a code change, the site rebuilds itself within a few minutes. Close 
 
 ---
 
-## What the free web version cannot do
+## Recording during a call
 
-**Recording during a call.** Browsers on iOS cannot do the background audio capture this needs. The other two capture modes — typed bullet notes and post-call dictation — work fully, and those are the ones you would use most anyway.
+This works in the web version, but differently from the installed app. Instead of recording an audio file and transcribing it afterwards, the browser transcribes your speech **live** as you talk, straight into an editable transcript. No audio file is ever created.
+
+Tap **Record during the call** → **Start dictation** → talk. Stop when you're done, fix any mangled names or numbers in the transcript, then generate.
+
+One privacy caveat worth knowing: on iOS, browser speech recognition may send audio to Apple for processing rather than doing it on the phone. Another reason this build is practice-data-only.
+
+If the button says dictation is not available, open the site in Safari directly rather than from the home-screen icon — some iOS versions restrict speech recognition inside home-screen apps.
+
+## What the free web version cannot do
 
 **Real security.** This is the important one:
 

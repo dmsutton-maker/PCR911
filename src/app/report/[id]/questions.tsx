@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { describeError } from '@/ai/client';
 import {
@@ -19,6 +19,7 @@ import { generateForReport } from '@/features/generate';
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
 import { colors, space } from '@/theme';
+import { confirm, notify } from '@/util/dialog';
 
 /**
  * The follow-up step.
@@ -90,33 +91,33 @@ export default function QuestionsScreen() {
         modelId,
       });
       if (!outcome.onTopic) {
-        Alert.alert('Could not update', outcome.offTopicReason || 'Nothing was generated.');
+        notify('Could not update', outcome.offTopicReason || 'Nothing was generated.');
         return;
       }
 
       await update(outcome.patch, 'Narrative updated with follow-up answers');
       router.replace(`/report/${current.id}`);
     } catch (error) {
-      Alert.alert('Could not update the narrative', describeError(error));
+      notify('Could not update the narrative', describeError(error));
     } finally {
       setBusy(false);
     }
   };
 
-  const handleDone = () => {
+  const handleDone = async () => {
     const remaining = openQuestions.length - answeredCount;
     if (remaining === 0) {
-      void regenerate(false);
+      await regenerate(false);
       return;
     }
-    Alert.alert(
-      `${remaining} question${remaining === 1 ? '' : 's'} unanswered`,
-      'Unanswered items will be marked as skipped. The narrative will state that they were not documented rather than inventing them.',
-      [
-        { text: 'Keep answering', style: 'cancel' },
-        { text: 'Skip and update', onPress: () => void regenerate(true) },
-      ],
-    );
+    const ok = await confirm({
+      title: `${remaining} question${remaining === 1 ? '' : 's'} unanswered`,
+      message:
+        'Unanswered items will be marked as skipped. The narrative will state that they were not documented rather than inventing them.',
+      confirmLabel: 'Skip and update',
+      cancelLabel: 'Keep answering',
+    });
+    if (ok) await regenerate(true);
   };
 
   return (

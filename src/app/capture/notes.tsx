@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
 import { describeError } from '@/ai/client';
 import {
@@ -19,6 +19,7 @@ import { checkScope } from '@/safety/scopeGuard';
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
 import { space } from '@/theme';
+import { confirm, notify } from '@/util/dialog';
 
 const PLACEHOLDER: Record<CaptureMode, string> = {
   bullets: `- 58 yo M, chest pain onset 0730 while shoveling
@@ -109,18 +110,17 @@ export default function NotesScreen() {
     await update({ rawInput: text, practiceMode });
   };
 
-  const handleDiscard = () => {
-    Alert.alert('Discard this capture?', 'The notes will be deleted from this device.', [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: 'Discard',
-        style: 'destructive',
-        onPress: async () => {
-          if (current) await remove(current.id);
-          router.back();
-        },
-      },
-    ]);
+  const handleDiscard = async () => {
+    const ok = await confirm({
+      title: 'Discard this capture?',
+      message: 'The notes will be deleted from this device.',
+      confirmLabel: 'Discard',
+      cancelLabel: 'Keep',
+      destructive: true,
+    });
+    if (!ok) return;
+    if (current) await remove(current.id);
+    router.back();
   };
 
   const runGeneration = async () => {
@@ -133,7 +133,7 @@ export default function NotesScreen() {
       const outcome = await generateForReport({ report: saved, org, profile, modelId });
 
       if (!outcome.onTopic) {
-        Alert.alert(
+        notify(
           'That does not look like a patient encounter',
           outcome.offTopicReason ||
             'The notes were not recognised as documentation of a patient call. Nothing was generated.',
@@ -146,25 +146,27 @@ export default function NotesScreen() {
       if (outcome.openQuestionCount > 0) router.replace(`/report/${saved.id}/questions`);
       else router.replace(`/report/${saved.id}`);
     } catch (error) {
-      Alert.alert('Could not generate', describeError(error));
+      notify('Could not generate', describeError(error));
     } finally {
       setBusy(false);
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (scope.verdict === 'empty') {
-      Alert.alert('Nothing captured', 'Add some notes about the call first.');
+      notify('Nothing captured', 'Add some notes about the call first.');
       return;
     }
     if (scope.needsConfirmation) {
-      Alert.alert('Check this before generating', scope.message, [
-        { text: 'Go back', style: 'cancel' },
-        { text: 'Generate anyway', onPress: () => void runGeneration() },
-      ]);
-      return;
+      const ok = await confirm({
+        title: 'Check this before generating',
+        message: scope.message,
+        confirmLabel: 'Generate anyway',
+        cancelLabel: 'Go back',
+      });
+      if (!ok) return;
     }
-    void runGeneration();
+    await runGeneration();
   };
 
   return (

@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { describeError } from '@/ai/client';
 import { exportNarrative, PRACTICE_BANNER } from '@/ai/narrative';
@@ -22,6 +22,7 @@ import { generateForReport } from '@/features/generate';
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
 import { colors, space, type } from '@/theme';
+import { confirm, notify } from '@/util/dialog';
 import { formatShort } from '@/util/time';
 
 export default function ReportScreen() {
@@ -70,29 +71,27 @@ export default function ReportScreen() {
     try {
       const outcome = await generateForReport({ report, org, profile, modelId });
       if (!outcome.onTopic) {
-        Alert.alert('Could not regenerate', outcome.offTopicReason || 'Nothing was generated.');
+        notify('Could not regenerate', outcome.offTopicReason || 'Nothing was generated.');
         return;
       }
       await update(outcome.patch, 'Narrative regenerated');
     } catch (error) {
-      Alert.alert('Could not regenerate', describeError(error));
+      notify('Could not regenerate', describeError(error));
     } finally {
       setBusy(false);
     }
   };
 
-  const confirmDelete = () => {
-    Alert.alert('Delete this report?', 'The narrative, notes, and any recording are erased.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await remove(report.id);
-          router.dismissTo('/');
-        },
-      },
-    ]);
+  const confirmDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete this report?',
+      message: 'The narrative, notes, and any recording are erased.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    await remove(report.id);
+    router.dismissTo('/');
   };
 
   return (

@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { describeError } from '@/ai/client';
 import { lookupClinicalReference } from '@/ai/reference';
@@ -17,6 +17,7 @@ import {
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
 import { space, type } from '@/theme';
+import { notify } from '@/util/dialog';
 import { formatShort } from '@/util/time';
 
 /**
@@ -64,7 +65,7 @@ export default function ReferenceScreen() {
       });
       await update({ reference: result }, 'Clinical reference looked up');
     } catch (error) {
-      Alert.alert('Could not look that up', describeError(error));
+      notify('Could not look that up', describeError(error));
     } finally {
       setBusy(false);
     }

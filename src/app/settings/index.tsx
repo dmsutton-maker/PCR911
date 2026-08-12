@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 
 import {
   Banner,
@@ -18,6 +18,7 @@ import { getFormat } from '@/domain/formats';
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
 import { getApiKey } from '@/storage/secure';
+import { confirm, notify } from '@/util/dialog';
 
 export default function SettingsScreen() {
   const {
@@ -38,23 +39,18 @@ export default function SettingsScreen() {
 
   const model = AVAILABLE_MODELS.find((m) => m.id === modelId);
 
-  const confirmErase = () => {
-    Alert.alert(
-      'Erase all data?',
-      'Every report, recording, and the encryption key itself are destroyed. Anything already written to disk becomes permanently unreadable. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Erase everything',
-          style: 'destructive',
-          onPress: async () => {
-            await eraseAll();
-            Alert.alert('Erased', 'All reports and the encryption key have been destroyed.');
-            router.dismissTo('/');
-          },
-        },
-      ],
-    );
+  const confirmErase = async () => {
+    const ok = await confirm({
+      title: 'Erase all data?',
+      message:
+        'Every report, recording, and the encryption key itself are destroyed. Anything already written to disk becomes permanently unreadable. This cannot be undone.',
+      confirmLabel: 'Erase everything',
+      destructive: true,
+    });
+    if (!ok) return;
+    await eraseAll();
+    notify('Erased', 'All reports and the encryption key have been destroyed.');
+    router.dismissTo('/');
   };
 
   return (

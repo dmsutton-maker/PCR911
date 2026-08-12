@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import {
   Banner,
@@ -17,6 +17,7 @@ import { AVAILABLE_MODELS } from '@/domain/defaults';
 import { useSettings } from '@/state/settingsStore';
 import { clearApiKey, getApiKey, setApiKey } from '@/storage/secure';
 import { colors, space } from '@/theme';
+import { confirm, notify } from '@/util/dialog';
 
 export default function ApiScreen() {
   const { modelId, setModelId } = useSettings();
@@ -32,15 +33,12 @@ export default function ApiScreen() {
     const trimmed = key.trim();
     if (!trimmed) return;
     if (!trimmed.startsWith('sk-ant-')) {
-      Alert.alert(
-        'That does not look like an Anthropic key',
-        'Anthropic API keys start with "sk-ant-". Save it anyway?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Save anyway', onPress: () => void persist(trimmed) },
-        ],
-      );
-      return;
+      const ok = await confirm({
+        title: 'That does not look like an Anthropic key',
+        message: 'Anthropic API keys start with "sk-ant-". Save it anyway?',
+        confirmLabel: 'Save anyway',
+      });
+      if (!ok) return;
     }
     await persist(trimmed);
   };
@@ -51,26 +49,26 @@ export default function ApiScreen() {
       await setApiKey(value);
       setKey('');
       setHasStoredKey(true);
-      Alert.alert('Saved', 'The key is stored in the device keychain, not in app storage.');
+      notify('Saved', Platform.OS === 'web'
+        ? 'The key is stored in this browser. Generation should work now.'
+        : 'The key is stored in the device keychain, not in app storage.');
     } catch {
-      Alert.alert('Could not save', 'The device keychain rejected the write.');
+      notify('Could not save', 'Storage rejected the write.');
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = () => {
-    Alert.alert('Remove the stored key?', 'Narrative generation will stop working until you add another.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          await clearApiKey();
-          setHasStoredKey(false);
-        },
-      },
-    ]);
+  const remove = async () => {
+    const ok = await confirm({
+      title: 'Remove the stored key?',
+      message: 'Narrative generation will stop working until you add another.',
+      confirmLabel: 'Remove',
+      destructive: true,
+    });
+    if (!ok) return;
+    await clearApiKey();
+    setHasStoredKey(false);
   };
 
   return (

@@ -77,16 +77,11 @@ export default function HomeScreen() {
           variant="secondary"
           onPress={() => start('dictation')}
         />
-        {Platform.OS === 'web' ? null : (
-          <Button
-            label="Record during the call"
-            variant="secondary"
-            onPress={() => start('live')}
-          />
-        )}
+        <Button label="Record during the call" variant="secondary" onPress={() => start('live')} />
         <Muted>
-          Dictation uses the keyboard microphone, which transcribes on-device. Nothing is sent
-          anywhere until you generate a narrative.
+          {Platform.OS === 'web'
+            ? 'Recording transcribes your speech live as you talk. Nothing is sent to Claude until you generate a narrative.'
+            : 'Dictation uses the keyboard microphone, which transcribes on-device. Nothing is sent anywhere until you generate a narrative.'}
         </Muted>
       </Card>
 
