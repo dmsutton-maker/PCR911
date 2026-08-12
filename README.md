@@ -32,9 +32,11 @@ One thing worth deciding: this is a personal *account*, not a personal *organiza
 
 ---
 
-## Running it
+## Getting it on your phone
 
-You need Node 20+, the Expo Go app on your iPhone, and an Anthropic API key.
+**As a real app** — sits on the home screen, opens when tapped, no computer involved: see [docs/INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md). Browser-only setup; costs $99/year for an Apple Developer account, which is Apple's price for putting a custom app on an iPhone. Code changes then ship over the air automatically.
+
+**For quick development** — needs a computer running a dev server the whole time you use the app:
 
 ```bash
 npm install
@@ -115,6 +117,7 @@ So phase 1 records and stores the audio, and you play it back while typing or di
 
 | | |
 |---|---|
+| [INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md) | Getting it onto the phone as a real app, no computer |
 | [MODEL-RECOMMENDATIONS.md](docs/MODEL-RECOMMENDATIONS.md) | Which Claude model for the build vs. for the app, and why |
 | [SECURITY-PHI.md](docs/SECURITY-PHI.md) | Threat model, what's protected, the road to real PHI |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit and where to add things |

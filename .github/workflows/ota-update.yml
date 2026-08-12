@@ -1,0 +1,52 @@
+name: Publish OTA update
+
+# Pushes JavaScript changes straight to the installed app.
+#
+# Any commit to the branch below is bundled and published to the `preview`
+# channel. The phone picks it up the next time the app is opened — no rebuild,
+# no App Store, no computer involved.
+#
+# This only covers JS/TS, styles, and assets, which is the overwhelming majority
+# of changes. Adding a native module or changing app.json's native config needs
+# a fresh build instead; the fingerprint runtime version means the app simply
+# ignores an update it cannot safely run, rather than crashing.
+#
+# Setup (one time):
+#   1. Create an access token at expo.dev → Account settings → Access tokens
+#   2. Add it to this repo under Settings → Secrets and variables → Actions
+#      as a secret named EXPO_TOKEN
+
+on:
+  push:
+    branches:
+      - claude/build-session-v1mubj
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Bundle and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Publish update
+        run: eas update --channel preview --message "${{ github.event.head_commit.message || 'Manual update' }}" --non-interactive
