@@ -212,8 +212,9 @@ export default function NotesScreen() {
             style={s.input}
           />
           <Muted>
-            Notes are saved encrypted on this device as you go. They are only sent to the Claude API
-            when you tap Generate.
+            {Platform.OS === 'web'
+              ? 'Notes are saved in this browser as you go. They are only sent to the Claude API when you tap Generate.'
+              : 'Notes are saved encrypted on this device as you go. They are only sent to the Claude API when you tap Generate.'}
           </Muted>
         </Card>
 

@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import {
   Banner,
@@ -57,8 +57,9 @@ export default function HomeScreen() {
       <Title>New report</Title>
 
       <Banner tone="warning" title="Practice data only">
-        This build has no HIPAA-eligible path in place. Use fake patients only. See the README
-        before entering anything real.
+        {Platform.OS === 'web'
+          ? 'This is the web version. Notes are stored unencrypted in this browser and are not protected the way the installed app protects them. Use fake patients only.'
+          : 'This build has no HIPAA-eligible path in place. Use fake patients only. See the README before entering anything real.'}
       </Banner>
 
       {hasApiKey === false ? (
@@ -76,7 +77,13 @@ export default function HomeScreen() {
           variant="secondary"
           onPress={() => start('dictation')}
         />
-        <Button label="Record during the call" variant="secondary" onPress={() => start('live')} />
+        {Platform.OS === 'web' ? null : (
+          <Button
+            label="Record during the call"
+            variant="secondary"
+            onPress={() => start('live')}
+          />
+        )}
         <Muted>
           Dictation uses the keyboard microphone, which transcribes on-device. Nothing is sent
           anywhere until you generate a narrative.
@@ -104,7 +111,12 @@ export default function HomeScreen() {
       <SectionLabel>Recent</SectionLabel>
       {summaries.length === 0 ? (
         <Card>
-          <Muted>No reports yet. Everything you capture stays encrypted on this device.</Muted>
+          <Muted>
+            No reports yet.{' '}
+            {Platform.OS === 'web'
+              ? 'Everything you capture stays in this browser.'
+              : 'Everything you capture stays encrypted on this device.'}
+          </Muted>
         </Card>
       ) : (
         <Card>

@@ -28,8 +28,14 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "PCR Narrative",
+      "shortName": "PCR",
+      "themeColor": "#0B1B2B",
+      "backgroundColor": "#0B1B2B",
+      "display": "standalone",
+      "orientation": "portrait"
     },
     "plugins": [
       "expo-router",
@@ -55,6 +61,9 @@
         }
       ],
       "expo-asset"
-    ]
+    ],
+    "experiments": {
+      "baseUrl": "/PCR911"
+    }
   }
 }

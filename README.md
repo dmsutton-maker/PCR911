@@ -34,9 +34,11 @@ One thing worth deciding: this is a personal *account*, not a personal *organiza
 
 ## Getting it on your phone
 
-**As a real app** — sits on the home screen, opens when tapped, no computer involved: see [docs/INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md). Browser-only setup; costs $99/year for an Apple Developer account, which is Apple's price for putting a custom app on an iPhone. Code changes then ship over the air automatically.
+**Free, nothing installed** — the web build, added to your iPhone home screen. Gets an icon, opens full-screen, no computer or server involved. Two steps, about three minutes: **[docs/USE-IT-FREE.md](docs/USE-IT-FREE.md)**. Typed notes and dictation work fully; live recording and the real security model do not. Start here.
 
-**For quick development** — needs a computer running a dev server the whole time you use the app:
+**As a native app** — full security model, Face ID, live recording: [docs/INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md). Browser-only setup, but $99/year for an Apple Developer account — Apple's price for putting a custom app on an iPhone. Code changes then ship over the air.
+
+**For development** — needs a computer running a dev server the whole time you use the app:
 
 ```bash
 npm install
@@ -117,7 +119,8 @@ So phase 1 records and stores the audio, and you play it back while typing or di
 
 | | |
 |---|---|
-| [INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md) | Getting it onto the phone as a real app, no computer |
+| [USE-IT-FREE.md](docs/USE-IT-FREE.md) | Free web version on your home screen — start here |
+| [INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md) | The native app, full security model ($99/yr Apple) |
 | [MODEL-RECOMMENDATIONS.md](docs/MODEL-RECOMMENDATIONS.md) | Which Claude model for the build vs. for the app, and why |
 | [SECURITY-PHI.md](docs/SECURITY-PHI.md) | Threat model, what's protected, the road to real PHI |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit and where to add things |

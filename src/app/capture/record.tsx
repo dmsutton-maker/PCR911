@@ -34,6 +34,26 @@ import { colors, space, type } from '@/theme';
 import { formatDuration } from '@/util/time';
 
 export default function RecordScreen() {
+  // The web build has no audio capture — expo-audio's recorder is native-only.
+  // Rendered before any hook so the recorder is never constructed there.
+  if (Platform.OS === 'web') return <RecordUnavailable />;
+  return <Recorder />;
+}
+
+function RecordUnavailable() {
+  return (
+    <Screen>
+      <Banner tone="info" title="Not available in the web version">
+        Recording during a call needs the installed app. Use{' '}
+        <Text style={s.bold}>Post-call dictation</Text> instead — tap the microphone on your
+        keyboard and talk through the call. That transcribes on-device and works here.
+      </Banner>
+      <Button label="Go back" variant="secondary" onPress={() => router.back()} />
+    </Screen>
+  );
+}
+
+function Recorder() {
   useKeepAwake();
 
   const org = useSettings((s) => s.org);
@@ -286,4 +306,5 @@ const s = StyleSheet.create({
   input: { minHeight: 180 },
   timerBlock: { alignItems: 'center', gap: space.xs, paddingVertical: space.sm },
   timerActive: { color: colors.danger },
+  bold: { fontWeight: '700' },
 });

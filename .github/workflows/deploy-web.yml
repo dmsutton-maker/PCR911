@@ -1,0 +1,75 @@
+name: Deploy web app
+
+# Builds the browser version and publishes it to GitHub Pages on every push.
+#
+# The result is a URL you open on your phone and add to the home screen. No
+# install, no server, no cost. Every code change redeploys automatically —
+# refresh the page and it is there.
+#
+# One-time setup: repo Settings → Pages → Source → "GitHub Actions".
+
+on:
+  push:
+    branches:
+      - claude/build-session-v1mubj
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; let a newer push finish rather than cancelling it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Export web build
+        run: npx expo export --platform web --output-dir dist
+
+      - name: Prepare for GitHub Pages
+        run: |
+          # GitHub Pages runs Jekyll by default, which silently drops any
+          # directory starting with an underscore — including _expo, where the
+          # entire JavaScript bundle lives. This opts out.
+          touch dist/.nojekyll
+          # Single-page app: any deep link must fall back to index.html rather
+          # than 404, since routing happens client-side.
+          cp dist/index.html dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
