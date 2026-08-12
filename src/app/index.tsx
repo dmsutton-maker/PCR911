@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const org = useSettings((s) => s.org);
   const profile = useSettings((s) => s.profile);
   const practiceModeDefault = useSettings((s) => s.practiceModeDefault);
+  const providerId = useSettings((s) => s.providerId);
   const { summaries, refresh } = useReports();
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
 
@@ -44,8 +45,8 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
-    void getApiKey().then((k) => setHasApiKey(!!k));
-  }, [summaries.length]);
+    void getApiKey(providerId).then((k) => setHasApiKey(!!k));
+  }, [providerId, summaries.length]);
 
   const start = (mode: CaptureMode) => {
     if (mode === 'live') router.push('/capture/record');
@@ -64,8 +65,8 @@ export default function HomeScreen() {
 
       {hasApiKey === false ? (
         <Banner tone="danger" title="No API key set">
-          Narrative generation needs a Claude API key. Add one in Settings → Claude API. You can
-          still capture and save notes without it.
+          Narrative generation needs an API key. Add a free Google Gemini key in Settings → AI
+          provider. You can still capture and save notes without it.
         </Banner>
       ) : null}
 
@@ -80,7 +81,7 @@ export default function HomeScreen() {
         <Button label="Record during the call" variant="secondary" onPress={() => start('live')} />
         <Muted>
           {Platform.OS === 'web'
-            ? 'Recording transcribes your speech live as you talk. Nothing is sent to Claude until you generate a narrative.'
+            ? 'Recording transcribes your speech live as you talk. Nothing is sent to the AI provider until you generate a narrative.'
             : 'Dictation uses the keyboard microphone, which transcribes on-device. Nothing is sent anywhere until you generate a narrative.'}
         </Muted>
       </Card>

@@ -11,8 +11,11 @@
  * and docs/SECURITY-PHI.md explains the difference.
  */
 
-const API_KEY = 'pcr.secure.anthropic_api_key';
 const DATA_KEY = 'pcr.secure.report_data_key_v1';
+
+function apiKeyName(providerId: string): string {
+  return `pcr.secure.api_key_${providerId}`;
+}
 
 function store(): Storage | null {
   try {
@@ -39,16 +42,16 @@ function remove(key: string): void {
   store()?.removeItem(key);
 }
 
-export async function getApiKey(): Promise<string | null> {
-  return read(API_KEY);
+export async function getApiKey(providerId: string): Promise<string | null> {
+  return read(apiKeyName(providerId));
 }
 
-export async function setApiKey(value: string): Promise<void> {
-  write(API_KEY, value.trim());
+export async function setApiKey(providerId: string, value: string): Promise<void> {
+  write(apiKeyName(providerId), value.trim());
 }
 
-export async function clearApiKey(): Promise<void> {
-  remove(API_KEY);
+export async function clearApiKey(providerId: string): Promise<void> {
+  remove(apiKeyName(providerId));
 }
 
 export async function getStoredDataKey(): Promise<string | null> {

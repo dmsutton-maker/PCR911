@@ -30,7 +30,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings/organization" options={{ title: 'Organization' }} />
             <Stack.Screen name="settings/specifics" options={{ title: 'Required specifics' }} />
             <Stack.Screen name="settings/profile" options={{ title: 'Provider profile' }} />
-            <Stack.Screen name="settings/api" options={{ title: 'Claude API' }} />
+            <Stack.Screen name="settings/api" options={{ title: 'AI provider' }} />
             <Stack.Screen name="settings/protocols" options={{ title: 'Protocol reference' }} />
           </Stack>
         </AppLock>

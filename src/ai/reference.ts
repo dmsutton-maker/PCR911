@@ -1,6 +1,7 @@
 import type { ClinicalReference } from '@/domain/types';
 import { nowIso } from '@/util/time';
 import { requestJson } from './client';
+import type { AiConfig } from './providers';
 import { buildReferenceUserContent, REFERENCE_SYSTEM_PROMPT } from './prompts';
 import { REFERENCE_SCHEMA } from './schemas';
 
@@ -18,13 +19,13 @@ interface RawReference {
  * and displayed on its own screen, clearly labelled as background context.
  */
 export async function lookupClinicalReference(args: {
-  modelId: string;
+  config: AiConfig;
   rawInput: string;
   narrative?: string;
   signal?: AbortSignal;
 }): Promise<ClinicalReference> {
   const raw = await requestJson<RawReference>({
-    model: args.modelId,
+    config: args.config,
     system: REFERENCE_SYSTEM_PROMPT,
     userContent: buildReferenceUserContent(args.rawInput, args.narrative),
     schema: REFERENCE_SCHEMA as unknown as Record<string, unknown>,

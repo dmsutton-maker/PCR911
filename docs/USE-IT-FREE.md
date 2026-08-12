@@ -35,20 +35,25 @@ An icon appears on your home screen. Tap it and the app opens full-screen.
 
 ## Then set it up, in the app
 
-1. **Settings → Claude API** → paste your key
+1. **Settings → AI provider** → **Google Gemini** is already selected → paste your key
 2. **Settings → Organization** → squad name (SOAP is already the default format)
 3. **Settings → Provider profile** → certification level and state
 
-### Getting the Claude key
+### Getting a free Gemini key
 
-1. **console.anthropic.com** → sign in with a personal account
-2. **Billing** → buy credits. $5–10 lasts months at this usage.
-3. **Settings → Limits** → set a monthly cap
-4. **API keys → Create Key** → copy it immediately, it is shown only once
+1. **aistudio.google.com/apikey** → sign in with your Google account
+2. **Create API key**
+3. Copy it — it starts with `AIza`
 
-Easiest way onto the phone: email it to yourself and paste from Mail.
+No credit card, no billing setup. The free tier allows a few hundred requests a day, which is far more than a shift's worth of narratives.
 
----
+**One thing to understand about the free tier:** Google's terms say content you send on the unpaid tier is used to improve their products and may be reviewed by humans, and explicitly tell you not to submit personal information. That is fine for the fake patients you should be using anyway, and it is a hard stop for real ones.
+
+### Why not ChatGPT
+
+There is no free ChatGPT API. The free ChatGPT app and OpenAI's API are separate products with separate billing — a free ChatGPT account gives you zero API credits. OpenAI's only genuinely free option requires opting in to sharing your API traffic for model training, which is the wrong direction for an app headed toward patient data.
+
+Claude is in the app as the paid option, and it is the strongest on terse, fragmentary field notes. It has no free tier either — expect roughly $0.05–0.08 per narrative. Worth switching to once you know the app earns its place.
 
 ## Try it
 
@@ -108,5 +113,5 @@ If it earns a place in your workflow, `docs/INSTALL-ON-PHONE.md` covers the real
 
 - **Page won't load / 404** — the first build may still be running. Check the Actions tab for a green check.
 - **Blank white screen** — pull down to refresh. If it persists, screenshot and send it to me.
-- **"No API key set"** — Settings → Claude API.
+- **"No API key set"** — Settings → AI provider.
 - **A red error** — screenshot it and send it. The web build has been tested in a browser here, but not on an actual iPhone.

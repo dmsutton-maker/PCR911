@@ -15,7 +15,7 @@ import {
   SectionLabel,
 } from '@/components/ui';
 import { useReports } from '@/state/reportStore';
-import { useSettings } from '@/state/settingsStore';
+import { currentAiConfig } from '@/state/settingsStore';
 import { space, type } from '@/theme';
 import { notify } from '@/util/dialog';
 import { formatShort } from '@/util/time';
@@ -29,7 +29,6 @@ import { formatShort } from '@/util/time';
  */
 export default function ReferenceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const modelId = useSettings((s) => s.modelId);
   const { current, open, update } = useReports();
 
   const [loaded, setLoaded] = useState(false);
@@ -59,7 +58,7 @@ export default function ReferenceScreen() {
     setBusy(true);
     try {
       const result = await lookupClinicalReference({
-        modelId,
+        config: currentAiConfig(),
         rawInput: report.rawInput,
         narrative: report.narrative,
       });

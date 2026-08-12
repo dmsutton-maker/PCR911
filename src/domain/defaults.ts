@@ -33,28 +33,3 @@ export const CERT_LEVELS = [
   'Critical Care',
 ] as const;
 
-/**
- * Claude models offered in Settings.
- *
- * Defaults to Opus 5 for narrative quality. See docs/MODEL-RECOMMENDATIONS.md
- * for the tradeoffs before changing this.
- */
-export const AVAILABLE_MODELS = [
-  {
-    id: 'claude-opus-5',
-    label: 'Claude Opus 5',
-    blurb: 'Highest quality. Best at inferring structure from terse, messy field notes.',
-  },
-  {
-    id: 'claude-sonnet-5',
-    label: 'Claude Sonnet 5',
-    blurb: 'Near-Opus quality, faster and cheaper. A good default for high call volume.',
-  },
-  {
-    id: 'claude-haiku-4-5',
-    label: 'Claude Haiku 4.5',
-    blurb: 'Fastest and cheapest. Fine for clean bullet notes, weaker on sparse input.',
-  },
-] as const;
-
-export const DEFAULT_MODEL_ID = 'claude-opus-5';

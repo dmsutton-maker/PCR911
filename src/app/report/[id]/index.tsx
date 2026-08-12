@@ -20,7 +20,7 @@ import {
 } from '@/components/ui';
 import { generateForReport } from '@/features/generate';
 import { useReports } from '@/state/reportStore';
-import { useSettings } from '@/state/settingsStore';
+import { currentAiConfig, useSettings } from '@/state/settingsStore';
 import { colors, space, type } from '@/theme';
 import { confirm, notify } from '@/util/dialog';
 import { formatShort } from '@/util/time';
@@ -29,7 +29,6 @@ export default function ReportScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const org = useSettings((s) => s.org);
   const profile = useSettings((s) => s.profile);
-  const modelId = useSettings((s) => s.modelId);
   const { current, open, update, remove } = useReports();
 
   const [loaded, setLoaded] = useState(false);
@@ -69,7 +68,12 @@ export default function ReportScreen() {
   const regenerate = async () => {
     setBusy(true);
     try {
-      const outcome = await generateForReport({ report, org, profile, modelId });
+      const outcome = await generateForReport({
+        report,
+        org,
+        profile,
+        config: currentAiConfig(),
+      });
       if (!outcome.onTopic) {
         notify('Could not regenerate', outcome.offTopicReason || 'Nothing was generated.');
         return;

@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
  * Thin wrapper over the platform keystore (iOS Keychain / Android Keystore).
  *
  * Two things live here and nowhere else:
- *   - the user's Claude API key
+ *   - the user's API key for each AI provider
  *   - the AES data key used to encrypt report bodies on disk
  *
  * Both are written with `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, which means they are
@@ -17,19 +17,23 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
-const API_KEY = 'anthropic_api_key';
 const DATA_KEY = 'report_data_key_v1';
 
-export async function getApiKey(): Promise<string | null> {
-  return SecureStore.getItemAsync(API_KEY, OPTIONS);
+/** One key per provider, so switching provider does not lose the other key. */
+function apiKeyName(providerId: string): string {
+  return `api_key_${providerId}`;
 }
 
-export async function setApiKey(value: string): Promise<void> {
-  await SecureStore.setItemAsync(API_KEY, value.trim(), OPTIONS);
+export async function getApiKey(providerId: string): Promise<string | null> {
+  return SecureStore.getItemAsync(apiKeyName(providerId), OPTIONS);
 }
 
-export async function clearApiKey(): Promise<void> {
-  await SecureStore.deleteItemAsync(API_KEY, OPTIONS);
+export async function setApiKey(providerId: string, value: string): Promise<void> {
+  await SecureStore.setItemAsync(apiKeyName(providerId), value.trim(), OPTIONS);
+}
+
+export async function clearApiKey(providerId: string): Promise<void> {
+  await SecureStore.deleteItemAsync(apiKeyName(providerId), OPTIONS);
 }
 
 export async function getStoredDataKey(): Promise<string | null> {

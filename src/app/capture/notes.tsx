@@ -17,7 +17,7 @@ import type { CaptureMode, Report } from '@/domain/types';
 import { generateForReport } from '@/features/generate';
 import { checkScope } from '@/safety/scopeGuard';
 import { useReports } from '@/state/reportStore';
-import { useSettings } from '@/state/settingsStore';
+import { currentAiConfig, useSettings } from '@/state/settingsStore';
 import { space } from '@/theme';
 import { confirm, notify } from '@/util/dialog';
 
@@ -44,7 +44,6 @@ export default function NotesScreen() {
 
   const org = useSettings((s) => s.org);
   const profile = useSettings((s) => s.profile);
-  const modelId = useSettings((s) => s.modelId);
   const practiceModeDefault = useSettings((s) => s.practiceModeDefault);
 
   const { current, startReport, open, update, remove } = useReports();
@@ -130,7 +129,12 @@ export default function NotesScreen() {
       const saved = await update({ rawInput: text, practiceMode }, 'Notes captured');
       if (!saved) return;
 
-      const outcome = await generateForReport({ report: saved, org, profile, modelId });
+      const outcome = await generateForReport({
+        report: saved,
+        org,
+        profile,
+        config: currentAiConfig(),
+      });
 
       if (!outcome.onTopic) {
         notify(
@@ -215,8 +219,8 @@ export default function NotesScreen() {
           />
           <Muted>
             {Platform.OS === 'web'
-              ? 'Notes are saved in this browser as you go. They are only sent to the Claude API when you tap Generate.'
-              : 'Notes are saved encrypted on this device as you go. They are only sent to the Claude API when you tap Generate.'}
+              ? 'Notes are saved in this browser as you go. They are only sent to the AI provider when you tap Generate.'
+              : 'Notes are saved encrypted on this device as you go. They are only sent to the AI provider when you tap Generate.'}
           </Muted>
         </Card>
 

@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import { createDefaultOrg, createDefaultProfile, DEFAULT_MODEL_ID } from '@/domain/defaults';
+import { DEFAULT_PROVIDER_ID, getProvider, type ProviderId } from '@/ai/providers';
+import { createDefaultOrg, createDefaultProfile } from '@/domain/defaults';
 import { cloneDefaultSpecifics } from '@/domain/requiredSpecifics';
 import type { NarrativeFormatId, OrgConfig, ProviderProfile, RequiredSpecific } from '@/domain/types';
 import { newId } from '@/util/id';
@@ -15,7 +16,9 @@ import { nowIso } from '@/util/time';
 interface SettingsState {
   org: OrgConfig;
   profile: ProviderProfile;
-  modelId: string;
+  providerId: ProviderId;
+  /** Chosen model per provider, so switching back and forth is lossless. */
+  modelByProvider: Record<string, string>;
   /** Require Face ID / passcode when the app returns to the foreground. */
   appLockEnabled: boolean;
   /** Default for new reports. On means generated narratives carry a training banner. */
@@ -35,7 +38,8 @@ interface SettingsState {
   restoreDefaultSpecifics: () => void;
 
   setProfile: (patch: Partial<ProviderProfile>) => void;
-  setModelId: (modelId: string) => void;
+  setProviderId: (providerId: ProviderId) => void;
+  setModel: (providerId: ProviderId, model: string) => void;
   setAppLockEnabled: (enabled: boolean) => void;
   setPracticeModeDefault: (enabled: boolean) => void;
   setOnboarded: (value: boolean) => void;
@@ -50,7 +54,8 @@ export const useSettings = create<SettingsState>()(
     (set) => ({
       org: createDefaultOrg(),
       profile: createDefaultProfile(),
-      modelId: DEFAULT_MODEL_ID,
+      providerId: DEFAULT_PROVIDER_ID,
+      modelByProvider: {},
       appLockEnabled: true,
       practiceModeDefault: true,
       onboarded: false,
@@ -115,7 +120,9 @@ export const useSettings = create<SettingsState>()(
         })),
 
       setProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
-      setModelId: (modelId) => set({ modelId }),
+      setProviderId: (providerId) => set({ providerId }),
+      setModel: (providerId, model) =>
+        set((st) => ({ modelByProvider: { ...st.modelByProvider, [providerId]: model } })),
       setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
       setPracticeModeDefault: (practiceModeDefault) => set({ practiceModeDefault }),
       setOnboarded: (onboarded) => set({ onboarded }),
@@ -126,7 +133,8 @@ export const useSettings = create<SettingsState>()(
       partialize: (s) => ({
         org: s.org,
         profile: s.profile,
-        modelId: s.modelId,
+        providerId: s.providerId,
+        modelByProvider: s.modelByProvider,
         appLockEnabled: s.appLockEnabled,
         practiceModeDefault: s.practiceModeDefault,
         onboarded: s.onboarded,
@@ -138,6 +146,15 @@ export const useSettings = create<SettingsState>()(
     },
   ),
 );
+
+/** The provider + model to use for the next request. */
+export function currentAiConfig(): { providerId: ProviderId; model: string } {
+  const { providerId, modelByProvider } = useSettings.getState();
+  return {
+    providerId,
+    model: modelByProvider[providerId] || getProvider(providerId).defaultModel,
+  };
+}
 
 /** The specifics the org actually wants checked right now. */
 export function enabledSpecifics(org: OrgConfig): RequiredSpecific[] {

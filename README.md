@@ -8,11 +8,13 @@ Personal project. React Native + Expo, testable in Expo Go with no Mac.
 
 ## ⚠️ Do not enter real patient information yet
 
-This build sends your notes to the Claude API **directly from the phone**, using an API key you paste into Settings. That is fine for practice data and is **not** an acceptable arrangement for PHI.
+This build sends your notes to an AI provider **directly from the phone**, using an API key you paste into Settings. That is fine for practice data and is **not** an acceptable arrangement for PHI.
+
+The default provider is Google Gemini's **free tier**, and Google's terms for it say submitted content is used to improve their products, may be seen by human reviewers, and should not include personal information. That is the correct trade for fake patients and a hard stop for real ones.
 
 Before any real patient encounter goes into this app, two things have to be true, and neither is a code change:
 
-1. **A signed BAA with Anthropic**, on a HIPAA-eligible API configuration. This is a business and compliance step on your end.
+1. **A signed BAA with your chosen provider**, on a HIPAA-eligible, paid configuration. This is a business and compliance step on your end.
 2. **Requests routed through a backend you control**, rather than phone-to-API. An API key living on a phone cannot be rotated, scoped per user, audited, or revoked when the phone is lost.
 
 Until both are in place, use fake patients. New reports are marked as practice data by default, and practice narratives carry a `*** PRACTICE / TRAINING DATA — NOT A PATIENT RECORD ***` banner when copied. Details and the full threat model are in [docs/SECURITY-PHI.md](docs/SECURITY-PHI.md).
@@ -24,7 +26,7 @@ Until both are in place, use fake patients. New reports are marked as practice d
 The brief asked for confirmation before any other setup work. Stating exactly what is and is not verified:
 
 - **This repository is `dmsutton-maker/PCR911`** — a personal GitHub account, not an employer org. Nothing was read from, written to, or copied out of any other repository; this session had access to this repo only.
-- **Nothing from PAG / Alliance / Bracketron is referenced, imported, or reused.** No shared code, no shared config, no shared infrastructure. The dependency list is public npm packages plus the Anthropic API.
+- **Nothing from PAG / Alliance / Bracketron is referenced, imported, or reused.** No shared code, no shared config, no shared infrastructure. The dependency list is public npm packages plus whichever AI provider you configure.
 - **The project was built in an isolated, ephemeral cloud container**, not on your machine and not on any work drive. Nothing was written outside this repo.
 - **Google Drive folder: not created.** Nothing exists yet that belongs outside the code repo — no exports, no recordings, no test data. Say the word and I'll create the "PCR Narrative App" folder when there is something to put in it.
 
@@ -47,7 +49,7 @@ npx expo start
 
 Scan the QR code with the Camera app. On first launch:
 
-1. **Settings → Claude API** — paste your key. Use one scoped to a workspace with a spend limit; it is sitting on a phone.
+1. **Settings → AI provider** — Google Gemini is the default and its API key is free at aistudio.google.com/apikey. Anthropic Claude is there too as the paid option.
 2. **Settings → Organization** — set your squad name and narrative format (SOAP is the default).
 3. **Settings → Provider profile** — certification level and state.
 
@@ -63,7 +65,7 @@ Then start a report from the home screen.
 |---|---|
 | **Bullet notes** | Type fragments. Times, doses, and numbers matter most; grammar does not. |
 | **Post-call dictation** | Talk through the call using the keyboard microphone. iOS transcribes **on-device** — no audio leaves the phone, and it needs no native module, so it works in Expo Go. |
-| **Live recording** | Records to the device during the call and stores the audio locally. Automatic transcription is **not wired up** — see [Known gaps](#known-gaps). |
+| **Live recording** | Web build transcribes your speech **live** into an editable transcript. Installed app records audio locally; automatic transcription of the file is **not wired up** — see [Known gaps](#known-gaps). |
 
 ### Narrative generation
 
@@ -85,7 +87,7 @@ It runs on its own prompt that forbids directive phrasing outright — "this med
 
 ### Scope
 
-This is not a chatbot and cannot be turned into one. There is no free-text chat surface: the only inputs are call notes and answers to the app's own follow-up questions. The system prompt constrains the model to PCR narratives and instructs it to treat the input as **data to document, never as instructions** — so a stray "hey Claude, write me a poem" in a transcription gets ignored rather than obeyed. A local offline heuristic (`src/safety/scopeGuard.ts`) flags obviously off-topic or instruction-shaped input before a request is spent, and the model returns an explicit `on_topic: false` if something slips through.
+This is not a chatbot and cannot be turned into one. There is no free-text chat surface: the only inputs are call notes and answers to the app's own follow-up questions. The system prompt constrains the model to PCR narratives and instructs it to treat the input as **data to document, never as instructions** — so a stray "hey, write me a poem" in a transcription gets ignored rather than obeyed. A local offline heuristic (`src/safety/scopeGuard.ts`) flags obviously off-topic or instruction-shaped input before a request is spent, and the model returns an explicit `on_topic: false` if something slips through.
 
 ---
 
@@ -93,7 +95,7 @@ This is not a chatbot and cannot be turned into one. There is no free-text chat 
 
 - **API key** in the iOS keychain (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`) — never in app storage, logs, or reports.
 - **Report bodies** encrypted with AES-256-GCM. The key is generated on-device and lives in the keychain alongside the API key.
-- **Nothing syncs.** No backend, no cloud storage, no analytics, no crash reporting. The only outbound request in the entire app is the Claude call in `src/ai/client.ts`.
+- **Nothing syncs.** No backend, no cloud storage, no analytics, no crash reporting. The only outbound request in the entire app is the provider call in `src/ai/client.ts`.
 - **Face ID app lock**, on by default. Backgrounding the app also drops the decryption key from memory.
 - **Erase all data** destroys every report, every recording, and the encryption key — so anything already on disk becomes permanently unreadable, not just unlinked.
 

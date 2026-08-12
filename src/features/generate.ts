@@ -1,4 +1,5 @@
 import { composeNarrative } from '@/ai/narrative';
+import type { AiConfig } from '@/ai/providers';
 import type { OrgConfig, ProviderProfile, Report } from '@/domain/types';
 
 export interface GenerationOutcome {
@@ -19,13 +20,13 @@ export async function generateForReport(args: {
   report: Report;
   org: OrgConfig;
   profile: ProviderProfile;
-  modelId: string;
+  config: AiConfig;
   signal?: AbortSignal;
 }): Promise<GenerationOutcome> {
-  const { report, org, profile, modelId, signal } = args;
+  const { report, org, profile, config, signal } = args;
 
   const result = await composeNarrative({
-    modelId,
+    config,
     org,
     profile,
     rawInput: report.rawInput,

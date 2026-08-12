@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Platform, StyleSheet, View } from 'react-native';
 
+import { getProvider, PROVIDERS, type ProviderId } from '@/ai/providers';
 import {
   Banner,
   Body,
@@ -13,45 +14,43 @@ import {
   Screen,
   SectionLabel,
 } from '@/components/ui';
-import { AVAILABLE_MODELS } from '@/domain/defaults';
 import { useSettings } from '@/state/settingsStore';
 import { clearApiKey, getApiKey, setApiKey } from '@/storage/secure';
 import { colors, space } from '@/theme';
 import { confirm, notify } from '@/util/dialog';
 
 export default function ApiScreen() {
-  const { modelId, setModelId } = useSettings();
+  const { providerId, modelByProvider, setProviderId, setModel } = useSettings();
   const [key, setKey] = useState('');
-  const [hasStoredKey, setHasStoredKey] = useState<boolean | null>(null);
+  const [storedKeys, setStoredKeys] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
 
+  const provider = getProvider(providerId);
+  const selectedModel = modelByProvider[providerId] || provider.defaultModel;
+  const hasStoredKey = storedKeys[providerId] ?? false;
+
+  const refreshKeys = async () => {
+    const entries = await Promise.all(
+      PROVIDERS.map(async (p) => [p.id, !!(await getApiKey(p.id))] as const),
+    );
+    setStoredKeys(Object.fromEntries(entries));
+  };
+
   useEffect(() => {
-    void getApiKey().then((k) => setHasStoredKey(!!k));
+    void refreshKeys();
   }, []);
 
-  const save = async () => {
-    const trimmed = key.trim();
-    if (!trimmed) return;
-    if (!trimmed.startsWith('sk-ant-')) {
-      const ok = await confirm({
-        title: 'That does not look like an Anthropic key',
-        message: 'Anthropic API keys start with "sk-ant-". Save it anyway?',
-        confirmLabel: 'Save anyway',
-      });
-      if (!ok) return;
-    }
-    await persist(trimmed);
-  };
+  useEffect(() => {
+    setKey('');
+  }, [providerId]);
 
   const persist = async (value: string) => {
     setSaving(true);
     try {
-      await setApiKey(value);
+      await setApiKey(providerId, value);
       setKey('');
-      setHasStoredKey(true);
-      notify('Saved', Platform.OS === 'web'
-        ? 'The key is stored in this browser. Generation should work now.'
-        : 'The key is stored in the device keychain, not in app storage.');
+      await refreshKeys();
+      notify('Saved', `${provider.label} is ready. Generation should work now.`);
     } catch {
       notify('Could not save', 'Storage rejected the write.');
     } finally {
@@ -59,16 +58,30 @@ export default function ApiScreen() {
     }
   };
 
+  const save = async () => {
+    const trimmed = key.trim();
+    if (!trimmed) return;
+    if (provider.keyPrefix && !trimmed.startsWith(provider.keyPrefix)) {
+      const ok = await confirm({
+        title: `That does not look like a ${provider.label} key`,
+        message: `${provider.label} keys normally start with "${provider.keyPrefix}". Save it anyway?`,
+        confirmLabel: 'Save anyway',
+      });
+      if (!ok) return;
+    }
+    await persist(trimmed);
+  };
+
   const remove = async () => {
     const ok = await confirm({
-      title: 'Remove the stored key?',
+      title: `Remove the ${provider.label} key?`,
       message: 'Narrative generation will stop working until you add another.',
       confirmLabel: 'Remove',
       destructive: true,
     });
     if (!ok) return;
-    await clearApiKey();
-    setHasStoredKey(false);
+    await clearApiKey(providerId);
+    await refreshKeys();
   };
 
   return (
@@ -77,27 +90,46 @@ export default function ApiScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}>
       <Screen>
-        <Banner tone="warning" title="Direct-to-API is a test-build arrangement">
-          The app calls the Claude API straight from this phone using the key below. That is fine
-          for practice data. Before any real patient information is entered, requests need to go
-          through a backend you control under a signed BAA — see docs/SECURITY-PHI.md.
+        <SectionLabel>Provider</SectionLabel>
+        <Card>
+          {PROVIDERS.map((p, i) => (
+            <View key={p.id}>
+              {i > 0 ? <Divider /> : null}
+              <ListRow
+                title={`${p.label}${p.free ? '  ·  FREE' : ''}`}
+                subtitle={p.blurb}
+                onPress={() => setProviderId(p.id as ProviderId)}
+                right={
+                  <Muted style={providerId === p.id ? s.selected : s.unselected}>
+                    {providerId === p.id ? 'In use' : storedKeys[p.id] ? 'key set' : ''}
+                  </Muted>
+                }
+              />
+            </View>
+          ))}
+        </Card>
+
+        <Banner tone={provider.free ? 'warning' : 'info'} title="How this provider treats your data">
+          {provider.privacyNote}
         </Banner>
 
+        <SectionLabel>API key</SectionLabel>
         <Card>
-          <SectionLabel>API key</SectionLabel>
           <Body>
-            {hasStoredKey === null
-              ? 'Checking…'
-              : hasStoredKey
-                ? 'A key is stored in the device keychain.'
-                : 'No key stored yet.'}
+            {hasStoredKey
+              ? `A ${provider.label} key is stored on this device.`
+              : `No ${provider.label} key stored yet.`}
           </Body>
           <Field
             label={hasStoredKey ? 'Replace key' : 'Paste your key'}
-            hint="Stored in the iOS keychain with device-only accessibility. Never written to app storage, logs, or reports."
+            hint={
+              Platform.OS === 'web'
+                ? 'Stored in this browser only. Never sent anywhere except to the provider.'
+                : 'Stored in the device keychain. Never written to app storage, logs, or reports.'
+            }
             value={key}
             onChangeText={setKey}
-            placeholder="sk-ant-..."
+            placeholder={`${provider.keyPrefix}...`}
             autoCapitalize="none"
             autoCorrect={false}
             secureTextEntry
@@ -108,33 +140,42 @@ export default function ApiScreen() {
             loading={saving}
             disabled={key.trim().length === 0}
           />
+          <Button
+            label={`Get a key — ${provider.keyUrlLabel}`}
+            variant="secondary"
+            onPress={() => void Linking.openURL(provider.keyUrl)}
+          />
           {hasStoredKey ? (
             <Button label="Remove stored key" variant="danger" onPress={remove} />
           ) : null}
-          <Muted>
-            Create a key at console.anthropic.com. Use a key scoped to a workspace with a spend
-            limit — it is sitting on a phone.
-          </Muted>
         </Card>
 
         <SectionLabel>Model</SectionLabel>
         <Card>
-          {AVAILABLE_MODELS.map((m, i) => (
+          {provider.models.map((m, i) => (
             <View key={m.id}>
               {i > 0 ? <Divider /> : null}
               <ListRow
                 title={m.label}
-                subtitle={m.blurb}
-                onPress={() => setModelId(m.id)}
-                right={modelId === m.id ? <Muted style={s.selected}>Selected</Muted> : undefined}
+                subtitle={m.note ?? m.id}
+                onPress={() => setModel(providerId, m.id)}
+                right={
+                  selectedModel === m.id ? <Muted style={s.selected}>Selected</Muted> : undefined
+                }
               />
             </View>
           ))}
         </Card>
-        <Muted>
-          Narrative generation runs at medium reasoning effort; the clinical reference lookup runs
-          at low. See docs/MODEL-RECOMMENDATIONS.md for the reasoning.
-        </Muted>
+        <Card>
+          <Field
+            label="Or type a model name"
+            hint="Providers rename and retire models. If the list is out of date, put the exact id here."
+            value={selectedModel}
+            onChangeText={(value) => setModel(providerId, value)}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </Card>
       </Screen>
     </KeyboardAvoidingView>
   );
@@ -143,4 +184,5 @@ export default function ApiScreen() {
 const s = StyleSheet.create({
   flex: { flex: 1 },
   selected: { color: colors.accent, marginLeft: space.sm },
+  unselected: { color: colors.textFaint, marginLeft: space.sm },
 });

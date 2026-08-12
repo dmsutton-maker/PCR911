@@ -20,7 +20,7 @@ import type { Report } from '@/domain/types';
 import { generateForReport } from '@/features/generate';
 import { checkScope } from '@/safety/scopeGuard';
 import { useReports } from '@/state/reportStore';
-import { useSettings } from '@/state/settingsStore';
+import { currentAiConfig, useSettings } from '@/state/settingsStore';
 import { recordingsDir } from '@/storage/vault';
 import { colors, space, type } from '@/theme';
 import { confirm, notify } from '@/util/dialog';
@@ -43,7 +43,6 @@ export default function RecordScreen() {
 function useGenerate() {
   const org = useSettings((s) => s.org);
   const profile = useSettings((s) => s.profile);
-  const modelId = useSettings((s) => s.modelId);
   const { update } = useReports();
 
   return async (text: string, practiceMode: boolean): Promise<boolean> => {
@@ -65,7 +64,12 @@ function useGenerate() {
     const saved = await update({ rawInput: text, practiceMode }, 'Capture completed');
     if (!saved) return false;
 
-    const outcome = await generateForReport({ report: saved, org, profile, modelId });
+    const outcome = await generateForReport({
+      report: saved,
+      org,
+      profile,
+      config: currentAiConfig(),
+    });
     if (!outcome.onTopic) {
       notify(
         'That does not look like a patient encounter',

@@ -17,7 +17,7 @@ import {
 import type { FollowUp } from '@/domain/types';
 import { generateForReport } from '@/features/generate';
 import { useReports } from '@/state/reportStore';
-import { useSettings } from '@/state/settingsStore';
+import { currentAiConfig, useSettings } from '@/state/settingsStore';
 import { colors, space } from '@/theme';
 import { confirm, notify } from '@/util/dialog';
 
@@ -32,7 +32,6 @@ export default function QuestionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const org = useSettings((s) => s.org);
   const profile = useSettings((s) => s.profile);
-  const modelId = useSettings((s) => s.modelId);
   const { current, open, update } = useReports();
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -88,7 +87,7 @@ export default function QuestionsScreen() {
         report: withAnswers,
         org,
         profile,
-        modelId,
+        config: currentAiConfig(),
       });
       if (!outcome.onTopic) {
         notify('Could not update', outcome.offTopicReason || 'Nothing was generated.');

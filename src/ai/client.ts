@@ -1,34 +1,33 @@
 import { Platform } from 'react-native';
 
 import { getApiKey } from '@/storage/secure';
+import { type AiConfig, getProvider, type ProviderId } from './providers';
 
 /**
- * Minimal Claude Messages API client.
+ * The one place in the app that talks to a network.
  *
- * Phase 1 calls api.anthropic.com directly from the device using a key the user
- * pastes into Settings. That is acceptable for a personal test build with fake
- * data and is NOT acceptable for real PHI — see docs/SECURITY-PHI.md for the
- * server-proxy + BAA path that has to be in place first.
+ * Which API it talks to depends on the provider the user chose in Settings;
+ * everything provider-specific lives in providers.ts. Keys are read from the
+ * keystore per request and never held in app state or written to a report.
  *
- * The API key lives in the keystore and is read per-request; it is never held
- * in Redux/zustand state, never logged, and never written to a report.
+ * Phase 1 calls the provider directly from the device. That is fine for
+ * practice data and is not acceptable for PHI — see docs/SECURITY-PHI.md.
  */
 
-const ENDPOINT = 'https://api.anthropic.com/v1/messages';
-const API_VERSION = '2023-06-01';
-
 export class MissingApiKeyError extends Error {
-  constructor() {
-    super('No Claude API key is set. Add one in Settings → Claude API.');
+  readonly providerId: ProviderId;
+  constructor(providerId: ProviderId) {
+    super(`No API key is set for ${getProvider(providerId).label}. Add one in Settings → AI provider.`);
     this.name = 'MissingApiKeyError';
+    this.providerId = providerId;
   }
 }
 
-export class ClaudeApiError extends Error {
+export class AiApiError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {
     super(message);
-    this.name = 'ClaudeApiError';
+    this.name = 'AiApiError';
     this.status = status;
   }
 }
@@ -36,16 +35,17 @@ export class ClaudeApiError extends Error {
 /** Turn any failure into something a user standing in an ambulance bay can act on. */
 export function describeError(error: unknown): string {
   if (error instanceof MissingApiKeyError) return error.message;
-  if (error instanceof ClaudeApiError) {
+  if (error instanceof AiApiError) {
     switch (error.status) {
+      case 400:
+        return `The request was rejected: ${error.message}`;
       case 401:
-        return 'That API key was rejected. Check it in Settings → Claude API.';
       case 403:
-        return 'This API key does not have access to the selected model.';
+        return 'That API key was rejected. Check it in Settings → AI provider.';
       case 404:
-        return 'The selected model was not found. Pick a different one in Settings.';
+        return 'That model name was not found. Pick a different model in Settings → AI provider.';
       case 429:
-        return 'Rate limited by the API. Wait a moment and try again.';
+        return 'Rate limit or free-tier quota reached. Wait a minute and try again, or switch model.';
       case 529:
         return 'The API is temporarily overloaded. Try again in a moment.';
       default:
@@ -54,36 +54,34 @@ export function describeError(error: unknown): string {
           : error.message;
     }
   }
-  if (error instanceof Error && /Network request failed/i.test(error.message)) {
+  if (error instanceof Error && /Network request failed|Failed to fetch/i.test(error.message)) {
     return 'No network connection. Your notes are saved on this device; generate when you have signal.';
   }
   return error instanceof Error ? error.message : 'Something went wrong.';
 }
 
+/** Some models wrap JSON in a markdown fence despite being asked not to. */
+function stripCodeFence(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('```')) return trimmed;
+  return trimmed
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/, '')
+    .trim();
+}
+
 interface JsonRequest {
-  model: string;
+  config: AiConfig;
   system: string;
   userContent: string;
-  /** JSON Schema the response must conform to. */
   schema: Record<string, unknown>;
-  /** Lower effort for cheap classification-style calls. */
   effort?: 'low' | 'medium' | 'high';
   maxTokens?: number;
   signal?: AbortSignal;
 }
 
-interface ClaudeResponse {
-  content: { type: string; text?: string }[];
-  stop_reason: string;
-  stop_details?: { category?: string | null; explanation?: string } | null;
-}
-
-/**
- * One structured-output request. Every AI feature in this app goes through
- * here, so there is exactly one place that talks to the network.
- */
 export async function requestJson<T>({
-  model,
+  config,
   system,
   userContent,
   schema,
@@ -91,65 +89,65 @@ export async function requestJson<T>({
   maxTokens = 16000,
   signal,
 }: JsonRequest): Promise<T> {
-  const apiKey = await getApiKey();
-  if (!apiKey) throw new MissingApiKeyError();
+  const provider = getProvider(config.providerId);
 
-  const headers: Record<string, string> = {
-    'content-type': 'application/json',
-    'x-api-key': apiKey,
-    'anthropic-version': API_VERSION,
-  };
-  // Expo web is a development convenience only; the browser fetch needs this
-  // header to talk to the API at all. Native builds do not send it.
-  if (Platform.OS === 'web') headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  const apiKey = await getApiKey(provider.id);
+  if (!apiKey) throw new MissingApiKeyError(provider.id);
 
-  const response = await fetch(ENDPOINT, {
+  const built = provider.buildRequest({
+    apiKey,
+    model: config.model || provider.defaultModel,
+    system,
+    userContent,
+    schema,
+    effort,
+    maxTokens,
+  });
+
+  const headers = { ...built.headers };
+  // Anthropic requires an explicit opt-in for browser-originated requests.
+  if (Platform.OS === 'web' && provider.id === 'anthropic') {
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  }
+
+  const response = await fetch(built.url, {
     method: 'POST',
     headers,
     signal,
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system,
-      output_config: {
-        effort,
-        format: { type: 'json_schema', schema },
-      },
-      messages: [{ role: 'user', content: userContent }],
-    }),
+    body: JSON.stringify(built.body),
   });
 
   if (!response.ok) {
     let message = `Request failed (${response.status}).`;
     try {
-      const body = (await response.json()) as { error?: { message?: string } };
-      if (body?.error?.message) message = body.error.message;
+      const errorBody = await response.json();
+      message = provider.extractError(errorBody) ?? message;
     } catch {
-      // Non-JSON error body; the status-based message above is good enough.
+      // Non-JSON error body; the status-based message is good enough.
     }
-    throw new ClaudeApiError(response.status, message);
+    throw new AiApiError(response.status, message);
   }
 
-  const body = (await response.json()) as ClaudeResponse;
+  const body = await response.json();
 
-  // A safety refusal returns HTTP 200 with an empty or partial content array,
-  // so stop_reason has to be checked before reading content.
-  if (body.stop_reason === 'refusal') {
-    throw new ClaudeApiError(
+  // Anthropic returns HTTP 200 with an empty body on a safety refusal, so
+  // stop_reason has to be checked before reading content.
+  if (body?.stop_reason === 'refusal') {
+    throw new AiApiError(
       200,
       'The model declined to process this input. Check that the notes describe a patient encounter and contain nothing off-topic.',
     );
   }
-  if (body.stop_reason === 'max_tokens') {
-    throw new ClaudeApiError(200, 'The response was cut off. Try shortening the notes.');
+  if (body?.stop_reason === 'max_tokens') {
+    throw new AiApiError(200, 'The response was cut off. Try shortening the notes.');
   }
 
-  const text = body.content.find((b) => b.type === 'text')?.text;
-  if (!text) throw new ClaudeApiError(200, 'The API returned an empty response.');
+  const text = provider.extractText(body);
+  if (!text) throw new AiApiError(200, 'The API returned an empty response.');
 
   try {
-    return JSON.parse(text) as T;
+    return JSON.parse(stripCodeFence(text)) as T;
   } catch {
-    throw new ClaudeApiError(200, 'The API returned a response that could not be read.');
+    throw new AiApiError(200, 'The API returned a response that could not be read.');
   }
 }

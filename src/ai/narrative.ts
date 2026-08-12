@@ -7,6 +7,7 @@ import type {
   RequiredSpecific,
 } from '@/domain/types';
 import { requestJson } from './client';
+import type { AiConfig } from './providers';
 import { buildNarrativeSystemPrompt, buildNarrativeUserContent } from './prompts';
 import { NARRATIVE_SCHEMA } from './schemas';
 
@@ -40,7 +41,7 @@ export interface NarrativeResult {
  * every refinement.
  */
 export async function composeNarrative(args: {
-  modelId: string;
+  config: AiConfig;
   org: OrgConfig;
   profile: ProviderProfile;
   rawInput: string;
@@ -55,7 +56,7 @@ export async function composeNarrative(args: {
     .map((f) => ({ question: f.question, answer: f.answer.trim() }));
 
   const raw = await requestJson<RawNarrativeResponse>({
-    model: args.modelId,
+    config: args.config,
     system: buildNarrativeSystemPrompt(args.org, args.profile),
     userContent: buildNarrativeUserContent({
       rawInput: args.rawInput,

@@ -13,7 +13,7 @@ import {
   SectionLabel,
   Toggle,
 } from '@/components/ui';
-import { AVAILABLE_MODELS } from '@/domain/defaults';
+import { getProvider } from '@/ai/providers';
 import { getFormat } from '@/domain/formats';
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
@@ -24,7 +24,8 @@ export default function SettingsScreen() {
   const {
     org,
     profile,
-    modelId,
+    providerId,
+    modelByProvider,
     appLockEnabled,
     practiceModeDefault,
     setAppLockEnabled,
@@ -33,11 +34,12 @@ export default function SettingsScreen() {
   const { eraseAll } = useReports();
   const [hasKey, setHasKey] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    void getApiKey().then((k) => setHasKey(!!k));
-  }, []);
+  const provider = getProvider(providerId);
+  const model = modelByProvider[providerId] || provider.defaultModel;
 
-  const model = AVAILABLE_MODELS.find((m) => m.id === modelId);
+  useEffect(() => {
+    void getApiKey(providerId).then((k) => setHasKey(!!k));
+  }, [providerId]);
 
   const confirmErase = async () => {
     const ok = await confirm({
@@ -91,13 +93,11 @@ export default function SettingsScreen() {
         />
       </Card>
 
-      <SectionLabel>Claude API</SectionLabel>
+      <SectionLabel>AI provider</SectionLabel>
       <Card>
         <ListRow
-          title="API key and model"
-          subtitle={`${hasKey === null ? 'Checking…' : hasKey ? 'Key set' : 'No key set'} · ${
-            model?.label ?? modelId
-          }`}
+          title={`${provider.label}${provider.free ? '  ·  FREE' : ''}`}
+          subtitle={`${hasKey === null ? 'Checking…' : hasKey ? 'Key set' : 'No key set — tap to add'} · ${model}`}
           onPress={() => router.push('/settings/api')}
         />
       </Card>
@@ -120,8 +120,12 @@ export default function SettingsScreen() {
       </Card>
 
       <Banner tone="warning" title="Before entering real patient information">
-        Narrative generation sends your notes to the Claude API. Real PHI must not be entered until
-        a BAA and a HIPAA-eligible API configuration are in place. See docs/SECURITY-PHI.md.
+        Narrative generation sends your notes to {provider.label}.
+        {provider.free
+          ? ' Free tiers generally allow the provider to train on what you send, so this one is for fake patients only.'
+          : ''}{' '}
+        Real PHI must not be entered until a BAA and a HIPAA-eligible configuration are in place.
+        See docs/SECURITY-PHI.md.
       </Banner>
 
       <View>
