@@ -38,12 +38,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      # Turns GitHub Pages on if it is not already, so there is no manual
-      # settings step to find. Requires the `pages: write` permission above.
-      - name: Turn on GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # Note: enabling Pages from here is not possible. actions/configure-pages
+      # with `enablement: true` fails with "Resource not accessible by
+      # integration" — the workflow token cannot create a Pages site, even on a
+      # public repo with `pages: write` granted. Pages has to be switched on
+      # once by hand at Settings → Pages → Source → GitHub Actions.
 
       - name: Install dependencies
         run: npm ci
