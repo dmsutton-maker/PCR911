@@ -8,14 +8,14 @@ Personal project. React Native + Expo, testable in Expo Go with no Mac.
 
 ## ⚠️ Do not enter real patient information yet
 
-This build sends your notes to an AI provider **directly from the phone**, using an API key you paste into Settings. That is fine for practice data and is **not** an acceptable arrangement for PHI.
+This build sends your notes to an AI provider from the phone — either directly with a key you paste into Settings, or through a relay you run. That is fine for practice data and is **not** yet an acceptable arrangement for PHI.
 
 The default provider is Google Gemini's **free tier**, and Google's terms for it say submitted content is used to improve their products, may be seen by human reviewers, and should not include personal information. That is the correct trade for fake patients and a hard stop for real ones.
 
 Before any real patient encounter goes into this app, two things have to be true, and neither is a code change:
 
 1. **A signed BAA with your chosen provider**, on a HIPAA-eligible, paid configuration. This is a business and compliance step on your end.
-2. **Requests routed through a backend you control**, rather than phone-to-API. An API key living on a phone cannot be rotated, scoped per user, audited, or revoked when the phone is lost.
+2. **Requests routed through a backend you control**, rather than phone-to-API. *Half-built:* the [squad relay](server/README.md) takes the key off the phone, which is the hard structural part. Per-person credentials and an audit log are still missing, so it does not clear this on its own.
 
 Until both are in place, use fake patients. New reports are marked as practice data by default, and practice narratives carry a `*** PRACTICE / TRAINING DATA — NOT A PATIENT RECORD ***` banner when copied. Details and the full threat model are in [docs/SECURITY-PHI.md](docs/SECURITY-PHI.md).
 
@@ -37,6 +37,8 @@ One thing worth deciding: this is a personal *account*, not a personal *organiza
 ## Getting it on your phone
 
 **Free, nothing installed** — the web build, added to your iPhone home screen. Gets an icon, opens full-screen, no computer or server involved. Two steps, about three minutes: **[docs/USE-IT-FREE.md](docs/USE-IT-FREE.md)**. Typed notes and dictation work fully; live recording and the real security model do not. Start here.
+
+**For a crew, not just you** — the [squad relay](server/README.md) holds one API key on a free Cloudflare Worker so nobody else needs one. You send people a link; they open it and start working. Ten minutes to set up, no cost, and it is also the first half of the backend that real patient data will eventually require.
 
 **As a native app** — full security model, Face ID, live recording: [docs/INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md). Browser-only setup, but $99/year for an Apple Developer account — Apple's price for putting a custom app on an iPhone. Code changes then ship over the air.
 
@@ -93,9 +95,9 @@ This is not a chatbot and cannot be turned into one. There is no free-text chat 
 
 ## Security posture in this build
 
-- **API key** in the iOS keychain (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`) — never in app storage, logs, or reports.
+- **API key, or squad code** in the iOS keychain (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`) — never in app storage, logs, or reports.
 - **Report bodies** encrypted with AES-256-GCM. The key is generated on-device and lives in the keychain alongside the API key.
-- **Nothing syncs.** No backend, no cloud storage, no analytics, no crash reporting. The only outbound request in the entire app is the provider call in `src/ai/client.ts`.
+- **Nothing syncs.** No cloud storage, no analytics, no crash reporting. The only outbound request in the entire app is the provider call in `src/ai/client.ts` — which goes either straight to the provider or through your own relay, and nowhere else.
 - **Face ID app lock**, on by default. Backgrounding the app also drops the decryption key from memory.
 - **Erase all data** destroys every report, every recording, and the encryption key — so anything already on disk becomes permanently unreadable, not just unlinked.
 
@@ -122,6 +124,7 @@ So phase 1 records and stores the audio, and you play it back while typing or di
 | | |
 |---|---|
 | [USE-IT-FREE.md](docs/USE-IT-FREE.md) | Free web version on your home screen — start here |
+| [server/README.md](server/README.md) | The squad relay: one shared key, invite links, no per-person setup |
 | [INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md) | The native app, full security model ($99/yr Apple) |
 | [MODEL-RECOMMENDATIONS.md](docs/MODEL-RECOMMENDATIONS.md) | Which Claude model for the build vs. for the app, and why |
 | [SECURITY-PHI.md](docs/SECURITY-PHI.md) | Threat model, what's protected, the road to real PHI |

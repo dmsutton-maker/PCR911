@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import type { ConnectionMode } from '@/ai/connection';
 import { DEFAULT_PROVIDER_ID, getProvider, type ProviderId } from '@/ai/providers';
 import { createDefaultOrg, createDefaultProfile } from '@/domain/defaults';
 import { cloneDefaultSpecifics } from '@/domain/requiredSpecifics';
@@ -19,6 +20,10 @@ interface SettingsState {
   providerId: ProviderId;
   /** Chosen model per provider, so switching back and forth is lossless. */
   modelByProvider: Record<string, string>;
+  /** Through a squad relay, or straight to the provider with a personal key. */
+  connectionMode: ConnectionMode;
+  /** Base address of the squad relay. The squad code lives in the keystore. */
+  relayUrl: string;
   /** Require Face ID / passcode when the app returns to the foreground. */
   appLockEnabled: boolean;
   /** Default for new reports. On means generated narratives carry a training banner. */
@@ -40,6 +45,8 @@ interface SettingsState {
   setProfile: (patch: Partial<ProviderProfile>) => void;
   setProviderId: (providerId: ProviderId) => void;
   setModel: (providerId: ProviderId, model: string) => void;
+  setConnectionMode: (mode: ConnectionMode) => void;
+  setRelayUrl: (relayUrl: string) => void;
   setAppLockEnabled: (enabled: boolean) => void;
   setPracticeModeDefault: (enabled: boolean) => void;
   setOnboarded: (value: boolean) => void;
@@ -56,6 +63,10 @@ export const useSettings = create<SettingsState>()(
       profile: createDefaultProfile(),
       providerId: DEFAULT_PROVIDER_ID,
       modelByProvider: {},
+      // Defaults to a personal key: there is no relay until someone deploys
+      // one, and an invite link flips this over without anyone choosing it.
+      connectionMode: 'own_key',
+      relayUrl: '',
       appLockEnabled: true,
       practiceModeDefault: true,
       onboarded: false,
@@ -123,6 +134,8 @@ export const useSettings = create<SettingsState>()(
       setProviderId: (providerId) => set({ providerId }),
       setModel: (providerId, model) =>
         set((st) => ({ modelByProvider: { ...st.modelByProvider, [providerId]: model } })),
+      setConnectionMode: (connectionMode) => set({ connectionMode }),
+      setRelayUrl: (relayUrl) => set({ relayUrl }),
       setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
       setPracticeModeDefault: (practiceModeDefault) => set({ practiceModeDefault }),
       setOnboarded: (onboarded) => set({ onboarded }),
@@ -135,6 +148,8 @@ export const useSettings = create<SettingsState>()(
         profile: s.profile,
         providerId: s.providerId,
         modelByProvider: s.modelByProvider,
+        connectionMode: s.connectionMode,
+        relayUrl: s.relayUrl,
         appLockEnabled: s.appLockEnabled,
         practiceModeDefault: s.practiceModeDefault,
         onboarded: s.onboarded,

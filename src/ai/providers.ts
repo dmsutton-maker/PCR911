@@ -22,8 +22,7 @@ export interface ProviderModel {
   note?: string;
 }
 
-export interface BuildRequestArgs {
-  apiKey: string;
+export interface BuildBodyArgs {
   model: string;
   system: string;
   userContent: string;
@@ -31,12 +30,6 @@ export interface BuildRequestArgs {
   /** Provider-specific hint for how hard to think. Ignored where unsupported. */
   effort: 'low' | 'medium' | 'high';
   maxTokens: number;
-}
-
-export interface BuiltRequest {
-  url: string;
-  headers: Record<string, string>;
-  body: unknown;
 }
 
 export interface AiProvider {
@@ -54,7 +47,17 @@ export interface AiProvider {
   privacyNote: string;
   models: ProviderModel[];
   defaultModel: string;
-  buildRequest: (args: BuildRequestArgs) => BuiltRequest;
+
+  /**
+   * Endpoint and auth are kept separate from the body on purpose: when the app
+   * is pointed at a squad relay it builds the body here and sends it onward
+   * without a key, and the relay supplies `url` and `authHeaders` from its own
+   * copy of this table. Nothing about the request shape has to be duplicated.
+   */
+  url: string;
+  authHeaders: (apiKey: string) => Record<string, string>;
+  buildBody: (args: BuildBodyArgs) => unknown;
+
   /** Pull the generated text out of a successful response body. */
   extractText: (body: any) => string | null;
   /** Pull a useful message out of an error body. */
@@ -87,21 +90,16 @@ const gemini: AiProvider = {
   ],
   defaultModel: 'gemini-3.6-flash',
 
-  buildRequest: ({ apiKey, model, system, userContent, schema }) => ({
-    url: 'https://generativelanguage.googleapis.com/v1beta/interactions',
-    headers: {
-      'content-type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
-    body: {
-      model,
-      system_instruction: system,
-      input: userContent,
-      response_format: {
-        type: 'text',
-        mime_type: 'application/json',
-        schema,
-      },
+  url: 'https://generativelanguage.googleapis.com/v1beta/interactions',
+  authHeaders: (apiKey) => ({ 'x-goog-api-key': apiKey }),
+  buildBody: ({ model, system, userContent, schema }) => ({
+    model,
+    system_instruction: system,
+    input: userContent,
+    response_format: {
+      type: 'text',
+      mime_type: 'application/json',
+      schema,
     },
   }),
 
@@ -156,23 +154,17 @@ const anthropic: AiProvider = {
   ],
   defaultModel: 'claude-opus-5',
 
-  buildRequest: ({ apiKey, model, system, userContent, schema, effort, maxTokens }) => ({
-    url: 'https://api.anthropic.com/v1/messages',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+  url: 'https://api.anthropic.com/v1/messages',
+  authHeaders: (apiKey) => ({ 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }),
+  buildBody: ({ model, system, userContent, schema, effort, maxTokens }) => ({
+    model,
+    max_tokens: maxTokens,
+    system,
+    output_config: {
+      effort,
+      format: { type: 'json_schema', schema },
     },
-    body: {
-      model,
-      max_tokens: maxTokens,
-      system,
-      output_config: {
-        effort,
-        format: { type: 'json_schema', schema },
-      },
-      messages: [{ role: 'user', content: userContent }],
-    },
+    messages: [{ role: 'user', content: userContent }],
   }),
 
   extractText: (body: any) => {

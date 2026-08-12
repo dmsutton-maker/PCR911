@@ -6,6 +6,19 @@ The browser version of the app, added to your iPhone home screen. It gets an ico
 
 ---
 
+## If someone sent you an invite link
+
+Everything below this section is for the person setting the app up. If you were sent a link, you have two steps and no accounts to create:
+
+1. Open the link **on your iPhone, in Safari**. The app says "You're set up" — it is already connected to your squad's shared account. There is no API key for you to get.
+2. Tap **Share** (the square with an arrow at the bottom) → **Add to Home Screen** → **Add**.
+
+That is all. Skip to [Try it](#try-it).
+
+The link contains your squad's access code, so treat it like a password — don't post it anywhere public.
+
+---
+
 ## What you do — two steps, about three minutes
 
 ### Step 1 — turn on hosting (once, ~30 seconds)
@@ -35,9 +48,17 @@ An icon appears on your home screen. Tap it and the app opens full-screen.
 
 ## Then set it up, in the app
 
-1. **Settings → AI provider** → **Google Gemini** is already selected → paste your key
+1. **Settings → AI provider** → paste a free Gemini key (below), or connect a squad account
 2. **Settings → Organization** → squad name (SOAP is already the default format)
 3. **Settings → Provider profile** → certification level and state
+
+### Sharing it with other people
+
+If anyone else is going to use this, set up a **squad account** instead of having each person make their own key. It is a small free server that holds one key so nobody else needs one — then you send them a link and they are done.
+
+Ten minutes, once, no cost: **[../server/README.md](../server/README.md)**.
+
+Without it, every person has to create a Google account, generate an API key, and paste it in. It works, but it is a lot to ask of someone at shift change.
 
 ### Getting a free Gemini key
 
@@ -98,7 +119,7 @@ If the button says dictation is not available, open the site in Safari directly 
 
 | | Installed app | This web version |
 |---|---|---|
-| API key storage | iOS Keychain, hardware-backed | Browser storage |
+| Credential storage | iOS Keychain, hardware-backed | Browser storage |
 | Reports at rest | Encrypted, key in Keychain | Obfuscated, key in the same browser storage |
 | Face ID lock | Yes | No |
 | Wipe on demand | Destroys the key — data unrecoverable | Clears browser storage |
@@ -113,5 +134,6 @@ If it earns a place in your workflow, `docs/INSTALL-ON-PHONE.md` covers the real
 
 - **Page won't load / 404** — the first build may still be running. Check the Actions tab for a green check.
 - **Blank white screen** — pull down to refresh. If it persists, screenshot and send it to me.
-- **"No API key set"** — Settings → AI provider.
+- **"No API key set" / "Not connected yet"** — Settings → AI provider.
+- **"That squad code was not accepted"** — ask whoever sent you the link for a current one; codes can be changed.
 - **A red error** — screenshot it and send it. The web build has been tested in a browser here, but not on an actual iPhone.

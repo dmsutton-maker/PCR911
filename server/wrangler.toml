@@ -1,0 +1,22 @@
+name = "pcr-relay"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# Nothing secret belongs in this file — it is committed to a public repo.
+# The provider keys and squad codes are set as Cloudflare *secrets*, either
+# through the dashboard or by the GitHub Actions workflow. See server/README.md.
+
+[vars]
+# Which web origins may read a response from this relay. The squad code is the
+# real access control; this is a second, weaker fence. Leave it as-is unless you
+# host the app somewhere other than GitHub Pages.
+ALLOWED_ORIGINS = "https://dmsutton-maker.github.io"
+
+# Requests allowed per squad code per day. Only enforced if you bind a KV
+# namespace named RATE_LIMIT (optional — see server/README.md).
+DAILY_LIMIT = "300"
+
+# Uncomment after creating a KV namespace to turn on per-code daily limits:
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT"
+# id = "paste-the-namespace-id-here"

@@ -6,7 +6,7 @@
 src/
   app/            expo-router screens (file = route)
   domain/         types, narrative-format registry, required-specifics catalog
-  ai/             prompts, JSON schemas, the one network client
+  ai/             prompts, JSON schemas, provider registry, the one network client
   features/       flows that combine ai + storage
   state/          zustand stores (settings, reports)
   storage/        keychain, AES-GCM, encrypted file vault
@@ -15,9 +15,29 @@ src/
   protocols/      placeholder for the protocol-reference feature
   components/     UI primitives + app lock
   theme/          palette, spacing, type
+
+server/           the optional squad relay (Cloudflare Worker)
 ```
 
-The rule that keeps this honest: **`src/ai/client.ts` is the only file that touches the network.** Everything else is local. If a future change adds a second outbound call, it should be obvious in review.
+The rule that keeps this honest: **`src/ai/client.ts` is the only file that touches the network.** Everything else is local — bar one deliberate exception, `checkRelay()` in `src/ai/connection.ts`, which pings a relay's health endpoint when you tap Connect in Settings and never carries patient data. If a future change adds another outbound call, it should be obvious in review.
+
+---
+
+## Two routes to the provider
+
+`src/ai/connection.ts` decides which one, and it is the only thing that differs between them:
+
+```
+own_key   phone ──(x-goog-api-key)──────────────────►  provider
+relay     phone ──(x-squad-code)──►  your worker ────►  provider
+                                     (holds the key)
+```
+
+The request body is identical either way. `src/ai/providers.ts` splits each provider into three parts — `url`, `authHeaders(key)`, and `buildBody(args)` — so the phone can build a body without a key and hand it to the relay, which supplies the other two from its own copy of the same small table. Nothing about prompts, schemas, or response parsing is duplicated, and adding a provider means adding it in both places or the relay simply reports that it has no key for it.
+
+The relay mirrors the providers' `{ error: { message } }` error shape, so one extractor in the client reads relay errors and upstream errors identically. `describeError()` branches on `via` where the same status means different things — a 401 is a bad API key on one route and a bad squad code on the other.
+
+**Invite links** (`src/util/joinLink.ts`) carry the relay address and squad code in the URL *fragment*, which browsers never send to a server. `useJoinLink()` applies one on first launch and then clears it — via `router.replace()` rather than `history.replaceState`, because expo-router keeps its own copy of the initial URL and writes it back on every sync, undoing an external strip within a frame.
 
 ---
 

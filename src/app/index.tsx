@@ -16,11 +16,11 @@ import {
   SectionLabel,
   Title,
 } from '@/components/ui';
+import { isConfigured } from '@/ai/connection';
 import { getFormat } from '@/domain/formats';
 import type { CaptureMode } from '@/domain/types';
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
-import { getApiKey } from '@/storage/secure';
 import { colors, space } from '@/theme';
 import { formatShort } from '@/util/time';
 
@@ -35,8 +35,10 @@ export default function HomeScreen() {
   const profile = useSettings((s) => s.profile);
   const practiceModeDefault = useSettings((s) => s.practiceModeDefault);
   const providerId = useSettings((s) => s.providerId);
+  const connectionMode = useSettings((s) => s.connectionMode);
+  const relayUrl = useSettings((s) => s.relayUrl);
   const { summaries, refresh } = useReports();
-  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [ready, setReady] = useState<boolean | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,8 +47,8 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
-    void getApiKey(providerId).then((k) => setHasApiKey(!!k));
-  }, [providerId, summaries.length]);
+    void isConfigured(providerId).then(setReady);
+  }, [providerId, connectionMode, relayUrl, summaries.length]);
 
   const start = (mode: CaptureMode) => {
     if (mode === 'live') router.push('/capture/record');
@@ -63,10 +65,13 @@ export default function HomeScreen() {
           : 'This build has no HIPAA-eligible path in place. Use fake patients only. See the README before entering anything real.'}
       </Banner>
 
-      {hasApiKey === false ? (
-        <Banner tone="danger" title="No API key set">
-          Narrative generation needs an API key. Add a free Google Gemini key in Settings → AI
-          provider. You can still capture and save notes without it.
+      {ready === false ? (
+        <Banner
+          tone="danger"
+          title={connectionMode === 'relay' ? 'Not connected yet' : 'No API key set'}>
+          {connectionMode === 'relay'
+            ? 'Open the invite link you were sent, or enter the address and squad code at Settings → AI provider. You can still capture and save notes without it.'
+            : 'Narrative generation needs an API key. Add a free Google Gemini key in Settings → AI provider, or switch to a squad account. You can still capture and save notes without it.'}
         </Banner>
       ) : null}
 

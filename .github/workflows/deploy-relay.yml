@@ -1,0 +1,88 @@
+name: Deploy relay
+
+# Publishes server/worker.js to Cloudflare Workers — the small server that holds
+# the AI provider key so nobody on the crew has to.
+#
+# Runs only when the Cloudflare secrets exist, so the repo works fine for anyone
+# who has not set up a relay. See server/README.md for what to add and where.
+#
+# Repository secrets this reads (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   required
+#   CLOUDFLARE_ACCOUNT_ID  required
+#   ACCESS_CODES           required — comma-separated squad codes
+#   GEMINI_API_KEY         at least one provider key required
+#   ANTHROPIC_API_KEY      optional
+
+on:
+  push:
+    branches:
+      - claude/build-session-v1mubj
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-relay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # Secrets are not available to a job-level `if`, so the skip has to happen
+      # inside a step and be carried forward as an output.
+      - name: Check for Cloudflare credentials
+        id: check
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ] || [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "No Cloudflare credentials set — skipping. This is expected if you have not set up a relay."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail early on a relay with no keys
+        if: steps.check.outputs.configured == 'true'
+        run: |
+          if [ -z "${{ secrets.ACCESS_CODES }}" ]; then
+            echo "::error::ACCESS_CODES is not set. Without it the relay refuses every request."
+            exit 1
+          fi
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ] && [ -z "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            echo "::error::No provider key set. Add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY."
+            exit 1
+          fi
+
+      - name: Deploy
+        if: steps.check.outputs.configured == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server
+          # Uploads these as Worker secrets, so they are set on the Worker
+          # rather than baked into the script or visible in the dashboard's
+          # plaintext variables.
+          secrets: |
+            ACCESS_CODES
+            GEMINI_API_KEY
+            ANTHROPIC_API_KEY
+        env:
+          ACCESS_CODES: ${{ secrets.ACCESS_CODES }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Where it lives
+        if: steps.check.outputs.configured == 'true'
+        run: |
+          echo "Relay deployed. Its address is shown in the Deploy step's log as"
+          echo "https://pcr-relay.<your-subdomain>.workers.dev"
+          echo "Put that into the app at Settings -> AI provider -> Squad account."

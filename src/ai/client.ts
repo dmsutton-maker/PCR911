@@ -1,51 +1,64 @@
 import { Platform } from 'react-native';
 
-import { getApiKey } from '@/storage/secure';
-import { type AiConfig, getProvider, type ProviderId } from './providers';
+import {
+  type ConnectionMode,
+  NotConfiguredError,
+  relayEndpoint,
+  resolveConnection,
+} from './connection';
+import { type AiConfig, getProvider } from './providers';
 
 /**
  * The one place in the app that talks to a network.
  *
- * Which API it talks to depends on the provider the user chose in Settings;
- * everything provider-specific lives in providers.ts. Keys are read from the
- * keystore per request and never held in app state or written to a report.
+ * Which API it talks to depends on the provider chosen in Settings, and *how*
+ * it gets there depends on the connection mode: straight to the provider with
+ * the user's own key, or through a squad relay that holds the key on the
+ * server. Everything provider-specific lives in providers.ts; everything about
+ * which route to take lives in connection.ts.
  *
- * Phase 1 calls the provider directly from the device. That is fine for
- * practice data and is not acceptable for PHI — see docs/SECURITY-PHI.md.
+ * Neither route is PHI-capable on its own — see docs/SECURITY-PHI.md.
  */
-
-export class MissingApiKeyError extends Error {
-  readonly providerId: ProviderId;
-  constructor(providerId: ProviderId) {
-    super(`No API key is set for ${getProvider(providerId).label}. Add one in Settings → AI provider.`);
-    this.name = 'MissingApiKeyError';
-    this.providerId = providerId;
-  }
-}
 
 export class AiApiError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  /** Which route produced this, since the same status means different things. */
+  readonly via: ConnectionMode;
+  constructor(status: number, message: string, via: ConnectionMode = 'own_key') {
     super(message);
     this.name = 'AiApiError';
     this.status = status;
+    this.via = via;
   }
 }
 
 /** Turn any failure into something a user standing in an ambulance bay can act on. */
 export function describeError(error: unknown): string {
-  if (error instanceof MissingApiKeyError) return error.message;
+  if (error instanceof NotConfiguredError) return error.message;
   if (error instanceof AiApiError) {
+    const viaRelay = error.via === 'relay';
     switch (error.status) {
       case 400:
         return `The request was rejected: ${error.message}`;
       case 401:
       case 403:
-        return 'That API key was rejected. Check it in Settings → AI provider.';
+        return viaRelay
+          ? 'That squad code was not accepted. Check it in Settings → AI provider, or ask whoever set this up whether it changed.'
+          : 'That API key was rejected. Check it in Settings → AI provider.';
       case 404:
         return 'That model name was not found. Pick a different model in Settings → AI provider.';
+      case 413:
+        return 'Those notes are too long to send. Shorten them and try again.';
       case 429:
-        return 'Rate limit or free-tier quota reached. Wait a minute and try again, or switch model.';
+        return viaRelay
+          ? "The squad's daily limit or the provider's rate limit was reached. Wait a minute and try again."
+          : 'Rate limit or free-tier quota reached. Wait a minute and try again, or switch model.';
+      case 502:
+        return 'The squad relay could not reach the AI provider. Try again in a moment.';
+      case 503:
+        return viaRelay
+          ? `The squad relay is not fully set up: ${error.message}`
+          : error.message;
       case 529:
         return 'The API is temporarily overloaded. Try again in a moment.';
       default:
@@ -90,12 +103,9 @@ export async function requestJson<T>({
   signal,
 }: JsonRequest): Promise<T> {
   const provider = getProvider(config.providerId);
+  const connection = await resolveConnection(provider.id);
 
-  const apiKey = await getApiKey(provider.id);
-  if (!apiKey) throw new MissingApiKeyError(provider.id);
-
-  const built = provider.buildRequest({
-    apiKey,
+  const providerBody = provider.buildBody({
     model: config.model || provider.defaultModel,
     system,
     userContent,
@@ -104,28 +114,46 @@ export async function requestJson<T>({
     maxTokens,
   });
 
-  const headers = { ...built.headers };
-  // Anthropic requires an explicit opt-in for browser-originated requests.
-  if (Platform.OS === 'web' && provider.id === 'anthropic') {
-    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  let url: string;
+  let headers: Record<string, string>;
+  let payload: unknown;
+
+  if (connection.mode === 'relay') {
+    url = relayEndpoint(connection.relayUrl, '/v1/generate');
+    headers = { 'content-type': 'application/json', 'x-squad-code': connection.code };
+    // The relay chooses the destination and supplies the key from its own
+    // table; the phone sends only which provider and what to ask it.
+    payload = { providerId: provider.id, body: providerBody };
+  } else {
+    url = provider.url;
+    headers = { 'content-type': 'application/json', ...provider.authHeaders(connection.apiKey) };
+    // Anthropic requires an explicit opt-in for browser-originated requests.
+    // Only needed on the direct route — through the relay the call is
+    // server-to-server and this header would be meaningless.
+    if (Platform.OS === 'web' && provider.id === 'anthropic') {
+      headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    }
+    payload = providerBody;
   }
 
-  const response = await fetch(built.url, {
+  const response = await fetch(url, {
     method: 'POST',
     headers,
     signal,
-    body: JSON.stringify(built.body),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     let message = `Request failed (${response.status}).`;
     try {
       const errorBody = await response.json();
+      // The relay deliberately mirrors the providers' `{ error: { message } }`
+      // shape, so one extractor reads both.
       message = provider.extractError(errorBody) ?? message;
     } catch {
       // Non-JSON error body; the status-based message is good enough.
     }
-    throw new AiApiError(response.status, message);
+    throw new AiApiError(response.status, message, connection.mode);
   }
 
   const body = await response.json();

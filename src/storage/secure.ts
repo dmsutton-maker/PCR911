@@ -18,6 +18,7 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
 };
 
 const DATA_KEY = 'report_data_key_v1';
+const ACCESS_CODE = 'squad_access_code_v1';
 
 /** One key per provider, so switching provider does not lose the other key. */
 function apiKeyName(providerId: string): string {
@@ -34,6 +35,22 @@ export async function setApiKey(providerId: string, value: string): Promise<void
 
 export async function clearApiKey(providerId: string): Promise<void> {
   await SecureStore.deleteItemAsync(apiKeyName(providerId), OPTIONS);
+}
+
+/**
+ * The squad code used to authenticate against a relay. Not a provider key, but
+ * it is a credential and belongs in the same place rather than in settings.
+ */
+export async function getAccessCode(): Promise<string | null> {
+  return SecureStore.getItemAsync(ACCESS_CODE, OPTIONS);
+}
+
+export async function setAccessCode(value: string): Promise<void> {
+  await SecureStore.setItemAsync(ACCESS_CODE, value.trim(), OPTIONS);
+}
+
+export async function clearAccessCode(): Promise<void> {
+  await SecureStore.deleteItemAsync(ACCESS_CODE, OPTIONS);
 }
 
 export async function getStoredDataKey(): Promise<string | null> {

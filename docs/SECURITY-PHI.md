@@ -4,8 +4,10 @@
 
 **This build must not be used with real patient information.** Not because of a bug, but because a required compliance arrangement does not exist yet. Two things have to be true first, and neither one is code:
 
-1. **A signed BAA with Anthropic**, on a HIPAA-eligible API configuration.
+1. **A signed BAA with your provider**, on a HIPAA-eligible API configuration.
 2. **A backend you control**, so requests do not go phone-to-API with an embedded key.
+
+Item 2 now has an implementation — the squad relay in [`server/`](../server/README.md) — but deploying it does not by itself clear the gate. See [The squad relay](#the-squad-relay) below for what it does and does not settle.
 
 Everything below describes what the app does protect, so the gap is visible rather than implied.
 
@@ -13,9 +15,9 @@ Everything below describes what the app does protect, so the gap is visible rath
 
 ## What this build protects
 
-### The API key
+### The API key, or the squad code in its place
 
-Stored in the iOS keychain via `expo-secure-store` with `WHEN_UNLOCKED_THIS_DEVICE_ONLY`. That accessibility class means it is unreadable while the device is locked, and it is excluded from iCloud and encrypted-iTunes backups.
+Whichever credential this phone holds — a personal provider key, or a squad code for a relay — it is stored in the iOS keychain via `expo-secure-store` with `WHEN_UNLOCKED_THIS_DEVICE_ONLY`. That accessibility class means it is unreadable while the device is locked, and it is excluded from iCloud and encrypted-iTunes backups.
 
 It is read per-request inside `src/ai/client.ts` and never placed in app state, never logged, never written to a report. It is never rendered back to the UI after saving — Settings shows "a key is stored", not the key.
 
@@ -39,9 +41,27 @@ If the device has no passcode or biometrics enrolled, the app opens and tells yo
 
 ### Data flow
 
-There is **one** outbound network call in the entire app: the Claude request in `src/ai/client.ts`. No backend, no cloud sync, no analytics, no crash reporting, no telemetry. Audio recordings never leave the device — not even to the API.
+There is **one** outbound network call in the entire app: the provider request in `src/ai/client.ts`, which goes either straight to the provider or through your relay. No cloud sync, no analytics, no crash reporting, no telemetry. Audio recordings never leave the device — not even to the API.
+
+(One exception, and it carries no patient data: the relay health check in `src/ai/connection.ts`, a `GET /v1/health` fired only when you tap Connect or Test connection in Settings.)
 
 Notes are saved locally as you type. Nothing is transmitted until you explicitly tap Generate.
+
+---
+
+## The squad relay
+
+`server/worker.js` is a small Cloudflare Worker that holds one provider key and authenticates callers with a squad code. When the app is in **Squad account** mode, the phone sends its notes and a code; the relay adds the key and forwards the request. Setup is in [server/README.md](../server/README.md).
+
+**What it settles.** The key stops living on phones. That means it can be rotated without shipping a build, a person's access can be withdrawn without touching their device, usage is visible in one place, and a lost phone leaks a revocable squad code rather than a provider credential. This is the structural fix that step 2 of the road below asks for, and it is a genuine improvement over phone-to-API regardless of what happens with the BAA.
+
+**What it does not settle.** Three things, and none of them is small:
+
+- **No BAA, no PHI.** The relay changes who holds the key, not who processes the data. Gemini's free tier is explicitly the wrong side of this: Google's terms say submitted content is used to improve their products and may be seen by human reviewers.
+- **A squad code is not an identity.** It says a request came from somebody holding the code. It cannot say who, cannot be tied to a person, and cannot produce the audit trail a real deployment needs. Per-person credentials are still unbuilt.
+- **The relay is another processor.** Requests pass through Cloudflare's network in the clear at the edge. That is one more organisation touching the data, and one more BAA to think about.
+
+There is also a distribution property worth stating plainly: an invite link carries the squad code in its URL fragment. The fragment is never sent to a web server, and the app removes it from the address bar and browser history on arrival — but anyone who receives the link has the code. Treat one like a shared password, which is why the relay accepts a list of codes rather than one.
 
 ---
 
@@ -63,9 +83,9 @@ In the order it has to happen:
 
 **1. Compliance first (yours, not code).** Get the BAA in place with Anthropic on a HIPAA-eligible configuration. Nothing below matters until this exists.
 
-**2. Move the API call behind a backend.** The phone stops holding an Anthropic key and instead authenticates to a service you run, which holds the key and calls the API. This gets you per-user credentials, revocation when a phone is lost, an audit log of who generated what and when, rate limiting, and the ability to rotate a compromised key without shipping a new build.
+**2. Move the API call behind a backend.** *Partly done.* The squad relay does the key-custody half: the phone no longer holds a provider key, and one can be rotated or revoked centrally. What is still missing is per-person credentials and an audit log — a shared squad code identifies a group, not a user, so "who generated what and when" is unanswerable today.
 
-The change is contained: `src/ai/client.ts` is the only file that talks to the network. Point `ENDPOINT` at your service and swap the `x-api-key` header for a session token. Every prompt, schema, and screen is unaffected.
+Finishing this means replacing the shared code with per-person tokens and having the relay write an access log. The app-side change is small: `src/ai/connection.ts` decides what credential to send and `src/ai/client.ts` is the only file that talks to the network. Every prompt, schema, and screen is unaffected.
 
 **3. Decide about audio.** Live-recording transcription is unimplemented today precisely so this decision does not get made by accident — see [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). On-device iOS recognition means patient audio never leaves the phone and no third BAA is needed. A cloud STT vendor is easier to build and adds another processor of patient audio.
 

@@ -13,11 +13,11 @@ import {
   SectionLabel,
   Toggle,
 } from '@/components/ui';
+import { describeConnection, isConfigured } from '@/ai/connection';
 import { getProvider } from '@/ai/providers';
 import { getFormat } from '@/domain/formats';
 import { useReports } from '@/state/reportStore';
 import { useSettings } from '@/state/settingsStore';
-import { getApiKey } from '@/storage/secure';
 import { confirm, notify } from '@/util/dialog';
 
 export default function SettingsScreen() {
@@ -26,20 +26,22 @@ export default function SettingsScreen() {
     profile,
     providerId,
     modelByProvider,
+    connectionMode,
+    relayUrl,
     appLockEnabled,
     practiceModeDefault,
     setAppLockEnabled,
     setPracticeModeDefault,
   } = useSettings();
   const { eraseAll } = useReports();
-  const [hasKey, setHasKey] = useState<boolean | null>(null);
+  const [ready, setReady] = useState<boolean | null>(null);
 
   const provider = getProvider(providerId);
   const model = modelByProvider[providerId] || provider.defaultModel;
 
   useEffect(() => {
-    void getApiKey(providerId).then((k) => setHasKey(!!k));
-  }, [providerId]);
+    void isConfigured(providerId).then(setReady);
+  }, [providerId, connectionMode, relayUrl]);
 
   const confirmErase = async () => {
     const ok = await confirm({
@@ -97,7 +99,7 @@ export default function SettingsScreen() {
       <Card>
         <ListRow
           title={`${provider.label}${provider.free ? '  ·  FREE' : ''}`}
-          subtitle={`${hasKey === null ? 'Checking…' : hasKey ? 'Key set' : 'No key set — tap to add'} · ${model}`}
+          subtitle={`${describeConnection(connectionMode, ready)} · ${model}`}
           onPress={() => router.push('/settings/api')}
         />
       </Card>

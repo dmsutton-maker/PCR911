@@ -6,9 +6,11 @@ Decisions that need you, not code. Roughly in the order they block things.
 
 ## 1. HIPAA path — blocks all real use
 
-Getting a BAA with Anthropic on a HIPAA-eligible API configuration is a business and compliance step, not something solvable in this repo. Until it exists, the app is practice-data-only.
+Getting a BAA with your provider on a HIPAA-eligible API configuration is a business and compliance step, not something solvable in this repo. Until it exists, the app is practice-data-only.
 
-The related engineering decision — moving the API call behind a backend you control instead of embedding a key in the phone — is small and well-isolated (`src/ai/client.ts` is the only file that talks to the network), but it should not be built speculatively before you know what the compliance arrangement actually requires.
+The related engineering work has since been started for a different reason — the [squad relay](../server/README.md) exists because handing an app to a crew meant not making each of them get their own API key, and taking the key off the phone happened to be the same change. So the "backend you control" half of the PHI requirement is now partly real rather than speculative.
+
+**What is still undecided and still needs you:** whether requests should be attributable to a *person*. Today a shared squad code says a request came from someone holding the code. Per-person credentials and an access log are the difference between "we control the key" and "we can answer who generated this narrative and when" — and only the second is something a compliance officer will accept. Building that means deciding whether this app has user accounts, which is a bigger commitment than it sounds.
 
 ---
 

@@ -4,9 +4,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppLock } from '@/components/AppLock';
+import { useJoinLink } from '@/state/useJoinLink';
 import { colors } from '@/theme';
 
 export default function RootLayout() {
+  useJoinLink();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

@@ -12,6 +12,7 @@
  */
 
 const DATA_KEY = 'pcr.secure.report_data_key_v1';
+const ACCESS_CODE = 'pcr.secure.squad_access_code_v1';
 
 function apiKeyName(providerId: string): string {
   return `pcr.secure.api_key_${providerId}`;
@@ -52,6 +53,18 @@ export async function setApiKey(providerId: string, value: string): Promise<void
 
 export async function clearApiKey(providerId: string): Promise<void> {
   remove(apiKeyName(providerId));
+}
+
+export async function getAccessCode(): Promise<string | null> {
+  return read(ACCESS_CODE);
+}
+
+export async function setAccessCode(value: string): Promise<void> {
+  write(ACCESS_CODE, value.trim());
+}
+
+export async function clearAccessCode(): Promise<void> {
+  remove(ACCESS_CODE);
 }
 
 export async function getStoredDataKey(): Promise<string | null> {
