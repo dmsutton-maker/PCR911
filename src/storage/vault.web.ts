@@ -107,6 +107,3 @@ export async function eraseAllData(): Promise<void> {
 }
 
 /** Audio capture is not supported in the web build — see app/capture/record.tsx. */
-export function recordingsDir(): Directory {
-  throw new Error('Audio recording is not available in the web version.');
-}

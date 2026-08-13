@@ -28,12 +28,6 @@ function reportsDir(): Directory {
   return dir;
 }
 
-export function recordingsDir(): Directory {
-  const dir = new Directory(Paths.document, RECORDINGS_DIR);
-  if (!dir.exists) dir.create({ intermediates: true });
-  return dir;
-}
-
 function indexFile(): File {
   return new File(reportsDir(), INDEX_NAME);
 }

@@ -197,9 +197,6 @@ export default function ReportScreen() {
             <Text selectable style={type.small}>
               {report.rawInput}
             </Text>
-            {report.audioUri ? (
-              <Muted style={s.audioNote}>A recording is stored with this report.</Muted>
-            ) : null}
           </>
         ) : null}
       </Card>
@@ -221,5 +218,4 @@ export default function ReportScreen() {
 const s = StyleSheet.create({
   flex: { flex: 1, gap: space.xs },
   practiceBanner: { color: colors.practice, fontSize: 12, fontWeight: '700', marginBottom: space.sm },
-  audioNote: { marginTop: space.sm },
 });

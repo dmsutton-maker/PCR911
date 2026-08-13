@@ -41,7 +41,7 @@ If the device has no passcode or biometrics enrolled, the app opens and tells yo
 
 ### Data flow
 
-There is **one** outbound network call in the entire app: the provider request in `src/ai/client.ts`, which goes either straight to the provider or through your relay. No cloud sync, no analytics, no crash reporting, no telemetry. Audio recordings never leave the device — not even to the API.
+There is **one** outbound network call in the entire app: the provider request in `src/ai/client.ts`, which goes either straight to the provider or through your relay. No cloud sync, no analytics, no crash reporting, no telemetry. Audio never leaves the device — and on the installed app no audio file is created at all, because speech is recognised on the phone and only the resulting text is kept.
 
 (One exception, and it carries no patient data: the relay health check in `src/ai/connection.ts`, a `GET /v1/health` fired only when you tap Connect or Test connection in Settings.)
 
@@ -87,7 +87,7 @@ In the order it has to happen:
 
 Finishing this means replacing the shared code with per-person tokens and having the relay write an access log. The app-side change is small: `src/ai/connection.ts` decides what credential to send and `src/ai/client.ts` is the only file that talks to the network. Every prompt, schema, and screen is unaffected.
 
-**3. Decide about audio.** Live-recording transcription is unimplemented today precisely so this decision does not get made by accident — see [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md). On-device iOS recognition means patient audio never leaves the phone and no third BAA is needed. A cloud STT vendor is easier to build and adds another processor of patient audio.
+**3. Audio.** *Decided.* Live recording uses iOS's on-device recogniser, so patient audio never leaves the phone and no third BAA is needed. No recording file is written either — the audio-file capture path was removed rather than left available, since stored recordings of patient encounters are a liability the text-only path does not carry. If a device cannot recognise speech locally the app refuses and says so; it must never fall back to network recognition, because that is a decision with a BAA attached and not one a fallback should make quietly.
 
 **4. Add retention limits.** Right now reports live until manually deleted. Real use wants automatic purge after N days, since a narrative is copied into the ePCR of record within minutes — this app has no reason to be a long-term store.
 

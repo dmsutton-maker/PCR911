@@ -144,6 +144,12 @@ export interface Report {
   /** The user's raw notes or transcript. Never rewritten in place. */
   rawInput: string;
   /** Local file URI of a live recording, when one exists. Never uploaded. */
+  /**
+   * Legacy. Live capture used to record an audio file and transcribe it later;
+   * it now transcribes on the device as you speak and never writes audio. This
+   * stays so that `Erase all data` still cleans up a file left by an early
+   * build, and nothing sets it any more.
+   */
   audioUri?: string;
   /** Generated narrative, if generation has run. */
   narrative?: string;

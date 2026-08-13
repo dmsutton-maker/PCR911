@@ -2,7 +2,7 @@
 
 An iPhone app that turns an EMT's notes about a call into a properly formatted Patient Care Report narrative, then asks follow-up questions about whatever their organization requires and they did not mention.
 
-Personal project. React Native + Expo, testable in Expo Go with no Mac.
+Personal project. React Native + Expo. Builds and ships from a browser — no Mac, no terminal.
 
 ---
 
@@ -44,26 +44,20 @@ A build with nothing configured still works; it just falls back to asking for a 
 
 ## Getting it on your phone
 
-**Free, nothing installed** — the web build, added to your iPhone home screen. Gets an icon, opens full-screen, no computer or server involved. Two steps, about three minutes: **[docs/USE-IT-FREE.md](docs/USE-IT-FREE.md)**. Typed notes and dictation work fully; live recording and the real security model do not. Start here.
+**Free, nothing installed** — the web build, added to your iPhone home screen. Gets an icon, opens full-screen, no computer or server involved: **[docs/USE-IT-FREE.md](docs/USE-IT-FREE.md)**. Everything works except the real security model, and live dictation goes through the browser rather than the phone's own recogniser.
 
 **For a crew, not just you** — the [squad relay](server/README.md) holds one API key on a free Cloudflare Worker so nobody else needs one. You send people a link; they open it and start working. Ten minutes to set up, no cost, and it is also the first half of the backend that real patient data will eventually require.
 
-**As a native app** — full security model, Face ID, live recording: [docs/INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md). Browser-only setup, but $99/year for an Apple Developer account — Apple's price for putting a custom app on an iPhone. Code changes then ship over the air.
+**As a real app, on TestFlight** — what you want if anyone other than you will use it: full security model, Face ID, and live dictation transcribed on the phone itself. Testers install from an invite and code changes reach them over the air. Setup is browser-only and needs an Apple Developer account ($99/year, Apple's price for putting any custom app on an iPhone): **[docs/INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md)**.
 
-**For development** — needs a computer running a dev server the whole time you use the app:
+**For development** — needs a computer:
 
 ```bash
 npm install
 npx expo start
 ```
 
-Scan the QR code with the Camera app. On first launch:
-
-1. **Settings → AI provider** — Google Gemini is the default and its API key is free at aistudio.google.com/apikey. Anthropic Claude is there too as the paid option.
-2. **Settings → Organization** — set your squad name and narrative format (SOAP is the default).
-3. **Settings → Provider profile** — certification level and state.
-
-Then start a report from the home screen.
+Note that on-device speech recognition is a native module, so the app no longer runs in Expo Go; development needs a development build (`eas build --profile development`). Everything except live recording works in the browser with `npx expo start --web`, which is usually the faster loop anyway.
 
 ---
 
@@ -74,8 +68,8 @@ Then start a report from the home screen.
 | Mode | How it works |
 |---|---|
 | **Bullet notes** | Type fragments. Times, doses, and numbers matter most; grammar does not. |
-| **Post-call dictation** | Talk through the call using the keyboard microphone. iOS transcribes **on-device** — no audio leaves the phone, and it needs no native module, so it works in Expo Go. |
-| **Live recording** | Web build transcribes your speech **live** into an editable transcript. Installed app records audio locally; automatic transcription of the file is **not wired up** — see [Known gaps](#known-gaps). |
+| **Post-call dictation** | Talk through the call using the keyboard microphone. iOS transcribes **on-device** — no audio leaves the phone. |
+| **Live recording** | Speech is transcribed **live** into an editable transcript as you talk. On the installed app that happens on-device; no audio file is ever written. |
 
 ### Narrative generation
 
@@ -115,13 +109,7 @@ Full reasoning, plus what this does and does not protect against, in [docs/SECUR
 
 ## Known gaps
 
-**Live-recording transcription is not implemented.** This is the one real functional gap, and it is worth understanding why rather than treating it as a TODO:
-
-- The Claude API does not accept audio, so transcription cannot share the narrative pipeline.
-- iOS on-device recognition is the right answer for PHI — audio never leaves the phone — but it is a native module and **cannot run in Expo Go**, which is the whole point of the current test setup.
-- A cloud STT vendor works in Expo Go today but adds a second processor of patient audio, and therefore a second BAA.
-
-So phase 1 records and stores the audio, and you play it back while typing or dictating your summary. `src/audio/transcription.ts` is the adapter to implement once you move to a development build. This is a decision to make, not just code to write — see [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md).
+**Live recording needs the installed app.** In the browser it works through the Web Speech API, which on iOS may process audio on Apple's servers. In the installed app it uses iOS's on-device recogniser: audio never leaves the phone, and no recording file is written — only the text you can see and edit. If a device cannot recognise speech locally, the app refuses rather than quietly falling back to network recognition.
 
 **Live Protocol Reference is deliberately not built.** The brief called it the highest-risk feature and said to build it last; it is stubbed at `Settings → Protocol reference` with the blocking sourcing question stated in the app itself. It also needs medical-director review before it ships even in testing.
 

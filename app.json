@@ -49,9 +49,10 @@
         }
       ],
       [
-        "expo-audio",
+        "expo-speech-recognition",
         {
-          "microphonePermission": "PCR Narrative records audio only while you explicitly start a recording, so it can be transcribed into a patient care report narrative. Recordings stay on this device."
+          "microphonePermission": "PCR Narrative listens only while you explicitly start dictation, so your words can be turned into a patient care report narrative. No audio recording is saved.",
+          "speechRecognitionPermission": "PCR Narrative transcribes your speech on this phone, using Apple's on-device recognition. Your words are turned into text here and the audio is never sent anywhere."
         }
       ],
       [

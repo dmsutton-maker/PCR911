@@ -14,21 +14,15 @@ The related engineering work has since been started for a different reason — t
 
 ---
 
-## 2. Transcription for live recording — blocks capture mode 3
+## 2. Transcription for live recording — done
 
-This is a real fork in the road, not a TODO.
+*Resolved. Kept here because the reasoning still governs what may change.*
 
-| Option | Audio leaves phone? | Works in Expo Go? | Extra BAA? |
-|---|---|---|---|
-| **iOS on-device** (`expo-speech-recognition`) | No | **No** — needs a dev build | No |
-| **Cloud STT vendor** | Yes | Yes | Yes |
-| **Keyboard dictation** (what ships today) | No | Yes | No |
+Live recording now transcribes **on the device**, using iOS's own speech recogniser through `expo-speech-recognition`. Audio never leaves the phone and no recording file is written — only the text you can see and edit.
 
-**My recommendation: on-device, and accept moving off Expo Go.** For an app that will eventually hold PHI, "the audio never leaves the phone" is worth more than the convenience of Expo Go, and Expo Go was always a phase-1 scaffold rather than a destination. A development build is a one-time setup cost (EAS Build, no Mac required) and unlocks other native capabilities you will want anyway.
+That choice cost the Expo Go workflow, which was always a scaffold rather than a destination, and it removed the audio-file recorder entirely: an app that stores recordings of patient encounters is a liability the text-only path does not carry.
 
-Worth knowing: keyboard dictation, which the app uses today for the post-call mode, is *also* on-device and needs no native module. That is why post-call dictation works fully right now while live recording does not — the gap is specifically about transcribing a recorded file, not about voice input in general.
-
-**What I need from you:** are you willing to move to a development build? If yes, this gets implemented against `TranscriptionProvider` and live recording becomes fully functional.
+**The constraint to keep:** if on-device recognition is unavailable on a device, the app refuses and says so, rather than falling back to network recognition. Sending patient audio to a third party is a decision with a BAA attached; it must never happen because a fallback made it quietly.
 
 ---
 
