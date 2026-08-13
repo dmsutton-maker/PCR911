@@ -168,10 +168,18 @@ export default function ApiScreen() {
   const saveKey = async () => {
     const trimmed = key.trim();
     if (!trimmed) return;
-    if (provider.keyPrefix && !trimmed.startsWith(provider.keyPrefix)) {
+
+    // Only warn about a mistake we can actually be confident of: a key that
+    // belongs to a different provider on the list. Warning because a key does
+    // not match this provider's known prefixes is how people got told their
+    // perfectly good key was wrong when Google changed its format.
+    const belongsElsewhere = PROVIDERS.find(
+      (p) => p.id !== provider.id && p.keyPrefixes.some((prefix) => trimmed.startsWith(prefix)),
+    );
+    if (belongsElsewhere) {
       const ok = await confirm({
-        title: `That does not look like a ${provider.label} key`,
-        message: `${provider.label} keys normally start with "${provider.keyPrefix}". Save it anyway?`,
+        title: `That key belongs to ${belongsElsewhere.label}`,
+        message: `You are saving it as your ${provider.label} key, so generation will fail. Switch to ${belongsElsewhere.label} above, or save it here anyway.`,
         confirmLabel: 'Save anyway',
       });
       if (!ok) return;
@@ -342,7 +350,7 @@ export default function ApiScreen() {
                 }
                 value={key}
                 onChangeText={setKey}
-                placeholder={`${provider.keyPrefix}...`}
+                placeholder={provider.keyPrefixes.map((p) => `${p}...`).join('  or  ')}
                 autoCapitalize="none"
                 autoCorrect={false}
                 secureTextEntry

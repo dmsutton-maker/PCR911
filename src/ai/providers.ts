@@ -41,8 +41,17 @@ export interface AiProvider {
   /** Where to get a key. Shown in Settings. */
   keyUrl: string;
   keyUrlLabel: string;
-  /** Expected key prefix, used only for a soft warning. */
-  keyPrefix: string;
+  /**
+   * Known key prefixes. Used for the placeholder text, and to notice when a key
+   * for a *different* provider has been pasted in.
+   *
+   * Deliberately not used to reject a key that matches none of them. Google
+   * started issuing `AQ.` keys alongside `AIza` ones, and an app that treated
+   * its own list as authoritative told people their working key was invalid.
+   * A key is an opaque string the provider can change whenever it likes; the
+   * only mistake worth flagging is a confident one.
+   */
+  keyPrefixes: string[];
   /** How to describe this provider's data handling. Shown in Settings. */
   privacyNote: string;
   models: ProviderModel[];
@@ -75,7 +84,7 @@ const gemini: AiProvider = {
   blurb: 'Free tier, no credit card. The one to start with.',
   keyUrl: 'https://aistudio.google.com/apikey',
   keyUrlLabel: 'aistudio.google.com/apikey',
-  keyPrefix: 'AIza',
+  keyPrefixes: ['AIza', 'AQ.'],
   privacyNote:
     "On the free tier Google's terms say your submitted content is used to improve their products and may be seen by human reviewers, and tell you not to submit personal information. That is fine for fake patients and disqualifying for real ones.",
   models: [
@@ -144,7 +153,7 @@ const anthropic: AiProvider = {
   blurb: 'Paid only — no free tier. Strongest on terse, fragmentary field notes.',
   keyUrl: 'https://console.anthropic.com/settings/keys',
   keyUrlLabel: 'console.anthropic.com',
-  keyPrefix: 'sk-ant-',
+  keyPrefixes: ['sk-ant-'],
   privacyNote:
     'Paid API. Anthropic does not train on API inputs by default. Real patient information still requires a signed BAA and a HIPAA-eligible configuration first.',
   models: [

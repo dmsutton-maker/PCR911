@@ -64,7 +64,9 @@ Without it, every person has to create a Google account, generate an API key, an
 
 1. **aistudio.google.com/apikey** → sign in with your Google account
 2. **Create API key**
-3. Copy it — it starts with `AIza`
+3. Copy it
+
+Google issues these in more than one format — older keys start with `AIza`, newer ones with `AQ.`. Both work, and the app does not care which you have.
 
 No credit card, no billing setup. The free tier allows a few hundred requests a day, which is far more than a shift's worth of narratives.
 

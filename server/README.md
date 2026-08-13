@@ -61,7 +61,7 @@ kR7-medic-42-qX9wLm,   nT4-probie-88-zVc2Ha
 
 ### 5. Get a free Gemini key
 
-**aistudio.google.com/apikey** → sign in → **Create API key**. It starts with `AIza`. No card.
+**aistudio.google.com/apikey** → sign in → **Create API key**. No card. Google issues these starting with either `AIza` or `AQ.` — either is fine.
 
 ### 6. Put all four into GitHub
 
