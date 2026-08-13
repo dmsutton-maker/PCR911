@@ -1,128 +1,142 @@
 # Getting this onto your phone as a real app
 
-The goal: the app sits on your home screen and opens when you tap it. No dev server, no QR code, no computer running in the background. Ever.
+The goal: a real app on your home screen, installed from a link, that other people can beta test the same way. No dev server, no QR-code dance, no computer running in the background, and no terminal at any point.
 
-That is what this document sets up. It is browser-only — you never open a terminal.
-
----
-
-## The one unavoidable cost
-
-**Apple Developer Program, $99/year.**
-
-Apple does not allow a custom app onto an iPhone without a signed provisioning profile, and getting one requires a paid developer account. There is no free path that survives more than 7 days, and the 7-day path needs a Mac with Xcode.
-
-That is the entire reason the QR-code / Expo Go dance exists — it is the workaround for not having a developer account. It is a development tool, not a way to use an app.
-
-Everything else here is free.
+You already have the Apple Developer account, so this is setup, not spending.
 
 ---
 
-## How it works once set up
+## What you end up with
+
+**TestFlight.** Apple's beta distribution. You add someone's email, they get an invite, they install the app from TestFlight and use it like anything else. Up to 100 internal testers, no App Store review to get started.
+
+Then day to day:
 
 ```
-I push a code change to GitHub
+I push a code change
         ↓
-GitHub Actions bundles it automatically
+GitHub bundles it automatically (about a minute)
         ↓
-Published to Expo's update service
-        ↓
-You open the app — it has the change
+Everyone's app has it the next time they open it
 ```
 
-You do nothing. No rebuild, no reinstall, no notification to act on. The app checks for an update when it launches and applies it.
-
-A full rebuild is only needed when something *native* changes — adding a module like on-device speech recognition, or changing permissions. That is rare, and it is a button click on a website, not a terminal command.
+No rebuild, no new TestFlight version, nothing for testers to do. A full rebuild is only needed when something *native* changes — a new native module, a permission string, the icon, the app version. That's rare, and it's a button on a web page.
 
 ---
 
 ## Setup
 
-### 1. Apple Developer account (~15 min, mostly waiting)
+Six things, all in a browser. Budget about half an hour, most of it waiting.
 
-1. **developer.apple.com/programs** → Enroll
-2. Enrol as an **Individual** — no business paperwork
-3. $99/year, pay with the Apple ID you use on your iPhone
-4. Approval usually takes a few hours, occasionally 48
+### 1. Expo account (~2 min, free)
 
-Do this first, since the wait is the long pole.
-
-### 2. Expo account (~2 min, free)
-
-1. **expo.dev** → Sign up
+1. **expo.dev** → sign up
 2. **Account settings → Access tokens → Create token**
-3. Copy it
+3. Copy it — this becomes the `EXPO_TOKEN` secret below
 
-### 3. Give GitHub the token (~1 min)
+### 2. Create the Expo project (~2 min)
 
-1. **github.com/dmsutton-maker/PCR911 → Settings → Secrets and variables → Actions**
-2. **New repository secret**
-3. Name: `EXPO_TOKEN`, value: the token from step 2
+1. On expo.dev, create a project named `pcr-narrative-assistant`
+2. Copy the **Project ID** (a long `xxxxxxxx-xxxx-…` string)
+3. **Send it to me** — it goes in the app config and I'll push it
 
-This is what lets code changes reach your phone automatically.
+### 3. Apple Team ID (~1 min)
 
-### 4. Create the Expo project (~2 min)
+**developer.apple.com/account** → **Membership details**. The **Team ID** is a ten-character code like `A1B2C3D4E5`. Copy it.
 
-1. On **expo.dev**, create a new project named `pcr-narrative-assistant`
-2. Copy the **Project ID** it shows you (a long `xxxxxxxx-xxxx-...` string)
-3. **Send me that ID** — it goes in `app.json` and I will push it
+### 4. App Store Connect API key (~5 min)
 
-### 5. Connect the repo to EAS Build (~3 min)
+This is what lets the build sign itself without stopping to ask questions.
 
-1. On expo.dev, open the project → **GitHub** → **Connect**
-2. Authorise Expo for `dmsutton-maker/PCR911`
-3. Set the base directory to `/` and the branch to the repo's default
+1. **appstoreconnect.apple.com** → **Users and Access** → **Integrations** tab
+2. **App Store Connect API** → the **+** button
+3. Name it anything (`EAS Build`), access role **App Manager**
+4. **Generate**
+5. **Download** the `.p8` file — Apple lets you download it once, ever
+6. From that same page, note two values:
+   - the **Key ID** next to your new key
+   - the **Issuer ID** above the list
 
-### 6. Add your Apple credentials (~5 min)
+Open the `.p8` in any text editor. It's a short block starting `-----BEGIN PRIVATE KEY-----`. You'll paste the whole thing, including both `-----` lines, in the next step.
 
-1. Project → **Credentials** → **iOS**
-2. Sign in with the Apple ID from step 1
+### 5. Register the app on App Store Connect (~2 min)
 
-Let Expo manage the certificates and provisioning profile. It generates and stores them; you do not handle `.p12` files or keychains.
+1. **appstoreconnect.apple.com** → **Apps** → **+** → **New App**
+2. Platform **iOS**, name **PCR Narrative**
+3. Bundle ID: `com.personal.pcrnarrative` — pick it from the list. If it isn't there, create it first at **developer.apple.com/account/resources/identifiers** → **+** → App IDs → App, description "PCR Narrative", explicit bundle ID `com.personal.pcrnarrative`.
+4. SKU: anything, e.g. `pcr-narrative`
 
-### 7. Build (~15 min, unattended)
+### 6. Put it all into GitHub (~3 min)
 
-1. Project → **Builds** → **Create build**
-2. Platform **iOS**, profile **preview**
-3. Start it and close the tab — it runs on Expo's servers
+**github.com/dmsutton-maker/PCR911/settings/secrets/actions** → **New repository secret**, once each:
 
-When it finishes you get a page with a QR code and an install link.
+| Name | Value |
+|---|---|
+| `EXPO_TOKEN` | from step 1 |
+| `APPLE_TEAM_ID` | from step 3 |
+| `APPLE_ASC_KEY_ID` | from step 4 |
+| `APPLE_ASC_ISSUER_ID` | from step 4 |
+| `APPLE_ASC_KEY_P8` | the entire contents of the `.p8` file |
 
-### 8. Install (~1 min)
+And the connection, so testers never see a settings screen — see [SET-IT-UP-ONCE.md](SET-IT-UP-ONCE.md):
 
-**Open the install link on the iPhone** (not on a computer). Safari asks to install the app. Accept.
-
-Then: **Settings → General → VPN & Device Management → Developer App** → trust the profile. iOS requires this once for any non-App-Store app.
-
-The app is now on your home screen. It behaves like any other app.
-
----
-
-## After that
-
-Open it and do the first-run setup: **Settings → Claude API** (paste your key), **Organization** (squad name and format), **Provider profile** (cert level and state).
-
-The provisioning profile is valid for a year. Before it expires, one more build from the dashboard renews it.
-
----
-
-## What still needs a rebuild
-
-Only these:
-
-- Adding or removing a native module (for example, wiring up on-device transcription)
-- Changing permissions, the app name, the icon, or the bundle identifier
-- Upgrading the Expo SDK
-
-All of it is a button on expo.dev, not a terminal. Everything else — screens, prompts, formats, required specifics, bug fixes — ships over the air.
+| Name | Value |
+|---|---|
+| `PCR_GEMINI_API_KEY` | a free key, *or* — better — the two relay secrets instead |
 
 ---
 
-## If you decide against the $99
+## Building it
 
-The alternatives, honestly:
+**Actions** tab → **Build iOS app** → **Run workflow**. Leave the profile on `preview` and "send to TestFlight" ticked.
 
-- **Expo Go with a dev server** — free, but needs a computer running while you use the app. Fine for a one-off demo, not for real shifts.
-- **Wait until it is worth it** — use Expo Go for a few weeks of practice calls to decide whether the app earns a place in your workflow, then pay for the account once you know.
+It checks your secrets first and fails immediately with a list of what's missing rather than burning twenty minutes to tell you at the end. Then it builds on Expo's servers — 15 to 30 minutes, and you can close the tab.
 
-The second is a reasonable order of operations. Nothing about the code changes either way; this is purely about how it gets onto the phone.
+When it's done, Apple takes another 5–15 minutes to process the build before it appears in TestFlight.
+
+---
+
+## Getting it on phones
+
+1. **appstoreconnect.apple.com** → your app → **TestFlight**
+2. **Internal Testing** → add testers by Apple ID email
+3. They get an email, install **TestFlight** from the App Store, and install your app from inside it
+
+Your own phone included — add your own Apple ID as a tester.
+
+No trust-the-developer-profile step, no expiring provisioning profile to renew. TestFlight builds do expire after 90 days, at which point you run the build workflow again.
+
+---
+
+## After the first build
+
+Code changes go out automatically as over-the-air updates. Push, wait a minute, reopen the app.
+
+Rebuild only for:
+
+- A new native module (on-device transcription for live recording is the one on the list)
+- A permission string, the icon, the app name, or the version
+- An Expo SDK upgrade
+
+---
+
+## If a build fails
+
+**"Missing repository secrets: …"** — exactly what it says; the workflow stopped before doing any work.
+
+**Something about provisioning or signing** — usually the bundle ID isn't registered, or the API key's role isn't App Manager. Steps 4 and 5.
+
+**"No connection baked in" warning** — the build succeeded but ships without an AI connection, so testers will be asked for an API key. Add the secrets from [SET-IT-UP-ONCE.md](SET-IT-UP-ONCE.md) and rebuild.
+
+Anything else, send me the failing step's log.
+
+---
+
+## What the real app gets you over the web version
+
+- **Live recording** with on-device transcription, once that native module is wired up — currently the one real functional gap
+- **Face ID lock**, and the encryption key in the iOS keychain rather than browser storage
+- **Reports encrypted at rest** with AES-256-GCM, and an erase that makes them permanently unreadable rather than merely deleted
+- It behaves like an app, because it is one
+
+None of that makes it safe for real patient information — see [SECURITY-PHI.md](SECURITY-PHI.md). Practice data until the BAA question is settled.

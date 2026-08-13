@@ -11,10 +11,16 @@ name: Build iOS app
 # Rebuild only when something *native* changes: a new native module, a
 # permission string, an icon, or the app version.
 #
-# Setup (one time):
-#   EXPO_TOKEN            expo.dev → Account settings → Access tokens
-#   Apple credentials     `eas build` prompts for these once and stores them on
-#                         Expo; after that this workflow runs unattended.
+# Setup (one time, all of it from a browser — see docs/INSTALL-ON-PHONE.md):
+#   EXPO_TOKEN             expo.dev → Account settings → Access tokens
+#   APPLE_ASC_KEY_P8       the .p8 file's contents, pasted whole
+#   APPLE_ASC_KEY_ID       shown next to the key on App Store Connect
+#   APPLE_ASC_ISSUER_ID    shown above the key list
+#   APPLE_TEAM_ID          developer.apple.com → Membership details
+#
+# The App Store Connect API key lets EAS create and renew the signing
+# certificate and provisioning profile on its own. Without it the first build
+# stops to ask a question no one is there to answer.
 #
 # Optional, and the reason testers never see a settings screen:
 #   PCR_RELAY_URL + PCR_SQUAD_CODE    or    PCR_GEMINI_API_KEY
@@ -67,11 +73,35 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Warn if the build will ship unconfigured
+      - name: Check the setup before spending a build slot
         run: |
+          missing=""
+          for name in EXPO_TOKEN APPLE_ASC_KEY_P8 APPLE_ASC_KEY_ID APPLE_ASC_ISSUER_ID APPLE_TEAM_ID; do
+            case "$name" in
+              EXPO_TOKEN)          value="${{ secrets.EXPO_TOKEN }}" ;;
+              APPLE_ASC_KEY_P8)    value="${{ secrets.APPLE_ASC_KEY_P8 }}" ;;
+              APPLE_ASC_KEY_ID)    value="${{ secrets.APPLE_ASC_KEY_ID }}" ;;
+              APPLE_ASC_ISSUER_ID) value="${{ secrets.APPLE_ASC_ISSUER_ID }}" ;;
+              APPLE_TEAM_ID)       value="${{ secrets.APPLE_TEAM_ID }}" ;;
+            esac
+            [ -z "$value" ] && missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing — see docs/INSTALL-ON-PHONE.md"
+            exit 1
+          fi
+
           if [ -z "${{ secrets.PCR_RELAY_URL }}" ] && [ -z "${{ secrets.PCR_GEMINI_API_KEY }}" ]; then
             echo "::warning::No connection baked in. Testers will be asked for an API key on first launch, which is probably not what you want. Set PCR_RELAY_URL + PCR_SQUAD_CODE, or PCR_GEMINI_API_KEY."
           fi
+
+      # Written to the runner's temp directory, never the working tree, so it
+      # cannot be picked up by a build step or committed. The runner is
+      # destroyed when the job ends.
+      - name: Stage the App Store Connect key
+        run: |
+          printf '%s' "${{ secrets.APPLE_ASC_KEY_P8 }}" > "$RUNNER_TEMP/asc-key.p8"
+          chmod 600 "$RUNNER_TEMP/asc-key.p8"
 
       - name: Build
         run: |
@@ -81,6 +111,13 @@ jobs:
             --non-interactive \
             --wait
         env:
+          EXPO_ASC_API_KEY_PATH: ${{ runner.temp }}/asc-key.p8
+          EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # A personal developer account, per the project's separation from any
+          # employer. Change this only if the account itself changes.
+          EXPO_APPLE_TEAM_TYPE: INDIVIDUAL
           PCR_RELAY_URL: ${{ secrets.PCR_RELAY_URL }}
           PCR_SQUAD_CODE: ${{ secrets.PCR_SQUAD_CODE }}
           PCR_GEMINI_API_KEY: ${{ secrets.PCR_GEMINI_API_KEY }}
@@ -89,3 +126,12 @@ jobs:
       - name: Send to TestFlight
         if: ${{ inputs.submit }}
         run: eas submit --platform ios --profile "${{ inputs.profile }}" --latest --non-interactive
+        env:
+          EXPO_ASC_API_KEY_PATH: ${{ runner.temp }}/asc-key.p8
+          EXPO_ASC_KEY_ID: ${{ secrets.APPLE_ASC_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.APPLE_ASC_ISSUER_ID }}
+          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/asc-key.p8"
