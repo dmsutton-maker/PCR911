@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import {
@@ -40,15 +40,16 @@ export default function HomeScreen() {
   const { summaries, refresh } = useReports();
   const [ready, setReady] = useState<boolean | null>(null);
 
+  // Both of these have to run on *focus*, not just on mount. Coming back from
+  // Settings after adding a key changes nothing this screen renders from — the
+  // credential lives in the keystore, not in the settings store — so a plain
+  // effect leaves the "no API key" banner up over a key that is already saved.
   useFocusEffect(
     useCallback(() => {
       void refresh();
-    }, [refresh]),
+      void isConfigured(providerId).then(setReady);
+    }, [refresh, providerId, connectionMode, relayUrl]),
   );
-
-  useEffect(() => {
-    void isConfigured(providerId).then(setReady);
-  }, [providerId, connectionMode, relayUrl, summaries.length]);
 
   const start = (mode: CaptureMode) => {
     if (mode === 'live') router.push('/capture/record');

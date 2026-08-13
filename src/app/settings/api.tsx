@@ -188,11 +188,19 @@ export default function ApiScreen() {
     setSaving(true);
     try {
       await setApiKey(providerId, trimmed);
+      // Read it back before claiming success. Saying "Saved" over a write that
+      // did not happen sends people looking for a problem in their key.
+      if (!(await getApiKey(providerId))) {
+        throw new Error('The key did not stay saved.');
+      }
       setKey('');
       await refresh();
       notify('Saved', `${provider.label} is ready. Generation should work now.`);
-    } catch {
-      notify('Could not save', 'Storage rejected the write.');
+    } catch (error) {
+      notify(
+        'Could not save the key',
+        error instanceof Error ? error.message : 'Storage rejected the write.',
+      );
     } finally {
       setSaving(false);
     }
@@ -370,6 +378,14 @@ export default function ApiScreen() {
                 <Button label="Remove stored key" variant="danger" onPress={removeKey} />
               ) : null}
             </Card>
+            {Platform.OS === 'web' ? (
+              <Banner tone="info" title="Enter it where you use it">
+                iOS keeps separate storage for Safari and for an app added to your home screen. A
+                key saved in one does not appear in the other — so if you use the home-screen icon,
+                save the key from the home-screen icon.
+              </Banner>
+            ) : null}
+
             <Muted>
               A key on a phone cannot be rotated, scoped to one person, or revoked when the phone is
               lost. That is fine while you are the only user and is the reason the squad account

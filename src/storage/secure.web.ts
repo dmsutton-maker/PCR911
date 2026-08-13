@@ -35,8 +35,25 @@ function read(key: string): string | null {
   }
 }
 
+/**
+ * Throws rather than failing quietly.
+ *
+ * `localStorage` is absent in Safari private browsing and throws on write when
+ * a quota is hit. Swallowing that meant the app cheerfully said "Saved" over a
+ * key it had not stored, and the user then went hunting for a problem in the
+ * key instead of in the browser. Callers surface the failure.
+ */
 function write(key: string, value: string): void {
-  store()?.setItem(key, value);
+  const storage = store();
+  if (!storage) {
+    throw new Error(
+      'This browser is not allowing local storage. If you are in a Private Browsing window, open the app in a normal one.',
+    );
+  }
+  storage.setItem(key, value);
+  if (storage.getItem(key) !== value) {
+    throw new Error('This browser accepted the write but did not keep it.');
+  }
 }
 
 function remove(key: string): void {

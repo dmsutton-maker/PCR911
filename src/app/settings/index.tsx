@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 
 import {
@@ -39,9 +39,14 @@ export default function SettingsScreen() {
   const provider = getProvider(providerId);
   const model = modelByProvider[providerId] || provider.defaultModel;
 
-  useEffect(() => {
-    void isConfigured(providerId).then(setReady);
-  }, [providerId, connectionMode, relayUrl]);
+  // On focus rather than on mount: returning from the AI provider screen after
+  // saving a credential must update this row, and the credential is not part of
+  // any state this screen renders from.
+  useFocusEffect(
+    useCallback(() => {
+      void isConfigured(providerId).then(setReady);
+    }, [providerId, connectionMode, relayUrl]),
+  );
 
   const confirmErase = async () => {
     const ok = await confirm({
