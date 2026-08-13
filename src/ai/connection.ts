@@ -1,5 +1,6 @@
 import { getAccessCode, getApiKey } from '@/storage/secure';
 import { useSettings } from '@/state/settingsStore';
+import { getBakedConfig } from './bakedConfig';
 import type { ProviderId } from './providers';
 
 /**
@@ -63,19 +64,28 @@ export function relayEndpoint(relayUrl: string, path: string): string {
   return `${normalizeRelayUrl(relayUrl)}${path}`;
 }
 
-/** What the app should use for the next request, read fresh each time. */
+/**
+ * What the app should use for the next request, read fresh each time.
+ *
+ * Anything the user set themselves wins; otherwise the build's baked-in
+ * configuration is used. That ordering is what lets a build ship already
+ * connected — most people never touch Settings and never learn an API key is
+ * involved — while still letting one person override it.
+ */
 export async function resolveConnection(providerId: ProviderId): Promise<Connection> {
   const { connectionMode, relayUrl } = useSettings.getState();
+  const baked = getBakedConfig();
 
   if (connectionMode === 'relay') {
-    const url = normalizeRelayUrl(relayUrl);
+    const url = normalizeRelayUrl(relayUrl || baked.relayUrl);
+    const code = (await getAccessCode()) || baked.squadCode;
+
     if (!url) {
       throw new NotConfiguredError(
         'relay',
         'No squad relay address is set. Add it in Settings → AI provider, or switch to using your own API key.',
       );
     }
-    const code = (await getAccessCode()) ?? '';
     if (!code) {
       throw new NotConfiguredError(
         'relay',
@@ -85,7 +95,7 @@ export async function resolveConnection(providerId: ProviderId): Promise<Connect
     return { mode: 'relay', relayUrl: url, code };
   }
 
-  const apiKey = await getApiKey(providerId);
+  const apiKey = (await getApiKey(providerId)) || baked.apiKeys[providerId] || '';
   if (!apiKey) {
     throw new NotConfiguredError(
       'own_key',
@@ -109,7 +119,19 @@ export async function isConfigured(providerId: ProviderId): Promise<boolean> {
 export function describeConnection(mode: ConnectionMode, configured: boolean | null): string {
   if (configured === null) return 'Checking…';
   if (mode === 'relay') return configured ? 'Squad account · connected' : 'Squad account · not connected';
-  return configured ? 'Your own key · set' : 'No key set — tap to add';
+  return configured ? 'Ready' : 'No key set — tap to add';
+}
+
+/**
+ * The default connection mode for a fresh install.
+ *
+ * Derived from the build rather than hardcoded: a build carrying relay details
+ * should open in relay mode without the user choosing anything. Persisted
+ * settings override this on any install that has been used before.
+ */
+export function defaultConnectionMode(): ConnectionMode {
+  const baked = getBakedConfig();
+  return baked.relayUrl && baked.squadCode ? 'relay' : 'own_key';
 }
 
 export interface RelayHealth {

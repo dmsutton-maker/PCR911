@@ -2,6 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, StyleSheet, View } from 'react-native';
 
+import { describeBakedConfig } from '@/ai/bakedConfig';
 import {
   checkRelay,
   type ConnectionMode,
@@ -70,6 +71,7 @@ export default function ApiScreen() {
   const [health, setHealth] = useState<RelayHealth | null>(null);
   const [checking, setChecking] = useState(false);
 
+  const bakedSummary = describeBakedConfig();
   const provider = getProvider(providerId);
   const selectedModel = modelByProvider[providerId] || provider.defaultModel;
   const hasStoredKey = storedKeys[providerId] ?? false;
@@ -227,6 +229,13 @@ export default function ApiScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}>
       <Screen>
+        {bakedSummary ? (
+          <Banner tone="info" title="Already set up">
+            {bakedSummary} Everything below overrides that for this phone only — leave it alone
+            unless something is broken.
+          </Banner>
+        ) : null}
+
         <SectionLabel>How this phone connects</SectionLabel>
         <Card>
           {MODES.map((m, i) => (

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { ConnectionMode } from '@/ai/connection';
+import { type ConnectionMode, defaultConnectionMode } from '@/ai/connection';
 import { DEFAULT_PROVIDER_ID, getProvider, type ProviderId } from '@/ai/providers';
 import { createDefaultOrg, createDefaultProfile } from '@/domain/defaults';
 import { cloneDefaultSpecifics } from '@/domain/requiredSpecifics';
@@ -63,9 +63,10 @@ export const useSettings = create<SettingsState>()(
       profile: createDefaultProfile(),
       providerId: DEFAULT_PROVIDER_ID,
       modelByProvider: {},
-      // Defaults to a personal key: there is no relay until someone deploys
-      // one, and an invite link flips this over without anyone choosing it.
-      connectionMode: 'own_key',
+      // Derived from the build: a version built with relay details opens in
+      // relay mode with nothing for the user to choose. An invite link flips
+      // this over too, on builds that ship with nothing baked in.
+      connectionMode: defaultConnectionMode(),
       relayUrl: '',
       appLockEnabled: true,
       practiceModeDefault: true,

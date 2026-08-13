@@ -52,6 +52,18 @@ jobs:
 
       - name: Export web build
         run: npx expo export --platform web --output-dir dist
+        env:
+          # Bakes the AI connection into the bundle so nobody using the app has
+          # to enter a key. Optional — with none of these set the app asks for
+          # a key the way it always did. See app.config.ts.
+          #
+          # A key baked into a *web* bundle is readable by anyone who opens the
+          # page, so prefer the relay pair here and keep the raw key for the
+          # native build if you use it at all.
+          PCR_RELAY_URL: ${{ secrets.PCR_RELAY_URL }}
+          PCR_SQUAD_CODE: ${{ secrets.PCR_SQUAD_CODE }}
+          PCR_GEMINI_API_KEY: ${{ secrets.PCR_GEMINI_API_KEY }}
+          PCR_ANTHROPIC_API_KEY: ${{ secrets.PCR_ANTHROPIC_API_KEY }}
 
       - name: Prepare for GitHub Pages
         run: |

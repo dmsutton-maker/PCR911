@@ -34,6 +34,14 @@ One thing worth deciding: this is a personal *account*, not a personal *organiza
 
 ---
 
+## Nobody should ever type an API key
+
+They don't have to. The connection is baked in at build time from repository secrets, so every build — web and native — ships already connected and the AI settings screen is hidden entirely. Set it once: **[docs/SET-IT-UP-ONCE.md](docs/SET-IT-UP-ONCE.md)**.
+
+A build with nothing configured still works; it just falls back to asking for a key, which is the right behaviour for someone cloning this repo and useless as a default for a crew.
+
+---
+
 ## Getting it on your phone
 
 **Free, nothing installed** — the web build, added to your iPhone home screen. Gets an icon, opens full-screen, no computer or server involved. Two steps, about three minutes: **[docs/USE-IT-FREE.md](docs/USE-IT-FREE.md)**. Typed notes and dictation work fully; live recording and the real security model do not. Start here.
@@ -123,8 +131,9 @@ So phase 1 records and stores the audio, and you play it back while typing or di
 
 | | |
 |---|---|
-| [USE-IT-FREE.md](docs/USE-IT-FREE.md) | Free web version on your home screen — start here |
-| [server/README.md](server/README.md) | The squad relay: one shared key, invite links, no per-person setup |
+| [SET-IT-UP-ONCE.md](docs/SET-IT-UP-ONCE.md) | Configure the connection once, for every user and every build |
+| [USE-IT-FREE.md](docs/USE-IT-FREE.md) | Free web version on your home screen |
+| [server/README.md](server/README.md) | The squad relay: one shared key, no per-person setup |
 | [INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md) | The native app, full security model ($99/yr Apple) |
 | [MODEL-RECOMMENDATIONS.md](docs/MODEL-RECOMMENDATIONS.md) | Which Claude model for the build vs. for the app, and why |
 | [SECURITY-PHI.md](docs/SECURITY-PHI.md) | Threat model, what's protected, the road to real PHI |

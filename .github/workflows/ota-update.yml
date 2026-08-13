@@ -50,3 +50,11 @@ jobs:
 
       - name: Publish update
         run: eas update --channel preview --message "${{ github.event.head_commit.message || 'Manual update' }}" --non-interactive
+        env:
+          # Must match what the installed build was built with, or an update
+          # would silently strip the app's connection and start asking testers
+          # for an API key. See app.config.ts.
+          PCR_RELAY_URL: ${{ secrets.PCR_RELAY_URL }}
+          PCR_SQUAD_CODE: ${{ secrets.PCR_SQUAD_CODE }}
+          PCR_GEMINI_API_KEY: ${{ secrets.PCR_GEMINI_API_KEY }}
+          PCR_ANTHROPIC_API_KEY: ${{ secrets.PCR_ANTHROPIC_API_KEY }}

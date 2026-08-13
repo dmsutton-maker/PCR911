@@ -1,0 +1,91 @@
+name: Build iOS app
+
+# Builds the real iPhone app and, optionally, sends it to TestFlight so testers
+# install it from a link like any other beta.
+#
+# You run this by hand — it is not on every push, because a native build takes
+# 15-30 minutes and costs a slot on Expo's free build queue. Day-to-day code
+# changes reach the installed app through "Publish OTA update" instead, which
+# takes about a minute and needs no rebuild.
+#
+# Rebuild only when something *native* changes: a new native module, a
+# permission string, an icon, or the app version.
+#
+# Setup (one time):
+#   EXPO_TOKEN            expo.dev → Account settings → Access tokens
+#   Apple credentials     `eas build` prompts for these once and stores them on
+#                         Expo; after that this workflow runs unattended.
+#
+# Optional, and the reason testers never see a settings screen:
+#   PCR_RELAY_URL + PCR_SQUAD_CODE    or    PCR_GEMINI_API_KEY
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Which build profile'
+        type: choice
+        options:
+          - preview
+          - production
+        default: preview
+      submit:
+        description: 'Send to TestFlight when the build finishes'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Warn if the build will ship unconfigured
+        run: |
+          if [ -z "${{ secrets.PCR_RELAY_URL }}" ] && [ -z "${{ secrets.PCR_GEMINI_API_KEY }}" ]; then
+            echo "::warning::No connection baked in. Testers will be asked for an API key on first launch, which is probably not what you want. Set PCR_RELAY_URL + PCR_SQUAD_CODE, or PCR_GEMINI_API_KEY."
+          fi
+
+      - name: Build
+        run: |
+          eas build \
+            --platform ios \
+            --profile "${{ inputs.profile }}" \
+            --non-interactive \
+            --wait
+        env:
+          PCR_RELAY_URL: ${{ secrets.PCR_RELAY_URL }}
+          PCR_SQUAD_CODE: ${{ secrets.PCR_SQUAD_CODE }}
+          PCR_GEMINI_API_KEY: ${{ secrets.PCR_GEMINI_API_KEY }}
+          PCR_ANTHROPIC_API_KEY: ${{ secrets.PCR_ANTHROPIC_API_KEY }}
+
+      - name: Send to TestFlight
+        if: ${{ inputs.submit }}
+        run: eas submit --platform ios --profile "${{ inputs.profile }}" --latest --non-interactive

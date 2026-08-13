@@ -13,6 +13,7 @@ import {
   SectionLabel,
   Toggle,
 } from '@/components/ui';
+import { describeBakedConfig, isPreconfigured } from '@/ai/bakedConfig';
 import { describeConnection, isConfigured } from '@/ai/connection';
 import { getProvider } from '@/ai/providers';
 import { getFormat } from '@/domain/formats';
@@ -38,6 +39,8 @@ export default function SettingsScreen() {
 
   const provider = getProvider(providerId);
   const model = modelByProvider[providerId] || provider.defaultModel;
+  const preconfigured = isPreconfigured();
+  const bakedSummary = describeBakedConfig();
 
   // On focus rather than on mount: returning from the AI provider screen after
   // saving a credential must update this row, and the credential is not part of
@@ -100,14 +103,21 @@ export default function SettingsScreen() {
         />
       </Card>
 
-      <SectionLabel>AI provider</SectionLabel>
-      <Card>
-        <ListRow
-          title={`${provider.label}${provider.free ? '  ·  FREE' : ''}`}
-          subtitle={`${describeConnection(connectionMode, ready)} · ${model}`}
-          onPress={() => router.push('/settings/api')}
-        />
-      </Card>
+      {/* On a build that ships already connected, this belongs out of the way
+          at the bottom rather than in the middle of the screen presenting
+          itself as something to deal with. Most people should never open it. */}
+      {preconfigured ? null : (
+        <>
+          <SectionLabel>AI provider</SectionLabel>
+          <Card>
+            <ListRow
+              title={`${provider.label}${provider.free ? '  ·  FREE' : ''}`}
+              subtitle={`${describeConnection(connectionMode, ready)} · ${model}`}
+              onPress={() => router.push('/settings/api')}
+            />
+          </Card>
+        </>
+      )}
 
       <SectionLabel>Security</SectionLabel>
       <Card>
@@ -141,6 +151,23 @@ export default function SettingsScreen() {
           Destroys every report, every recording, and the encryption key. Settings are kept.
         </Muted>
       </View>
+
+      {preconfigured ? (
+        <>
+          <SectionLabel>Advanced</SectionLabel>
+          <Card>
+            <ListRow
+              title="AI connection"
+              subtitle={bakedSummary ?? ''}
+              onPress={() => router.push('/settings/api')}
+            />
+          </Card>
+          <Muted>
+            You should not need this. It is here so a connection can be changed without a new
+            version of the app, not because anything is expected of you.
+          </Muted>
+        </>
+      ) : null}
     </Screen>
   );
 }
