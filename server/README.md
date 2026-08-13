@@ -27,7 +27,17 @@ The phone sends notes and a squad code. The relay checks the code, adds the API 
 
 ### 2. Get your Account ID
 
-In the Cloudflare dashboard, go to **Workers & Pages**. Your **Account ID** is on the right-hand side of that page. Copy it.
+Cloudflare moves its sidebar around, so use the search box rather than hunting for a menu item:
+
+1. Log in at **dash.cloudflare.com**
+2. Press **Cmd+K** (Ctrl+K on Windows)
+3. Type **Copy account ID** and select the result
+
+It is now on your clipboard.
+
+If that fails, read it out of the address bar. Once you are logged in the URL looks like `https://dash.cloudflare.com/8f3d134f74acdef456789abcdef8b558/...` — the long hex string after the slash is the Account ID.
+
+You never need to find the Workers section by hand. The GitHub Actions workflow creates the Worker for you.
 
 ### 3. Make an API token
 
@@ -97,7 +107,7 @@ The link contains the squad code, so send it the way you would send a password �
 
 **Removing one person** — that is what multiple codes are for. Take theirs out of the list, leave the rest, redeploy. Everyone else is unaffected.
 
-**Watching usage** — Cloudflare dashboard → Workers & Pages → `pcr-relay`. Requests, errors, and CPU time, per day.
+**Watching usage** — Cloudflare dashboard, **Cmd+K** → type `pcr-relay`. Requests, errors, and CPU time, per day. (The Workers section has lived under "Workers & Pages" and under "Compute" at different times; searching beats navigating.)
 
 **Capping usage** — optional. Create a KV namespace called anything you like, bind it as `RATE_LIMIT` in `wrangler.toml`, and each code is capped at `DAILY_LIMIT` requests a day. Skip it unless you want the guard rail.
 
