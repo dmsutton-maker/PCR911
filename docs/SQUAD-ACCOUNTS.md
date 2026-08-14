@@ -35,26 +35,9 @@ The shared code still works, so a phone already set up does not stop mid-shift. 
 
 Assumes the relay from [server/README.md](../server/README.md) is already deployed.
 
-### 1. Add storage (2 min)
+### 1. Add a setup code (1 min)
 
-Accounts need somewhere to live.
-
-1. Cloudflare dashboard → press **Cmd+K** → type **KV**
-2. **Create a namespace**, name it `pcr-org-data`
-3. Copy the **Namespace ID**
-4. In this repo, edit `server/wrangler.toml` — uncomment the last three lines and paste the ID:
-
-```toml
-[[kv_namespaces]]
-binding = "ORG_DATA"
-id = "the-id-you-just-copied"
-```
-
-Send me the ID if you would rather I do that edit.
-
-### 2. Add a setup code (1 min)
-
-This is used exactly once, to create your squad.
+Used exactly once, to create your squad.
 
 **github.com/dmsutton-maker/PCR911/settings/secrets/actions** → **New repository secret**
 
@@ -62,33 +45,27 @@ This is used exactly once, to create your squad.
 |---|---|
 | `BOOTSTRAP_CODE` | any long random string |
 
-### 3. Redeploy (2 min)
+### 2. Nothing — storage sets itself up
+
+Accounts need a KV namespace on Cloudflare. The deploy workflow finds or creates it and writes the binding itself, so there is nothing to click in a dashboard whose navigation moves around.
+
+If the API token was made from the **Edit Cloudflare Workers** template it already has the permission this needs.
+
+### 3. Deploy (2 min)
 
 **Actions** → **Deploy relay** → **Run workflow**.
 
 ### 4. Create your squad
 
-One request, which you can make from any browser's address bar replacement — or send me the details and I'll run it. Using the browser console on any page:
+On your phone, open:
 
-```js
-await fetch('https://YOUR-RELAY.workers.dev/v1/orgs', {
-  method: 'POST',
-  headers: { 'content-type': 'application/json', 'x-bootstrap-code': 'YOUR-BOOTSTRAP-CODE' },
-  body: JSON.stringify({ orgName: 'Station 12', adminName: 'Your Name' })
-}).then(r => r.json())
-```
+**https://dmsutton-maker.github.io/PCR911/setup**
 
-It returns a `token` and an `inviteCode`. Keep the token — it is your admin access.
+Four boxes: your relay address, the setup code from step 1, a squad name, and your name. Tap **Create the squad**.
 
-### 5. Sign your own phone in
+You are signed in as its admin, and an invite link is on your clipboard.
 
-Open this on your phone, substituting your relay address and the token from step 4:
-
-```
-https://dmsutton-maker.github.io/PCR911/#join=1&u=https%3A%2F%2FYOUR-RELAY.workers.dev&t=YOUR-TOKEN
-```
-
-The app signs you in as admin. The token is stripped from the address bar immediately.
+That is the whole of it — no console, no command line, no request to hand-write.
 
 ---
 

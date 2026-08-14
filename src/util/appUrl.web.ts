@@ -1,3 +1,5 @@
+import Constants from 'expo-constants';
+
 import { type JoinPayload, parseJoinHash } from './joinLink';
 
 /**
@@ -6,10 +8,20 @@ import { type JoinPayload, parseJoinHash } from './joinLink';
 
 export const PUBLIC_APP_URL = 'https://dmsutton-maker.github.io/PCR911/';
 
+/**
+ * The app's root URL, not the page currently open.
+ *
+ * This is what invite links are built from, so it must not pick up whatever
+ * route the admin happened to be on — an invite generated from /setup that
+ * sends people to /setup is a confusing way to onboard someone. The deployment
+ * sub-path comes from the build config rather than the address bar.
+ */
 export function getAppBaseUrl(): string {
   try {
     if (typeof location === 'undefined') return PUBLIC_APP_URL;
-    return `${location.origin}${location.pathname}`;
+    const base = (Constants.expoConfig?.experiments as { baseUrl?: string } | undefined)?.baseUrl;
+    const path = base ? `${base.replace(/\/+$/, '')}/` : '/';
+    return `${location.origin}${path}`;
   } catch {
     return PUBLIC_APP_URL;
   }

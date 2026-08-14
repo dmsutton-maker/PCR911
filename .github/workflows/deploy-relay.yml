@@ -12,6 +12,9 @@ name: Deploy relay
 #   GEMINI_API_KEY         at least one provider key required
 #   ANTHROPIC_API_KEY      optional
 #   BOOTSTRAP_CODE         needed once, to create your squad (docs/SQUAD-ACCOUNTS.md)
+#
+# The KV namespace squad accounts need is created by this workflow — there is
+# nothing to set up in the Cloudflare dashboard.
 #   ACCESS_CODES           optional — the old shared-code scheme, kept working
 #                          for phones set up before accounts existed
 
@@ -63,6 +66,48 @@ jobs:
             exit 1
           fi
 
+      # Squad accounts need a KV namespace. Creating one by hand means finding
+      # the right screen in a dashboard that moves its own navigation around,
+      # so the deploy finds or creates it and writes the binding itself.
+      - name: Find or create storage
+        if: steps.check.outputs.configured == 'true'
+        working-directory: server
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          find_id() {
+            npx --yes wrangler@4 kv namespace list 2>/dev/null \
+              | jq -r '.[] | select(.title | endswith("ORG_DATA")) | .id' \
+              | head -1
+          }
+
+          ID="$(find_id || true)"
+
+          if [ -z "$ID" ]; then
+            echo "No ORG_DATA namespace yet — creating one."
+            npx --yes wrangler@4 kv namespace create ORG_DATA || true
+            ID="$(find_id || true)"
+          fi
+
+          if [ -z "$ID" ]; then
+            echo "::error::Could not find or create the ORG_DATA namespace. The API token may lack Workers KV Storage permission — recreate it from the 'Edit Cloudflare Workers' template, which includes it."
+            exit 1
+          fi
+
+          echo "Using ORG_DATA namespace $ID"
+
+          # wrangler.toml ships with the binding commented out so the repo works
+          # for anyone without a Cloudflare account. Append the real one here
+          # rather than committing an account-specific id.
+          if grep -q '^\[\[kv_namespaces\]\]' wrangler.toml; then
+            echo "A namespace binding is already committed; leaving it alone."
+          else
+            printf '\n[[kv_namespaces]]\nbinding = "ORG_DATA"\nid = "%s"\n' "$ID" >> wrangler.toml
+          fi
+
       - name: Deploy
         if: steps.check.outputs.configured == 'true'
         uses: cloudflare/wrangler-action@v3
@@ -87,6 +132,8 @@ jobs:
       - name: Where it lives
         if: steps.check.outputs.configured == 'true'
         run: |
-          echo "Relay deployed. Its address is shown in the Deploy step's log as"
-          echo "https://pcr-relay.<your-subdomain>.workers.dev"
-          echo "Put that into the app at Settings -> AI provider -> Squad account."
+          echo "Relay deployed. Its address is in the Deploy step's log, as"
+          echo "  https://pcr-relay.<your-subdomain>.workers.dev"
+          echo ""
+          echo "Next: open https://dmsutton-maker.github.io/PCR911/setup on your phone"
+          echo "and fill in that address, your BOOTSTRAP_CODE, a squad name, and your name."

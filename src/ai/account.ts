@@ -87,6 +87,63 @@ async function request<T>(
   return payload as T;
 }
 
+/* ---------------- creating a squad ---------------- */
+
+export interface CreateOrgResult {
+  token: string;
+  account: Account;
+  inviteCode: string;
+}
+
+/**
+ * Create the org, and make the caller its first admin.
+ *
+ * Guarded by a setup code held on the server rather than by an account,
+ * because at this point there are no accounts — this is the request that makes
+ * the first one. Used once per squad.
+ */
+export async function createOrg(args: {
+  relayUrl: string;
+  bootstrapCode: string;
+  orgName: string;
+  adminName: string;
+}): Promise<CreateOrgResult> {
+  const url = normalizeRelayUrl(args.relayUrl);
+  if (!url) throw new AccountError(0, 'Enter your squad server address first.');
+
+  let response: Response;
+  try {
+    response = await fetch(relayEndpoint(url, '/v1/orgs'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-bootstrap-code': args.bootstrapCode },
+      body: JSON.stringify({ orgName: args.orgName, adminName: args.adminName }),
+    });
+  } catch {
+    throw new AccountError(0, 'Could not reach that address. Check it and try again.');
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new AccountError(
+      response.status,
+      payload?.error?.message ?? `That request failed (${response.status}).`,
+    );
+  }
+
+  return {
+    token: payload.token,
+    inviteCode: payload.inviteCode,
+    account: {
+      memberId: payload.memberId,
+      name: args.adminName,
+      certLevel: '',
+      role: 'admin',
+      orgId: payload.orgId,
+      orgName: payload.orgName,
+    },
+  };
+}
+
 /* ---------------- joining ---------------- */
 
 export interface JoinResult {

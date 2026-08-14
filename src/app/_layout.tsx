@@ -25,6 +25,7 @@ export default function RootLayout() {
             }}>
             <Stack.Screen name="index" options={{ title: 'PCR Narrative' }} />
             <Stack.Screen name="join" options={{ title: 'Join your squad' }} />
+            <Stack.Screen name="setup" options={{ title: 'Create your squad' }} />
             <Stack.Screen name="capture/notes" options={{ title: 'Capture notes' }} />
             <Stack.Screen name="capture/record" options={{ title: 'Live recording' }} />
             <Stack.Screen name="report/[id]/index" options={{ title: 'Narrative' }} />
