@@ -2,9 +2,13 @@
   "expo": {
     "name": "PCR Narrative",
     "slug": "pcr-narrative-assistant",
+    "owner": "dmsutton",
     "version": "0.1.0",
     "runtimeVersion": {
       "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/10862d2b-ade4-467e-9e3c-efbe15b02001"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -65,6 +69,11 @@
     ],
     "experiments": {
       "baseUrl": "/PCR911"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "10862d2b-ade4-467e-9e3c-efbe15b02001"
+      }
     }
   }
 }
