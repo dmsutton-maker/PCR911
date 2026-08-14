@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import type { Account } from '@/ai/account';
 import { type ConnectionMode, defaultConnectionMode } from '@/ai/connection';
 import { DEFAULT_PROVIDER_ID, getProvider, type ProviderId } from '@/ai/providers';
 import { createDefaultOrg, createDefaultProfile } from '@/domain/defaults';
@@ -22,8 +23,10 @@ interface SettingsState {
   modelByProvider: Record<string, string>;
   /** Through a squad relay, or straight to the provider with a personal key. */
   connectionMode: ConnectionMode;
-  /** Base address of the squad relay. The squad code lives in the keystore. */
+  /** Base address of the squad relay. Credentials live in the keystore. */
   relayUrl: string;
+  /** Who this person is in their org, once they have accepted an invite. */
+  account: Account | null;
   /** Require Face ID / passcode when the app returns to the foreground. */
   appLockEnabled: boolean;
   /** Default for new reports. On means generated narratives carry a training banner. */
@@ -47,6 +50,9 @@ interface SettingsState {
   setModel: (providerId: ProviderId, model: string) => void;
   setConnectionMode: (mode: ConnectionMode) => void;
   setRelayUrl: (relayUrl: string) => void;
+  setAccount: (account: Account | null) => void;
+  /** Replace the org with what the server says it should be. */
+  applyOrgConfig: (orgName: string, config: unknown) => void;
   setAppLockEnabled: (enabled: boolean) => void;
   setPracticeModeDefault: (enabled: boolean) => void;
   setOnboarded: (value: boolean) => void;
@@ -68,6 +74,7 @@ export const useSettings = create<SettingsState>()(
       // this over too, on builds that ship with nothing baked in.
       connectionMode: defaultConnectionMode(),
       relayUrl: '',
+      account: null,
       appLockEnabled: true,
       practiceModeDefault: true,
       onboarded: false,
@@ -137,6 +144,28 @@ export const useSettings = create<SettingsState>()(
         set((st) => ({ modelByProvider: { ...st.modelByProvider, [providerId]: model } })),
       setConnectionMode: (connectionMode) => set({ connectionMode }),
       setRelayUrl: (relayUrl) => set({ relayUrl }),
+      setAccount: (account) => set({ account }),
+
+      // Applied field by field rather than wholesale: a server that has never
+      // had its config set sends null, and an older server may not know about
+      // a field this build has. Neither should wipe what is already on the
+      // phone and leave someone with no required specifics at all.
+      applyOrgConfig: (orgName, config) =>
+        set((s) => {
+          const incoming = (config ?? {}) as Partial<OrgConfig>;
+          return {
+            org: touch({
+              ...s.org,
+              name: orgName || s.org.name,
+              formatId: incoming.formatId ?? s.org.formatId,
+              houseStyle: incoming.houseStyle ?? s.org.houseStyle,
+              requiredSpecifics:
+                Array.isArray(incoming.requiredSpecifics) && incoming.requiredSpecifics.length
+                  ? incoming.requiredSpecifics
+                  : s.org.requiredSpecifics,
+            }),
+          };
+        }),
       setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
       setPracticeModeDefault: (practiceModeDefault) => set({ practiceModeDefault }),
       setOnboarded: (onboarded) => set({ onboarded }),
@@ -151,6 +180,7 @@ export const useSettings = create<SettingsState>()(
         modelByProvider: s.modelByProvider,
         connectionMode: s.connectionMode,
         relayUrl: s.relayUrl,
+        account: s.account,
         appLockEnabled: s.appLockEnabled,
         practiceModeDefault: s.practiceModeDefault,
         onboarded: s.onboarded,

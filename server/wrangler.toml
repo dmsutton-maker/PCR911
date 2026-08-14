@@ -12,11 +12,14 @@ compatibility_date = "2026-01-01"
 # host the app somewhere other than GitHub Pages.
 ALLOWED_ORIGINS = "https://dmsutton-maker.github.io"
 
-# Requests allowed per squad code per day. Only enforced if you bind a KV
-# namespace named RATE_LIMIT (optional — see server/README.md).
+# Requests allowed per person (or per shared code) per day. Enforced once
+# ORG_DATA is bound.
 DAILY_LIMIT = "300"
 
-# Uncomment after creating a KV namespace to turn on per-code daily limits:
+# Required for squad accounts — people, roles, invites, and the activity log.
+# Create a KV namespace in the Cloudflare dashboard and paste its ID here.
+# Without it the relay still proxies requests using a shared squad code, but
+# nobody can have an account and nothing can be attributed to a person.
 # [[kv_namespaces]]
-# binding = "RATE_LIMIT"
+# binding = "ORG_DATA"
 # id = "paste-the-namespace-id-here"

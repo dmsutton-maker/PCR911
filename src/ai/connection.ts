@@ -1,4 +1,4 @@
-import { getAccessCode, getApiKey } from '@/storage/secure';
+import { getAccessCode, getApiKey, getMemberToken } from '@/storage/secure';
 import { useSettings } from '@/state/settingsStore';
 import { getBakedConfig } from './bakedConfig';
 import type { ProviderId } from './providers';
@@ -26,7 +26,10 @@ export type ConnectionMode = 'relay' | 'own_key';
 export interface RelayConnection {
   mode: 'relay';
   relayUrl: string;
-  code: string;
+  /** A personal member token when signed in, else a shared squad code. */
+  credential: string;
+  /** Personal tokens go in Authorization; shared codes in the legacy header. */
+  personal: boolean;
 }
 
 export interface DirectConnection {
@@ -78,21 +81,27 @@ export async function resolveConnection(providerId: ProviderId): Promise<Connect
 
   if (connectionMode === 'relay') {
     const url = normalizeRelayUrl(relayUrl || baked.relayUrl);
-    const code = (await getAccessCode()) || baked.squadCode;
-
     if (!url) {
       throw new NotConfiguredError(
         'relay',
-        'No squad relay address is set. Add it in Settings → AI provider, or switch to using your own API key.',
+        'No squad server address is set. Open the invite link you were sent, or set it in Settings.',
       );
     }
+
+    // A personal token wins over a shared code. Once someone has an account,
+    // their requests should be attributable to them rather than to whoever
+    // happens to hold the squad code.
+    const token = await getMemberToken();
+    if (token) return { mode: 'relay', relayUrl: url, credential: token, personal: true };
+
+    const code = (await getAccessCode()) || baked.squadCode;
     if (!code) {
       throw new NotConfiguredError(
         'relay',
-        'No squad code is set. Add the code you were given in Settings → AI provider.',
+        'This device is not signed in. Open the invite link your admin sent you.',
       );
     }
-    return { mode: 'relay', relayUrl: url, code };
+    return { mode: 'relay', relayUrl: url, credential: code, personal: false };
   }
 
   const apiKey = (await getApiKey(providerId)) || baked.apiKeys[providerId] || '';

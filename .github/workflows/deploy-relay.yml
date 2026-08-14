@@ -9,9 +9,11 @@ name: Deploy relay
 # Repository secrets this reads (Settings → Secrets and variables → Actions):
 #   CLOUDFLARE_API_TOKEN   required
 #   CLOUDFLARE_ACCOUNT_ID  required
-#   ACCESS_CODES           required — comma-separated squad codes
 #   GEMINI_API_KEY         at least one provider key required
 #   ANTHROPIC_API_KEY      optional
+#   BOOTSTRAP_CODE         needed once, to create your squad (docs/SQUAD-ACCOUNTS.md)
+#   ACCESS_CODES           optional — the old shared-code scheme, kept working
+#                          for phones set up before accounts existed
 
 on:
   push:
@@ -52,12 +54,12 @@ jobs:
       - name: Fail early on a relay with no keys
         if: steps.check.outputs.configured == 'true'
         run: |
-          if [ -z "${{ secrets.ACCESS_CODES }}" ]; then
-            echo "::error::ACCESS_CODES is not set. Without it the relay refuses every request."
-            exit 1
-          fi
           if [ -z "${{ secrets.GEMINI_API_KEY }}" ] && [ -z "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
             echo "::error::No provider key set. Add GEMINI_API_KEY (free) or ANTHROPIC_API_KEY."
+            exit 1
+          fi
+          if [ -z "${{ secrets.BOOTSTRAP_CODE }}" ] && [ -z "${{ secrets.ACCESS_CODES }}" ]; then
+            echo "::error::Nobody could authenticate to this relay. Set BOOTSTRAP_CODE to create a squad with accounts, or ACCESS_CODES for the older shared-code scheme."
             exit 1
           fi
 
@@ -75,10 +77,12 @@ jobs:
             ACCESS_CODES
             GEMINI_API_KEY
             ANTHROPIC_API_KEY
+            BOOTSTRAP_CODE
         env:
           ACCESS_CODES: ${{ secrets.ACCESS_CODES }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BOOTSTRAP_CODE: ${{ secrets.BOOTSTRAP_CODE }}
 
       - name: Where it lives
         if: steps.check.outputs.configured == 'true'

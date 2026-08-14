@@ -15,7 +15,7 @@ The default provider is Google Gemini's **free tier**, and Google's terms for it
 Before any real patient encounter goes into this app, two things have to be true, and neither is a code change:
 
 1. **A signed BAA with your chosen provider**, on a HIPAA-eligible, paid configuration. This is a business and compliance step on your end.
-2. **Requests routed through a backend you control**, rather than phone-to-API. *Half-built:* the [squad relay](server/README.md) takes the key off the phone, which is the hard structural part. Per-person credentials and an audit log are still missing, so it does not clear this on its own.
+2. **Requests routed through a backend you control**, rather than phone-to-API. *Mostly built:* the [squad relay](server/README.md) takes the key off the phone, and [squad accounts](docs/SQUAD-ACCOUNTS.md) add per-person credentials, revocation, and a log of who generated what. What is still missing is verified identity and a tamper-evident log — a name is what someone typed when they joined.
 
 Until both are in place, use fake patients. New reports are marked as practice data by default, and practice narratives carry a `*** PRACTICE / TRAINING DATA — NOT A PATIENT RECORD ***` banner when copied. Details and the full threat model are in [docs/SECURITY-PHI.md](docs/SECURITY-PHI.md).
 
@@ -46,7 +46,7 @@ A build with nothing configured still works; it just falls back to asking for a 
 
 **Free, nothing installed** — the web build, added to your iPhone home screen. Gets an icon, opens full-screen, no computer or server involved: **[docs/USE-IT-FREE.md](docs/USE-IT-FREE.md)**. Everything works except the real security model, and live dictation goes through the browser rather than the phone's own recogniser.
 
-**For a crew, not just you** — the [squad relay](server/README.md) holds one API key on a free Cloudflare Worker so nobody else needs one. You send people a link; they open it and start working. Ten minutes to set up, no cost, and it is also the first half of the backend that real patient data will eventually require.
+**For a crew, not just you** — the [squad relay](server/README.md) holds one API key on a free Cloudflare Worker so nobody else needs one, and [squad accounts](docs/SQUAD-ACCOUNTS.md) give each person their own identity: a roster, per-person usage, an activity log saying who generated what, and removal of one person without disturbing anybody else. You send an invite link; they open it, type their name, and they are working. No cost.
 
 **As a real app, on TestFlight** — what you want if anyone other than you will use it: full security model, Face ID, and live dictation transcribed on the phone itself. Testers install from an invite and code changes reach them over the air. Setup is browser-only and needs an Apple Developer account ($99/year, Apple's price for putting any custom app on an iPhone): **[docs/INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md)**.
 
@@ -122,6 +122,7 @@ Full reasoning, plus what this does and does not protect against, in [docs/SECUR
 |---|---|
 | [SET-IT-UP-ONCE.md](docs/SET-IT-UP-ONCE.md) | Configure the connection once, for every user and every build |
 | [USE-IT-FREE.md](docs/USE-IT-FREE.md) | Free web version on your home screen |
+| [SQUAD-ACCOUNTS.md](docs/SQUAD-ACCOUNTS.md) | Accounts, roles, invites, and the activity log |
 | [server/README.md](server/README.md) | The squad relay: one shared key, no per-person setup |
 | [INSTALL-ON-PHONE.md](docs/INSTALL-ON-PHONE.md) | The native app, full security model ($99/yr Apple) |
 | [MODEL-RECOMMENDATIONS.md](docs/MODEL-RECOMMENDATIONS.md) | Which Claude model for the build vs. for the app, and why |

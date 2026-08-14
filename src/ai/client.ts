@@ -42,8 +42,13 @@ export function describeError(error: unknown): string {
         return `The request was rejected: ${error.message}`;
       case 401:
       case 403:
+        // The relay knows why far better than we can guess — it distinguishes
+        // an unrecognised code from an account whose access was withdrawn, and
+        // replacing that with a generic line about squad codes sends someone
+        // to check a setting that is not the problem.
         return viaRelay
-          ? 'That squad code was not accepted. Check it in Settings → AI provider, or ask whoever set this up whether it changed.'
+          ? (error.message ||
+              'Your squad server did not accept this device. Ask whoever set it up.')
           : 'That API key was rejected. Check it in Settings → AI provider.';
       case 404:
         return 'That model name was not found. Pick a different model in Settings → AI provider.';
@@ -120,7 +125,12 @@ export async function requestJson<T>({
 
   if (connection.mode === 'relay') {
     url = relayEndpoint(connection.relayUrl, '/v1/generate');
-    headers = { 'content-type': 'application/json', 'x-squad-code': connection.code };
+    headers = {
+      'content-type': 'application/json',
+      ...(connection.personal
+        ? { authorization: `Bearer ${connection.credential}` }
+        : { 'x-squad-code': connection.credential }),
+    };
     // The relay chooses the destination and supplies the key from its own
     // table; the phone sends only which provider and what to ask it.
     payload = { providerId: provider.id, body: providerBody };

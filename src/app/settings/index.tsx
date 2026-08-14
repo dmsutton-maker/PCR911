@@ -29,6 +29,7 @@ export default function SettingsScreen() {
     modelByProvider,
     connectionMode,
     relayUrl,
+    account,
     appLockEnabled,
     practiceModeDefault,
     setAppLockEnabled,
@@ -85,6 +86,23 @@ export default function SettingsScreen() {
           onPress={() => router.push('/settings/specifics')}
         />
       </Card>
+
+      {account ? (
+        <>
+          <SectionLabel>Your squad</SectionLabel>
+          <Card>
+            <ListRow
+              title={account.orgName || 'Your squad'}
+              subtitle={
+                account.role === 'admin'
+                  ? `Signed in as ${account.name} · admin — manage people and invites`
+                  : `Signed in as ${account.name}`
+              }
+              onPress={() => router.push('/settings/team')}
+            />
+          </Card>
+        </>
+      ) : null}
 
       <SectionLabel>Provider</SectionLabel>
       <Card>

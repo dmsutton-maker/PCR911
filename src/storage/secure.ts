@@ -19,6 +19,7 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
 
 const DATA_KEY = 'report_data_key_v1';
 const ACCESS_CODE = 'squad_access_code_v1';
+const MEMBER_TOKEN = 'org_member_token_v1';
 
 /** One key per provider, so switching provider does not lose the other key. */
 function apiKeyName(providerId: string): string {
@@ -51,6 +52,22 @@ export async function setAccessCode(value: string): Promise<void> {
 
 export async function clearAccessCode(): Promise<void> {
   await SecureStore.deleteItemAsync(ACCESS_CODE, OPTIONS);
+}
+
+/**
+ * The token identifying this person to their org. Issued on joining, revocable
+ * by an admin, and never shown back to the user.
+ */
+export async function getMemberToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(MEMBER_TOKEN, OPTIONS);
+}
+
+export async function setMemberToken(value: string): Promise<void> {
+  await SecureStore.setItemAsync(MEMBER_TOKEN, value.trim(), OPTIONS);
+}
+
+export async function clearMemberToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(MEMBER_TOKEN, OPTIONS);
 }
 
 export async function getStoredDataKey(): Promise<string | null> {

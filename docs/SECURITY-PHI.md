@@ -51,14 +51,16 @@ Notes are saved locally as you type. Nothing is transmitted until you explicitly
 
 ## The squad relay
 
-`server/worker.js` is a small Cloudflare Worker that holds one provider key and authenticates callers with a squad code. When the app is in **Squad account** mode, the phone sends its notes and a code; the relay adds the key and forwards the request. Setup is in [server/README.md](../server/README.md).
+`server/worker.js` is a small Cloudflare Worker that holds one provider key and authenticates callers — by a personal member token where the squad has accounts, or a shared code on relays set up before accounts existed. The phone sends its notes and its credential; the relay adds the key and forwards the request. Setup is in [server/README.md](../server/README.md), accounts in [SQUAD-ACCOUNTS.md](SQUAD-ACCOUNTS.md).
+
+The relay stores names, roles, and usage counts. It never stores reports, notes, or narratives: patient content stays on the phone that made it, passes through the relay in memory, and is never written down — including in the audit log, which records that a narrative was generated and by whom, never what it said.
 
 **What it settles.** The key stops living on phones. That means it can be rotated without shipping a build, a person's access can be withdrawn without touching their device, usage is visible in one place, and a lost phone leaks a revocable squad code rather than a provider credential. This is the structural fix that step 2 of the road below asks for, and it is a genuine improvement over phone-to-API regardless of what happens with the BAA.
 
 **What it does not settle.** Three things, and none of them is small:
 
 - **No BAA, no PHI.** The relay changes who holds the key, not who processes the data. Gemini's free tier is explicitly the wrong side of this: Google's terms say submitted content is used to improve their products and may be seen by human reviewers.
-- **A squad code is not an identity.** It says a request came from somebody holding the code. It cannot say who, cannot be tied to a person, and cannot produce the audit trail a real deployment needs. Per-person credentials are still unbuilt.
+- **Identity is self-asserted.** *Improved rather than solved.* [Squad accounts](SQUAD-ACCOUNTS.md) give each person their own revocable token and log who generated what — so an admin can withdraw one person's access and answer "who wrote this". But a name is what someone typed when they accepted an invite: there is no email confirmation, no password, and the log lives in ordinary storage an admin could edit. Enough to run a squad; not identity proofing, and not a tamper-evident audit trail.
 - **The relay is another processor.** Requests pass through Cloudflare's network in the clear at the edge. That is one more organisation touching the data, and one more BAA to think about.
 
 There is also a distribution property worth stating plainly: an invite link carries the squad code in its URL fragment. The fragment is never sent to a web server, and the app removes it from the address bar and browser history on arrival — but anyone who receives the link has the code. Treat one like a shared password, which is why the relay accepts a list of codes rather than one.
@@ -83,9 +85,9 @@ In the order it has to happen:
 
 **1. Compliance first (yours, not code).** Get the BAA in place with Anthropic on a HIPAA-eligible configuration. Nothing below matters until this exists.
 
-**2. Move the API call behind a backend.** *Partly done.* The squad relay does the key-custody half: the phone no longer holds a provider key, and one can be rotated or revoked centrally. What is still missing is per-person credentials and an audit log — a shared squad code identifies a group, not a user, so "who generated what and when" is unanswerable today.
+**2. Move the API call behind a backend.** *Mostly done.* The relay holds the provider key, each person has their own revocable token, and the relay records who generated what. See [SQUAD-ACCOUNTS.md](SQUAD-ACCOUNTS.md).
 
-Finishing this means replacing the shared code with per-person tokens and having the relay write an access log. The app-side change is small: `src/ai/connection.ts` decides what credential to send and `src/ai/client.ts` is the only file that talks to the network. Every prompt, schema, and screen is unaffected.
+What remains is the difference between an account and an identity: verified sign-in rather than a typed name, and a log that cannot be quietly edited by whoever runs the relay. Both are real work and neither is a blocker for practice use — but a compliance officer will ask about both.
 
 **3. Audio.** *Decided.* Live recording uses iOS's on-device recogniser, so patient audio never leaves the phone and no third BAA is needed. No recording file is written either — the audio-file capture path was removed rather than left available, since stored recordings of patient encounters are a liability the text-only path does not carry. If a device cannot recognise speech locally the app refuses and says so; it must never fall back to network recognition, because that is a decision with a BAA attached and not one a fallback should make quietly.
 

@@ -10,25 +10,33 @@
  * are not sent to the server, so the squad code stays out of GitHub Pages'
  * request logs and out of any proxy in between.
  *
- * Worth being clear-eyed about what this is: anyone holding the link holds the
- * code. It is a shared credential distributed over whatever channel you send it
- * on, which is why the relay lets you list several codes and revoke one without
- * disturbing the others. It is not a per-person identity and should not be
- * mistaken for one.
+ * Two kinds of link. An **invite** carries an invite code: opening it asks who
+ * you are and issues you your own account, so what ends up on the phone is
+ * personal and revocable. A **squad-code** link carries a shared credential
+ * directly, which is what relays did before accounts existed.
+ *
+ * Either way, anyone holding the link can use it until it is rotated — send one
+ * the way you would send a password. The difference is what happens next: an
+ * invite turns into an identity an admin can withdraw from one person, while a
+ * shared code can only be changed for everybody at once.
  */
 
 export interface JoinPayload {
   relayUrl: string;
-  code: string;
+  /** An invite code, when the link is an invitation to join an org as a person. */
+  inviteCode?: string;
+  /** A shared squad code, for relays that predate org accounts. */
+  code?: string;
+  /** An already-issued member token, for signing an existing account in. */
+  token?: string;
 }
 
 export function buildJoinLink(baseUrl: string, payload: JoinPayload): string {
   const base = baseUrl.replace(/#.*$/, '');
-  const params = new URLSearchParams({
-    join: '1',
-    u: payload.relayUrl,
-    c: payload.code,
-  });
+  const params = new URLSearchParams({ join: '1', u: payload.relayUrl });
+  if (payload.inviteCode) params.set('i', payload.inviteCode);
+  if (payload.code) params.set('c', payload.code);
+  if (payload.token) params.set('t', payload.token);
   return `${base}#${params.toString()}`;
 }
 
@@ -46,8 +54,15 @@ export function parseJoinHash(hash: string): JoinPayload | null {
   if (params.get('join') !== '1') return null;
 
   const relayUrl = (params.get('u') || '').trim();
+  const inviteCode = (params.get('i') || '').trim();
   const code = (params.get('c') || '').trim();
-  if (!relayUrl || !code) return null;
+  const token = (params.get('t') || '').trim();
+  if (!relayUrl || (!inviteCode && !code && !token)) return null;
 
-  return { relayUrl, code };
+  return {
+    relayUrl,
+    inviteCode: inviteCode || undefined,
+    code: code || undefined,
+    token: token || undefined,
+  };
 }

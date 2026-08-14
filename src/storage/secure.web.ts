@@ -13,6 +13,7 @@
 
 const DATA_KEY = 'pcr.secure.report_data_key_v1';
 const ACCESS_CODE = 'pcr.secure.squad_access_code_v1';
+const MEMBER_TOKEN = 'pcr.secure.org_member_token_v1';
 
 function apiKeyName(providerId: string): string {
   return `pcr.secure.api_key_${providerId}`;
@@ -82,6 +83,18 @@ export async function setAccessCode(value: string): Promise<void> {
 
 export async function clearAccessCode(): Promise<void> {
   remove(ACCESS_CODE);
+}
+
+export async function getMemberToken(): Promise<string | null> {
+  return read(MEMBER_TOKEN);
+}
+
+export async function setMemberToken(value: string): Promise<void> {
+  write(MEMBER_TOKEN, value.trim());
+}
+
+export async function clearMemberToken(): Promise<void> {
+  remove(MEMBER_TOKEN);
 }
 
 export async function getStoredDataKey(): Promise<string | null> {
