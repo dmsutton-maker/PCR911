@@ -63,12 +63,11 @@ Note that on-device speech recognition is a native module, so the app no longer 
 
 ## What it does
 
-### Three capture modes
+### Two ways in
 
 | Mode | How it works |
 |---|---|
-| **Bullet notes** | Type fragments. Times, doses, and numbers matter most; grammar does not. |
-| **Post-call dictation** | Talk through the call using the keyboard microphone. iOS transcribes **on-device** — no audio leaves the phone. |
+| **Write or dictate notes** | Type fragments, or use the keyboard microphone. Times, doses, and numbers matter most; grammar does not. |
 | **Live recording** | Speech is transcribed **live** into an editable transcript as you talk. On the installed app that happens on-device; no audio file is ever written. |
 
 ### Narrative generation
@@ -81,7 +80,9 @@ The model is instructed, repeatedly and specifically, **never to invent clinical
 
 Every org has its own documentation requirements, so they are configuration, not code. `Settings → Required specifics` ships 16 defaults (dispatch, OPQRST, two sets of vitals, interventions with times, response to treatment, transport and position, transfer of care, consent, refusal capacity and risks…), each of which can be edited, disabled, or scoped to a call type — plus any number of your own.
 
-After generating, the narrative is checked against everything enabled, **judged against what you actually said rather than what the model wrote**. Anything missing or ambiguous becomes a specific follow-up question about that call — "What was the blood pressure at 14:12?", not "Please provide vitals." Anything you already covered is never asked about. Answer, skip, or ignore: skipped items are documented as not recorded, never filled in.
+After generating, the narrative is checked against everything enabled, **judged against what you actually said rather than what the model wrote**. Anything missing or ambiguous becomes a specific follow-up question about that call — "What was the blood pressure at 14:12?", not "Please provide vitals." Anything you already covered is never asked about.
+
+Those questions sit *below* the finished narrative rather than in front of it. Generating lands you on your narrative, ready to copy, in two taps and a paste; answering the questions is an offer, not a gate. Skipped items are documented as not recorded, never filled in.
 
 ### Clinical reference
 

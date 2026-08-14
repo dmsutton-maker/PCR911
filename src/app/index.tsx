@@ -76,19 +76,18 @@ export default function HomeScreen() {
         </Banner>
       ) : null}
 
+      {/* Two ways in, not three. "Bullet notes" and "post-call dictation" led to
+          the same screen and differed only in placeholder text, which is a
+          distinction for whoever wrote the app rather than for whoever is
+          standing in a bay at end of shift. */}
       <Card>
-        <Body>Start a report by capturing what happened on the call.</Body>
-        <Button label="Type or dictate bullet notes" onPress={() => start('bullets')} />
-        <Button
-          label="Post-call dictation"
-          variant="secondary"
-          onPress={() => start('dictation')}
-        />
+        <Body>What happened on the call?</Body>
+        <Button label="Write or dictate notes" onPress={() => start('bullets')} />
         <Button label="Record during the call" variant="secondary" onPress={() => start('live')} />
         <Muted>
           {Platform.OS === 'web'
-            ? 'Recording transcribes your speech live as you talk. Nothing is sent to the AI provider until you generate a narrative.'
-            : 'Dictation uses the keyboard microphone, which transcribes on-device. Nothing is sent anywhere until you generate a narrative.'}
+            ? 'Type, or tap the microphone on your keyboard and talk. Recording transcribes you live as you speak. Nothing is sent anywhere until you generate a narrative.'
+            : 'Type, or tap the microphone on your keyboard and talk — that transcribes on this phone. Recording does the same, live, while the call is happening. Nothing is sent anywhere until you generate a narrative.'}
         </Muted>
       </Card>
 

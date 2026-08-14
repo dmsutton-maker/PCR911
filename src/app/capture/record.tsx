@@ -66,8 +66,11 @@ function useGenerate() {
     }
 
     await update(outcome.patch, 'Narrative generated');
-    if (outcome.openQuestionCount > 0) router.replace(`/report/${saved.id}/questions`);
-    else router.replace(`/report/${saved.id}`);
+    // Straight to the narrative, even when specifics are missing. The narrative
+    // is what was asked for and it already exists at this point; putting a
+    // questionnaire in front of it made the app feel like paperwork rather than
+    // a tool. The report screen offers the questions underneath it instead.
+    router.replace(`/report/${saved.id}`);
     return true;
   };
 }

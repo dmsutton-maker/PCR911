@@ -34,6 +34,7 @@ export default function ReportScreen() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -130,33 +131,9 @@ export default function ReportScreen() {
         </Banner>
       ) : null}
 
-      {openQuestions.length > 0 ? (
-        <Card>
-          <Heading>
-            {openQuestions.length} required specific{openQuestions.length === 1 ? '' : 's'} missing
-          </Heading>
-          <Muted>
-            {report.org.name} requires{' '}
-            {openQuestions.map((f) => f.label.toLowerCase()).join(', ')}.
-          </Muted>
-          <Button
-            label="Answer follow-up questions"
-            onPress={() => router.push(`/report/${report.id}/questions`)}
-          />
-        </Card>
-      ) : (
-        <Banner tone="success" title="Required specifics covered">
-          Every specific {report.org.name} requires is addressed in this narrative.
-        </Banner>
-      )}
-
-      {skipped.length > 0 ? (
-        <Banner tone="warning" title={`${skipped.length} skipped`}>
-          {skipped.map((f) => f.label).join(', ')} — documented as not recorded rather than filled
-          in.
-        </Banner>
-      ) : null}
-
+      {/* The narrative comes first. It is the thing that was asked for, and
+          anything placed above it — however useful — reads as another step
+          standing between the user and their own document. */}
       <Card>
         <Row>
           <View style={s.flex}>
@@ -178,6 +155,37 @@ export default function ReportScreen() {
           <Muted>No narrative has been generated for this report yet.</Muted>
         )}
       </Card>
+
+      {openQuestions.length > 0 ? (
+        <Card>
+          <Heading>
+            Optional: {openQuestions.length} thing{openQuestions.length === 1 ? '' : 's'} you did not
+            mention
+          </Heading>
+          <Muted>
+            {report.org.name} asks for{' '}
+            {openQuestions.map((f) => f.label.toLowerCase()).join(', ')}. The narrative above is
+            usable as it is — answering adds them rather than leaving them documented as not
+            recorded.
+          </Muted>
+          <Button
+            label="Add the missing details"
+            variant="secondary"
+            onPress={() => router.push(`/report/${report.id}/questions`)}
+          />
+        </Card>
+      ) : (
+        <Banner tone="success" title="Required specifics covered">
+          Every specific {report.org.name} requires is addressed in this narrative.
+        </Banner>
+      )}
+
+      {skipped.length > 0 ? (
+        <Banner tone="warning" title={`${skipped.length} skipped`}>
+          {skipped.map((f) => f.label).join(', ')} — documented as not recorded rather than filled
+          in.
+        </Banner>
+      ) : null}
 
       <Card>
         <Row>
@@ -202,12 +210,27 @@ export default function ReportScreen() {
       </Card>
 
       <Card>
-        <SectionLabel>Activity</SectionLabel>
-        {report.history.map((h, i) => (
-          <Muted key={`${h.at}-${i}`}>
-            {formatShort(h.at)} — {h.event}
-          </Muted>
-        ))}
+        <Row>
+          <View style={s.flex}>
+            <SectionLabel>Activity</SectionLabel>
+            <Muted>What happened to this report and when.</Muted>
+          </View>
+          <Button
+            label={showHistory ? 'Hide' : 'Show'}
+            variant="ghost"
+            onPress={() => setShowHistory((v) => !v)}
+          />
+        </Row>
+        {showHistory ? (
+          <>
+            <Divider />
+            {report.history.map((h, i) => (
+              <Muted key={`${h.at}-${i}`}>
+                {formatShort(h.at)} — {h.event}
+              </Muted>
+            ))}
+          </>
+        ) : null}
       </Card>
 
       <Button label="Delete report" variant="danger" onPress={confirmDelete} />
