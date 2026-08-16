@@ -14,7 +14,7 @@ export function createDefaultOrg(): OrgConfig {
 }
 
 export function createDefaultProfile(): ProviderProfile {
-  return { state: '', certLevel: 'EMT', unitId: '' };
+  return { state: '', certLevel: 'EMT' };
 }
 
 export const US_STATES = [

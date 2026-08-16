@@ -59,17 +59,6 @@ export default function ProfileScreen() {
           </Muted>
         </Card>
 
-        <Card>
-          <Field
-            label="Unit identifier"
-            hint="Optional. e.g. Medic 4"
-            value={profile.unitId}
-            onChangeText={(unitId) => setProfile({ unitId })}
-            placeholder="Medic 4"
-            autoCapitalize="characters"
-          />
-        </Card>
-
         <Banner tone="info">
           None of this is patient information, so it is stored in ordinary app settings rather than
           the encrypted report vault.

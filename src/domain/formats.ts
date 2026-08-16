@@ -29,7 +29,7 @@ const SOAP: NarrativeFormat = {
       key: 'assessment',
       heading: 'ASSESSMENT',
       guidance:
-        'The provider\'s working field impression, supported by the subjective and objective findings already documented. Do not introduce findings that were not documented above.',
+        'The provider\'s working field impression, supported by the subjective and objective findings already stated. Do not introduce findings the provider did not supply.',
     },
     {
       key: 'plan',

@@ -165,8 +165,8 @@ export default function ReportScreen() {
           <Muted>
             {report.org.name} asks for{' '}
             {openQuestions.map((f) => f.label.toLowerCase()).join(', ')}. The narrative above is
-            usable as it is — answering adds them rather than leaving them documented as not
-            recorded.
+            usable as it is — answering adds them to it. Skipping just leaves them out of the prose;
+            it says nothing about the rest of your report.
           </Muted>
           <Button
             label="Add the missing details"
@@ -182,8 +182,8 @@ export default function ReportScreen() {
 
       {skipped.length > 0 ? (
         <Banner tone="warning" title={`${skipped.length} skipped`}>
-          {skipped.map((f) => f.label).join(', ')} — documented as not recorded rather than filled
-          in.
+          {skipped.map((f) => f.label).join(', ')} — left out of the narrative rather than filled in.
+          If you recorded them elsewhere in the report, that is unaffected.
         </Banner>
       ) : null}
 

@@ -78,7 +78,6 @@ export interface ProviderProfile {
   state: string;
   certLevel: CertLevel;
   /** Optional: appears in the narrative signature line if set. */
-  unitId: string;
 }
 
 export type CaptureMode = 'bullets' | 'dictation' | 'live';

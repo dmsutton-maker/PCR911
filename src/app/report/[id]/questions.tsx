@@ -112,7 +112,7 @@ export default function QuestionsScreen() {
     const ok = await confirm({
       title: `${remaining} question${remaining === 1 ? '' : 's'} unanswered`,
       message:
-        'Unanswered items will be marked as skipped. The narrative will state that they were not documented rather than inventing them.',
+        'Unanswered items are simply left out of the narrative. Nothing is invented, and nothing is claimed to be missing from your report — they may already be in its other fields.',
       confirmLabel: 'Skip and update',
       cancelLabel: 'Keep answering',
     });
@@ -150,7 +150,7 @@ export default function QuestionsScreen() {
         ) : (
           <Banner tone="info" title={`${openQuestions.length} required specifics missing`}>
             These come from {current.org.name}&apos;s required-specifics list. Answering is
-            optional — anything you skip will be documented as not recorded, never guessed.
+            optional — anything you skip is left out of the narrative, never guessed at.
           </Banner>
         )}
 
@@ -179,7 +179,7 @@ export default function QuestionsScreen() {
                   <View style={s.flex}>
                     <Muted>{f.label}</Muted>
                     <Muted style={f.state === 'skipped' ? s.skipped : s.answered}>
-                      {f.state === 'skipped' ? 'Skipped — documented as not recorded' : f.answer}
+                      {f.state === 'skipped' ? 'Skipped — left out of the narrative' : f.answer}
                     </Muted>
                   </View>
                 </Row>

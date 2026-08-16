@@ -108,9 +108,7 @@ export default function SettingsScreen() {
       <Card>
         <ListRow
           title="Provider profile"
-          subtitle={`${profile.certLevel}${profile.state ? ` · ${profile.state}` : ' · no state set'}${
-            profile.unitId ? ` · ${profile.unitId}` : ''
-          }`}
+          subtitle={`${profile.certLevel}${profile.state ? ` · ${profile.state}` : ' · no state set'}`}
           onPress={() => router.push('/settings/profile')}
         />
         <Divider />
