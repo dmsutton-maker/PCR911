@@ -42,6 +42,11 @@ export default function SettingsScreen() {
   const model = modelByProvider[providerId] || provider.defaultModel;
   const preconfigured = isPreconfigured();
   const bakedSummary = describeBakedConfig();
+  // Only a signed-in squad admin may reach the connection screen on a
+  // preconfigured build. Everyone who opened this from an invite link or the
+  // bare install has account === null and is locked out — see api.tsx, which
+  // enforces the same rule independently in case this row is ever bypassed.
+  const canManageConnection = !preconfigured || account?.role === 'admin';
 
   // On focus rather than on mount: returning from the AI provider screen after
   // saving a credential must update this row, and the credential is not part of
@@ -121,8 +126,9 @@ export default function SettingsScreen() {
 
       {/* On a build that ships already connected, this belongs out of the way
           at the bottom rather than in the middle of the screen presenting
-          itself as something to deal with. Most people should never open it. */}
-      {preconfigured ? null : (
+          itself as something to deal with — and only an admin gets it at all.
+          Everyone else should never even see that a key exists. */}
+      {canManageConnection && !preconfigured ? (
         <>
           <SectionLabel>AI provider</SectionLabel>
           <Card>
@@ -133,7 +139,7 @@ export default function SettingsScreen() {
             />
           </Card>
         </>
-      )}
+      ) : null}
 
       <SectionLabel>Security</SectionLabel>
       <Card>
@@ -168,7 +174,7 @@ export default function SettingsScreen() {
         </Muted>
       </View>
 
-      {preconfigured ? (
+      {preconfigured && canManageConnection ? (
         <>
           <SectionLabel>Advanced</SectionLabel>
           <Card>

@@ -55,6 +55,7 @@ export default function ApiScreen() {
     modelByProvider,
     connectionMode,
     relayUrl,
+    account,
     setProviderId,
     setModel,
     setConnectionMode,
@@ -222,6 +223,27 @@ export default function ApiScreen() {
 
   const relayMissingProvider =
     health?.ok && health.providers.length > 0 && !health.providers.includes(providerId);
+
+  // The real lock. The Settings screen already hides the link here for anyone
+  // who is not a squad admin, but a link is only ever a suggestion — this is
+  // what actually stops someone who navigates here directly (a bookmark, a
+  // typed URL, an old link) from switching providers, swapping in their own
+  // key, or pointing the app at a different relay. On a preconfigured build,
+  // only a signed-in admin gets past this.
+  if (bakedSummary && account?.role !== 'admin') {
+    return (
+      <Screen>
+        <Banner tone="info" title="Managed for you">
+          {bakedSummary} There is nothing to set up here, and this screen is locked so it cannot be
+          changed by mistake.
+        </Banner>
+        <Muted>
+          If something is not working, tell whoever set this up for you rather than trying to fix
+          it here.
+        </Muted>
+      </Screen>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
