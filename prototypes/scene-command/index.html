@@ -686,8 +686,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --crit: #E8695C;
   --scrim: rgb(2 8 14 / 0.62);
   --on-solid: #04121E;
-  --ag-fire: #E8603A;   /* unified command: each agency's color */
-  --ag-pd: #4C86F0;
+  --ag-ems: #4FA3E3;
+  --ag-fire: #F0703F;   /* unified command: each agency's color */
+  --ag-pd: #7D8BFF;
 
   --red: #D7373F;     --red-ink: #FFFFFF;
   --yellow: #F2C230;  --yellow-ink: #1D1600;
@@ -727,8 +728,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --crit: #B3261E;
   --scrim: rgb(6 19 31 / 0.5);
   --on-solid: #FFFFFF;
+  --ag-ems: #0B5FA5;
   --ag-fire: #B8401C;
-  --ag-pd: #1F56C4;
+  --ag-pd: #2B3FBF;
   --red: #C62828;     --red-ink: #FFFFFF;
   --yellow: #F2C230;  --yellow-ink: #1D1600;
   --green: #1E9E55;   --green-ink: #FFFFFF;
@@ -743,6 +745,10 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --road: #9A8F7A;
   color-scheme: light;
 }
+/* A fire or police department's devices wear its color, so a glance says whose screen it is. */
+:root[data-agency="fire"] { --accent: var(--ag-fire); --accent-ink: #1A0700; }
+:root[data-agency="police"] { --accent: var(--ag-pd); --accent-ink: #070A24; }
+:root[data-mode="day"][data-agency="fire"], :root[data-mode="day"][data-agency="police"] { --accent-ink: #FFFFFF; }
 
 html, body { height: 100%; }
 body {
@@ -799,7 +805,8 @@ button.tag { min-height: 32px; }
 .tag.role.r-fire { border-color: var(--ag-fire); color: var(--ag-fire); }
 .tag.role.r-police { border-color: var(--ag-pd); color: var(--ag-pd); }
 .agtag { display: inline-block; min-width: 54px; text-align: center; font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 6px; border-radius: 5px; color: #fff; background: var(--accent); }
-.agtag.fire { background: var(--ag-fire); } .agtag.police { background: var(--ag-pd); } .agtag.ems { background: var(--accent); color: var(--accent-ink); }
+.agtag.fire { background: var(--ag-fire); } .agtag.police { background: var(--ag-pd); } .agtag.ems { background: var(--ag-ems); color: #04121E; }
+:root[data-mode="day"] .agtag.ems { color: #fff; }
 .ucrows { display: flex; flex-direction: column; gap: 6px; }
 .ucrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 48px; padding: 6px 10px; border-radius: var(--r); border: 1.5px solid var(--line); background: transparent; text-align: left; }
 .ucrow.me { border-color: var(--fg); }
@@ -1608,6 +1615,7 @@ const isDivert = s => !!s && s !== 'Open';
    squad relay because the site can't be read from a page elsewhere. Each tablet asks every three minutes; nothing
    about it is shared or stored. What a hospital tells your team still goes in by hand on the Hospitals screen. */
 let DIVERT = null;   // { at, byId: { id: { status, reason, comment, color } } }
+const offline = () => navigator.onLine === false;
 const liveEd = (h, burn) => (DIVERT && (burn ? h.divertBurn : h.divert) ? DIVERT.byId[burn ? h.divertBurn : h.divert] || null : null);
 const liveDiverted = d => !!d && !!d.status && !/^normal$/i.test(d.status);
 const edAvoid = (h, k, burnPt) => {
@@ -1629,6 +1637,7 @@ async function loadDivert() {
     if (!r.ok) return;
     const d = await r.json();
     DIVERT = { at: Date.parse(d.updated) || now(), fetched: now(), byId: Object.fromEntries((d.hospitals || []).map(x => [String(x.id), x])) };
+    write(NS + 'divert', DIVERT);   // the last status seen, for when the tablet is offline
     if (!UI.sheet || UI.sheet === 'transport' || /^call-hosp/.test(UI.sheet)) render();
   } catch (e) { /* offline, or the relay can't reach the site */ }
 }
@@ -2026,6 +2035,21 @@ const RAILS = {
   member:    ['member', 'shift', 'phone'],
 };
 const MCI_ROLES = ['command', 'triage', 'transport', 'fire', 'police'];
+/* Who is using this device: an EMS squad, a fire department or a police department. Each gets its own colors, Home
+   and jobs. The squad sets what it is under My agency; one tablet can be set apart (a squad tablet handed to the
+   fire chief); a guest from another department is locked to theirs. */
+const AGENCIES = {
+  ems:    { name: 'EMS',    long: 'EMS squad',         jobs: ['command', 'triage', 'transport', 'fire', 'police'] },
+  fire:   { name: 'Fire',   long: 'Fire department',   jobs: ['fire'] },
+  police: { name: 'Police', long: 'Police department', jobs: ['police'] },
+};
+const isGuest = () => !!(RELAY && RELAY.guest);
+const myAgency = () => (isGuest() && AGENCIES[RELAY.agency] ? RELAY.agency : AGENCIES[DEV.agency] ? DEV.agency : C && AGENCIES[C.agency.type] ? C.agency.type : 'ems');
+const allowedRoles = () => { const a = myAgency(); return a === 'ems' && !isGuest() ? Object.keys(ROLES) : [...AGENCIES[a].jobs, 'event', ...(isGuest() ? [] : ['supervisor'])]; };
+function fitRole() {   // keep the tablet on a job its agency has; true when it had to move
+  if (allowedRoles().includes(DEV.role)) return false;
+  DEV.role = AGENCIES[myAgency()].jobs[0]; saveDev(); return true;
+}
 /* Which workspace the screen is in: the Home screen, the Supervisor board, an MCI, an event, or a member's phone.
    The workspace's own views say so; the shared ones (map, hospitals, phone, radio, log) follow the tablet's job. */
 const VIEW_WS = { shift: 'sup', event: 'event', member: 'member', board: 'mci', triage: 'mci', transport: 'mci', units: 'mci', ics: 'mci', fire: 'mci', police: 'mci' };
@@ -2320,6 +2344,7 @@ function render() {
   const scrolls = {};
   document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = [el.scrollTop, el.scrollLeft]; });
   document.documentElement.dataset.mode = DEV.mode;
+  document.documentElement.dataset.agency = myAgency();
   parkMap();
 
   app.innerHTML = header() + rail() + `<main class="main" data-scroll="main-${UI.view}">${view()}</main>`;
@@ -2434,7 +2459,7 @@ function homeHeader() {
     <div class="inc">
       <div class="inc-top">${syncChipHtml()}</div>
       <h1>${agencyLogo()}${esc(C.agency.name)}</h1>
-      <div class="inc-sub">OpsBoard · ${esc(day)}</div>
+      <div class="inc-sub">OpsBoard · ${esc(AGENCIES[myAgency()].long)}${isGuest() ? ' · guest' : ''} · ${esc(day)}</div>
     </div>
     <div class="clocks">
       <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
@@ -2454,26 +2479,27 @@ function homeScreen() {
   const evTitle = EV.none ? 'No event running' : E.name || 'Event';
   const evNow = EV.none ? 'A parade, the fireworks, a concert, a race: posts on the map, members at their posts, a patient log.'
     : [E.location, plural(EV.posts.length, 'post'), plural(staff, 'member'), plural(EV.pts.length, 'patient'), EV.ended ? `ended ${hhmm(EV.ended)}` : ''].filter(Boolean).join(' · ');
-  const mciRole = MCI_ROLES.includes(DEV.role) ? DEV.role : 'command';
+  const jobs = AGENCIES[myAgency()].jobs, roles = allowedRoles();
+  const mciRole = jobs.includes(DEV.role) ? DEV.role : jobs[0];
   return `<div class="view home">
     <h2 class="home-q">What are you working on?</h2>
     <div class="ws-grid">
-      <section class="ws ws-sup ${cur === 'sup' ? 'cur' : ''}">
+      ${roles.includes('supervisor') ? `<section class="ws ws-sup ${cur === 'sup' ? 'cur' : ''}">
         <button class="ws-main" data-act="ws" data-arg="supervisor">
           <span class="ws-top"><span class="ws-ico">${icon('clip')}</span>${badge(cur === 'sup', 'Continue')}</span>
           <span class="ws-name">Supervisor</span>
           <span class="ws-what">Today's calls, units in service, crew on duty</span>
           <span class="ws-now">${plural(st.active, 'active call')} · ${plural(avail, 'unit')} available · ${onDuty} on duty · ${plural(st.total, 'call')} today</span>
         </button>
-      </section>
+      </section>` : ''}
       <section class="ws ws-mci ${cur === 'mci' ? 'cur' : ''} ${live ? 'live' : ''}">
         <button class="ws-main" data-act="ws" data-arg="${mciRole}">
           <span class="ws-top"><span class="ws-ico">${icon('tag')}</span>${badge(live, '● MCI running', 'crit')}${badge(cur === 'mci' && !live, 'Continue')}${badge(S.sample, 'Sample')}</span>
-          <span class="ws-name">MCI</span>
+          <span class="ws-name">MCI${jobs.length === 1 ? ' · ' + esc(ROLES[jobs[0]].name) : ''}</span>
           <span class="ws-what">${esc(mciTitle)}</span>
           <span class="ws-now">${esc(mciNow)}</span>
         </button>
-        <div class="ws-jobs"><span class="lbl">My job</span>${MCI_ROLES.map(r => `<button class="opt small" data-act="ws" data-arg="${r}" aria-pressed="${DEV.role === r}">${esc(ROLES[r].name)}</button>`).join('')}</div>
+        ${jobs.length < 2 ? '' : `<div class="ws-jobs"><span class="lbl">My job</span>${jobs.map(r => `<button class="opt small" data-act="ws" data-arg="${r}" aria-pressed="${DEV.role === r}">${esc(ROLES[r].name)}</button>`).join('')}</div>`}
       </section>
       <section class="ws ws-ev ${cur === 'event' ? 'cur' : ''} ${evOn ? 'live' : ''}">
         <button class="ws-main" data-act="ws" data-arg="event">
@@ -2485,9 +2511,9 @@ function homeScreen() {
       </section>
     </div>
     <div class="home-more">
-      <button class="btn" data-act="ws" data-arg="member">${icon('person')} My calls · the member phone view</button>
+      ${roles.includes('member') ? `<button class="btn" data-act="ws" data-arg="member">${icon('person')} My calls · the member phone view</button>` : ''}
       <span class="grow"></span>
-      <button class="btn" data-act="sheet" data-arg="report:day">${icon('doc')} Today's report</button>
+      ${roles.includes('supervisor') ? `<button class="btn" data-act="sheet" data-arg="report:day">${icon('doc')} Today's report</button>` : ''}
       ${S.fresh ? '' : `<button class="btn" data-act="sheet" data-arg="report:inc">${icon('doc')} Incident report</button>`}
       ${EV.none ? '' : `<button class="btn" data-act="sheet" data-arg="report:event">${icon('doc')} Event report</button>`}
     </div>
@@ -2703,7 +2729,7 @@ function mapChips() {
   const chips = [];
   if (ll) chips.push(`<button class="mchip" data-act="copy-text" data-arg="${esc(fmtLL(ll))}" aria-label="Copy scene coordinates">${esc(fmtLL(ll))}</button>`);
   else chips.push(`<button class="mchip warn" data-act="view" data-arg="map">Scene not pinned · tap to set</button>`);
-  if (UI.mapLayer === 'sat' && UI.live === 'blocked') chips.push(`<span class="mchip warn">Live imagery off · ${insideSample(ll) ? 'built-in aerial' : 'built-in map'}</span>`);
+  if (UI.mapLayer === 'sat' && UI.live === 'blocked') chips.push(`<span class="mchip warn">${offline() ? 'Offline' : 'Live imagery off'} · ${insideSample(ll) ? 'built-in aerial' : 'built-in map'}</span>`);
   return chips.join('');
 }
 
@@ -3239,11 +3265,13 @@ function syncWords() {
   if (Sync.state === 'ready') return 'ready to share';
   return 'this tablet only';
 }
+const phoneish = () => !!(window.matchMedia && matchMedia('(max-width: 700px)').matches);
 function roleSheet() {
   const peers = Sync.tablets();
   return {
     title: "This tablet's job",
-    body: `<div class="opt-grid wide">${Object.entries(ROLES).map(([k, r]) => opt('role', k, DEV.role === k, `${esc(r.name)}<small>${esc(r.note)}</small>`, 'tall')).join('')}</div>
+    body: `${isGuest() ? `<div class="note">This ${phoneish() ? 'phone' : 'tablet'} is a <b>${esc(AGENCIES[myAgency()].name)}</b> guest on ${esc(RELAY.org || 'the squad')}'s board. It sees the MCI and events only.</div>` : `<div class="switch"><span>This ${phoneish() ? 'phone' : 'tablet'} is for</span><div class="chips">${Object.entries(AGENCIES).map(([k, a]) => opt('dev-agency', k, myAgency() === k, esc(a.name))).join('')}</div></div>`}
+      <div class="opt-grid wide">${allowedRoles().map(k => [k, ROLES[k]]).map(([k, r]) => opt('role', k, DEV.role === k, `${esc(r.name)}<small>${esc(r.note)}</small>`, 'tall')).join('')}</div>
       <div class="ph"><h2>Tablets on this board</h2><span class="meta">${esc(syncWords())}</span></div>
       ${peers.length ? `<div class="rows">${peers.map(pr => `<div class="row"><span class="pill ${pr.sameTab ? 'onscene' : ''}">${pr.sameTab ? 'This one' : 'Tablet'}</span><div class="t1">${esc((ROLES[pr.presence && pr.presence.role] || {}).name || 'Opening…')}</div><span class="note">${pr.updatedAt ? hhmm(pr.updatedAt) : ''}</span></div>`).join('')}</div>`
         : `<div class="note">${!IN_CLAUDE && !RELAY ? 'This tablet keeps its own board. Sign it in to the squad to share one live incident and supervisor board with the other tablets.' : Sync.state === 'local' ? 'This board is running on this tablet alone right now.' : 'No other tablets have this board open right now.'}</div>`}
@@ -3286,11 +3314,12 @@ const RB_MARK = '<rect width="512" height="512" fill="#0B1B2B"/> <rect x="92" y=
 const rbMark = (px, cls = 'rbmark') => `<svg class="${cls}" viewBox="0 0 512 512" width="${px}" height="${px}" aria-hidden="true">${RB_MARK}</svg>`;
 function agencySheet() {
   const f = UI.form;
-  if (!f._init) { Object.assign(f, { aname: C.agency.name, anum: C.agency.num || '', alogo: logoOk(C.agency.logo) ? C.agency.logo : '', roster: C.roster.map(r => ({ ...r })), akind: 'BLS', unum: '', _init: true }); }
+  if (!f._init) { Object.assign(f, { aname: C.agency.name, anum: C.agency.num || '', atype: C.agency.type || 'ems', alogo: logoOk(C.agency.logo) ? C.agency.logo : '', roster: C.roster.map(r => ({ ...r })), akind: 'BLS', unum: '', _init: true }); }
   const missing = f.roster.filter(r => !S.units.some(u => u.name === r.name)).length;
   return {
     title: 'My agency',
     body: `<div class="grid2">${field('Agency', input('ag-name', 'aname', f.aname, 'e.g. Hatzalah Jersey Shore'))}${field('County number', input('ag-num', 'anum', f.anum, 'e.g. 78', 'inputmode="numeric"'))}</div>
+      ${field('We are', `<div class="chips">${Object.entries(AGENCIES).map(([k, a]) => opt('f-set', 'atype=' + k, (f.atype || 'ems') === k, esc(a.long))).join('')}</div><div class="note">Sets the colors, Home screen and jobs on every device signed in to this board. One tablet can still be set apart under This tablet's job.</div>`)}
       ${field('Squad logo · optional', `<div class="logo-pick">${logoOk(f.alogo) ? `<img class="alogo big" src="${f.alogo}" alt="Squad logo">` : '<span class="alogo big empty">No logo</span>'}
         <label class="btn small">${icon('plus')} ${logoOk(f.alogo) ? 'Change' : 'Add a logo'}<input type="file" id="ag-logo" accept="image/*" hidden></label>
         ${logoOk(f.alogo) ? '<button class="btn small danger" data-act="ag-logo-del">Remove</button>' : ''}</div>
@@ -4102,7 +4131,7 @@ function menuSheet() {
   return {
     title: 'Menu',
     body: `<div class="switch"><span>Display on this tablet</span><div class="chips">${opt('mode-set', 'night', DEV.mode !== 'day', 'Night')}${opt('mode-set', 'day', DEV.mode === 'day', 'Day · sunlight')}</div></div>
-      ${mciWs ? `<div class="switch"><span>Triage method</span><div class="chips">${opt('method', 'START', S.method !== 'SALT', 'START')}${opt('method', 'SALT', S.method === 'SALT', 'SALT')}${opt('white-toggle', '', !!S.white, 'Count White · uninjured')}</div></div>
+      ${mciWs && !['fire', 'police'].includes(DEV.role) ? `<div class="switch"><span>Triage method</span><div class="chips">${opt('method', 'START', S.method !== 'SALT', 'START')}${opt('method', 'SALT', S.method === 'SALT', 'SALT')}${opt('white-toggle', '', !!S.white, 'Count White · uninjured')}</div></div>
       <div class="switch"><span>PAR checks<br><small class="note">A timed check that every crew on scene is accounted for. Applies to every tablet.</small></span><div class="chips">${opt('par-feature', 'off', !parOn(), 'Hide')}${opt('par-feature', 'on', parOn(), 'Use')}</div></div>
       ${parOn() ? `<div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>` : ''}` : ''}
       <div class="opt-grid wide">
@@ -4110,12 +4139,12 @@ function menuSheet() {
         ${rep && !(rep === 'event' && EV.none) && !(rep === 'inc' && S.fresh) ? `<button class="opt tall" data-act="sheet" data-arg="report:${rep}">${REPORT_NAMES[rep]}<small>Summary and timeline · save as PDF</small></button>` : ''}
         ${IN_CLAUDE || DEMO ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `${esc(RELAY.org || 'Signed in')}${RELAY.plan ? ' · ' + esc(planWords(RELAY.plan)) : ''}` : `Free on this tablet · share free for ${TRIAL_DAYS} days`}</small></button>`}
         <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
-        <button class="opt tall" data-act="sheet" data-arg="agency">${agencyLogo('alogo sm')}My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
+        ${isGuest() ? '' : `<button class="opt tall" data-act="sheet" data-arg="agency">${agencyLogo('alogo sm')}My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>`}
         ${w === 'event' ? `<button class="opt tall" data-act="sheet" data-arg="${eventLive() ? 'ev-new:edit' : 'ev-new'}">${eventLive() ? 'Edit event' : 'Start an event'}<small>${eventLive() ? `${esc(EV.event.name || 'Event')} · ${plural(EV.posts.length, 'post')} · ${plural(EV.people.filter(x => x.st !== 'off').length, 'member')}` : 'Posts on the map, members, patients'}</small></button>` : ''}
         ${mciWs ? `<button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
         <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>` : ''}
-        <button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>
+        ${isGuest() ? '' : `<button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>`}
         ${SH.sample && w !== 'mci' && w !== 'event' ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
         ${mciWs || w === 'home' ? (S.sample ? '<button class="opt tall" data-act="sheet" data-arg="inc-clear">Clear the sample incident<small>Back to an empty board</small></button>' : '<button class="opt tall" data-act="load-sample">Load the sample incident<small>Practice: bus crash, Ocean Township, 19 patients</small></button>') : ''}
       </div>
@@ -4502,6 +4531,7 @@ const Sync = {
     if ((d.savedAt || 0) === (C.savedAt || 0) && C.savedAt) return;
     C = migrateConfig({ ...defaultConfig(), ...d });
     write(K.cfg, C);
+    if (fitRole()) { this.setRole(); if (UI.view !== 'home') { UI.view = homeView(); saveUi(); } }   // the squad changed what it is
     if (!UI.sheet) render();
   },
   pushConfig() {
@@ -4516,6 +4546,7 @@ const Sync = {
 function syncChipHtml() {
   if (DEMO && !IN_CLAUDE) return '<span class="tag sample" id="sync-chip">Practice · not shared</span>';
   const str = streamOfView(), n = Sync.tablets().length;
+  if (offline() && (RELAY || IN_CLAUDE)) { const w = STREAMS.reduce((a, x) => a + x.pending(), 0); return `<button class="tag suggest" id="sync-chip" data-act="offline-info">Offline · saved here${w ? ' · ' + w + ' to send' : ''}</button>`; }
   if (!IN_CLAUDE && Sync.state === 'local') return planEnded()
     ? `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="connect">${RELAY.plan && RELAY.plan.tier === 'trial' ? 'Trial ended' : 'Sharing off'} · this tablet only</button>`
     : `<button class="tag" id="sync-chip" data-act="sheet" data-arg="connect">${RELAY ? 'Sign in again to share' : 'Share with other tablets'}</button>`;
@@ -5842,18 +5873,26 @@ const A = {
   },
   share() { if (Sync.db) Sync.announce(streamOfView()); },
   role(r) {
-    if (DEV.role === r) return;
+    if (DEV.role === r || !allowedRoles().includes(r)) return;
     setJob(r);
     UI.sheet = null; UI.form = {}; UI.view = homeView(); saveUi(); render();
     showToast(`This tablet is now ${ROLES[r].name}.`, false);
   },
+  'dev-agency'(a) {
+    if (!AGENCIES[a] || isGuest()) return;
+    DEV.agency = a === (C.agency.type || 'ems') ? undefined : a; saveDev();
+    if (fitRole()) Sync.setRole();
+    UI.sheet = null; UI.form = {}; UI.view = 'home'; saveUi(); render();
+    showToast(`This ${phoneish() ? 'phone' : 'tablet'} is now set up for ${AGENCIES[a].long === 'EMS squad' ? 'EMS' : 'the ' + AGENCIES[a].long.toLowerCase()}.`, false);
+  },
   /* From the Home screen: open a workspace. With nothing running there yet, start one. */
   ws(r) {
+    if (!allowedRoles().includes(r)) return;
     setJob(r);
     UI.sheet = null; UI.form = {}; UI.pinMode = null; mapKind = null;
     UI.view = homeView(); saveUi(); render();
     app.querySelector('.main')?.scrollTo?.(0, 0);
-    if (r === 'command' && S.fresh) openSheet('newinc');
+    if (S.fresh && (r === 'command' || (myAgency() !== 'ems' && r === AGENCIES[myAgency()].jobs[0]))) openSheet('newinc');
     else if (r === 'event' && EV.none) openSheet('ev-new');
   },
 
@@ -5890,7 +5929,7 @@ const A = {
 
   'f-set'(arg) {
     const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
-    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert', 'ptkind', 'ptwhere'];
+    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'atype', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert', 'ptkind', 'ptwhere'];
     UI.form[k] = UI.form[k] === v && !sticky.includes(k) ? '' : v;
     if (k === 'cat') UI.form.n = 1;
     render();
@@ -6034,7 +6073,8 @@ const A = {
   'ag-logo-del'() { UI.form.alogo = ''; render(); },
   'agency-save'(addNow) {
     const f = UI.form;
-    C.agency = { ...C.agency, name: (f.aname || '').trim() || 'My agency', num: (f.anum || '').trim(), logo: logoOk(f.alogo) ? f.alogo : '' };
+    C.agency = { ...C.agency, name: (f.aname || '').trim() || 'My agency', num: (f.anum || '').trim(), logo: logoOk(f.alogo) ? f.alogo : '', type: AGENCIES[f.atype] ? f.atype : 'ems' };
+    if (fitRole()) { Sync.setRole(); UI.view = 'home'; saveUi(); }
     C.roster = f.roster.slice();
     saveConfig();
     UI.sheet = null; UI.form = {};
@@ -6162,6 +6202,7 @@ const A = {
   'log-filter'(k) { UI.logFilter = k; render(); },
   'report-pdf'(kind) { saveReportPdf(kind); },
   'report-print'() { printReport(); },
+  'offline-info'() { showToast('No internet right now. Everything you do is saved on this tablet and goes to the other tablets when it\'s back. Live ED status and aerial imagery need the internet; the built-in map works.', false); },
   'quick-note'(text) { logStream().dispatch('note', {}, text, 'note'); },
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
@@ -6236,7 +6277,12 @@ async function wake() {
   try { if (!lock && navigator.wakeLock && document.visibilityState === 'visible') { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (e) { /* not granted */ }
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); Sync.flushAll(); if (!DIVERT || now() - DIVERT.fetched > 120000) loadDivert(); } });
-window.addEventListener('online', () => Sync.flushAll());
+window.addEventListener('online', () => { Sync.flushAll(); syncChip(); loadDivert(); showToast('Back online. Sending what was saved on this tablet.', false); });
+window.addEventListener('offline', () => { syncChip(); showToast('No internet. Keep working: everything is saved on this tablet and goes out when it\'s back.', false); });
+/* The site build keeps an offline copy of the app (sw.js), so it opens with no internet. Not inside Claude. */
+if ('serviceWorker' in navigator && !IN_CLAUDE && document.querySelector('link[rel="manifest"]')) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); });
 
 /* =====================================================================
@@ -6253,12 +6299,14 @@ if ((DEV.v || 1) < 2) {
 saveDev();
 if (!DEMO) { try { Object.keys(localStorage).filter(k => k.startsWith('sc3:') && k !== RELAY_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ } }
 C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || (DEMO ? sampleConfig() : {})) });
+fitRole();
 INC.load(DEMO ? sampleState : freshIncident);
 SHIFT.load(DEMO ? sampleShift : () => blankShift());
 EVS.load(DEMO ? sampleEvent : () => blankEvent({ none: true }));
 loadUi();
 render();
 setInterval(tick, 1000);
+{ const d = read(NS + 'divert'); if (d && d.byId && now() - (d.fetched || 0) < 12 * 3600000) DIVERT = d; }   // last seen, until the relay answers
 loadDivert(); setInterval(loadDivert, 180000);
 Sync.start();
 takeInviteFromAddress();

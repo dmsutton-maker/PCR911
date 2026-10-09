@@ -9,6 +9,7 @@
 // map geometry, the sample scene's aerial photo, and Leaflet's stylesheet are
 // spliced in here instead of being fetched at runtime.
 
+import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -84,5 +85,9 @@ ${body}</body>
       { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
   }, null, 2));
-  console.log(`Wrote ${join(dir, 'index.html')} (${Math.round(page.length / 1024)} KB) with icon and manifest`);
+  // The offline copy. A new version of the page gets a new cache name, so tablets pick it up the next time they're online.
+  const version = createHash('sha256').update(page).digest('hex').slice(0, 12);
+  const libs = [...new Set([...page.matchAll(/https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/[^"'\s)]+\.js/g)].map(m => m[0]))];
+  writeFileSync(join(dir, 'sw.js'), read('src/sw.js').replace("'@VERSION'", JSON.stringify(version)).replace('/*@LIBS*/[]', JSON.stringify(libs, null, 2)));
+  console.log(`Wrote ${join(dir, 'index.html')} (${Math.round(page.length / 1024)} KB) with icon, manifest and offline copy ${version} (${libs.length} libraries)`);
 }
