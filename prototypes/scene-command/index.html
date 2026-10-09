@@ -1048,6 +1048,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: rou
 
 /* hospitals */
 .hosp { gap: 10px; text-align: left; }
+.hosp[role="button"] { cursor: pointer; }
 .hosp h3 { margin: 0; font: 700 21px/1.1 var(--display); }
 .hosp .sub { color: var(--muted); font-size: 14px; }
 .caps { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -1268,6 +1269,28 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .rblock { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
 .rblock b { display: block; font: 700 24px/1 var(--display); }
 .rblock small { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+.listen { margin-bottom: 12px; }
+.feeds { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 6px 14px; }
+.feed { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 48px; }
+.fplay { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); font-size: 15px; display: grid; place-items: center; cursor: pointer; text-decoration: none; }
+.fplay[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.fplay.ext { border-color: var(--line); color: var(--muted); }
+.fplay.ext svg { width: 18px; height: 18px; }
+.fname { min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fname small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ftag { font: 600 11px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+.btn.ghost { border-color: transparent; background: transparent; }
+#playerbar { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); box-shadow: 0 6px 24px rgba(0,0,0,.35); max-width: calc(100vw - 32px); }
+#playerbar[hidden] { display: none; }
+.pdot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); flex: none; }
+.pdot.live { background: var(--crit); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.pname { font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pname small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+.star { border: 0; background: transparent; color: var(--faint); font-size: 22px; line-height: 1; padding: 0 6px 0 0; cursor: pointer; vertical-align: -2px; }
+.star.on { color: var(--yellow); }
+.favmark { color: var(--yellow); }
+.hosp.fav { border-color: color-mix(in srgb, var(--yellow) 55%, var(--line)); }
 .navrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .navrow .btn { padding: 0 6px; font-size: 15px; min-width: 0; }
 .navrow .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
@@ -1305,6 +1328,9 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
   .rail button svg { width: 22px; height: 22px; }
   .rail .spacer { display: none; }
   .rail .brand { display: none; }
+  #playerbar { right: 12px; left: 12px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  #playerbar .pname { flex: 1; }
+  .feeds { grid-template-columns: minmax(0, 1fr); }
   .board, .board .col.c2, .desk, .shift { grid-template-columns: minmax(0, 1fr); }
   .csteps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tri-big .tri-count { font-size: 60px; }
@@ -1502,6 +1528,66 @@ const LIVE_FEEDS = [
   { name: 'Monmouth County Fire Ops 1', id: 40412, note: 'Recorded and uploaded, so about a minute behind' },
 ];
 const FEEDS_ALL = 'https://www.broadcastify.com/listen/ctid/1783/publicsafety';
+
+/* In-app listening. Broadcastify's terms don't allow its feeds to play inside another app without its written
+   permission, so those open on Broadcastify (the audio keeps playing when you come back). Feeds the squad has the
+   right to use (its own scanner stream, or one a feed owner or Broadcastify has licensed) are added here and play
+   right in RigBoard, in a bar that stays put while you move between screens. */
+const player = typeof Audio === 'function' ? new Audio() : null;
+let PLAYING = null;   // { id, name }
+function playFeed(f) {
+  if (!player) return;
+  const url = safeUrl(f.url);
+  if (!url) { showToast('That feed has no usable link', false); return; }
+  player.src = url; player.preload = 'none';
+  PLAYING = { id: f.id, name: f.name, state: 'loading' };
+  player.play().then(() => { if (PLAYING && PLAYING.id === f.id) { PLAYING.state = 'live'; drawPlayer(); } }).catch(() => { stopFeed(); showToast(`Couldn't play ${f.name}. Check the link, or that you're online.`, false); });
+  if ('mediaSession' in navigator && typeof MediaMetadata === 'function') navigator.mediaSession.metadata = new MediaMetadata({ title: f.name, artist: 'RigBoard · live' });
+  drawPlayer();
+}
+function stopFeed() { if (player) { player.pause(); player.removeAttribute('src'); player.load(); } PLAYING = null; drawPlayer(); }
+if (player) player.addEventListener('error', () => { if (PLAYING && player.getAttribute('src')) { const n = PLAYING.name; stopFeed(); showToast(`${n} stopped: the stream dropped.`, false); } });
+function drawPlayer() {
+  let bar = document.getElementById('playerbar');
+  if (!bar) { bar = document.createElement('div'); bar.id = 'playerbar'; document.body.appendChild(bar); }
+  bar.hidden = !PLAYING;
+  bar.innerHTML = PLAYING ? `<span class="pdot ${PLAYING.state}"></span><span class="pname">${esc(PLAYING.name)}<small>${PLAYING.state === 'live' ? 'Live' : 'Connecting…'}</small></span><button class="btn small" data-act="feed-stop">${icon('x')} Stop</button>` : '';
+  document.querySelectorAll('[data-feed-btn]').forEach(b => { const on = PLAYING && PLAYING.id === b.dataset.feedBtn; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.textContent = on ? '■' : '▶'; });
+}
+function listenPanel() {
+  const own = C.feeds || [];
+  return `<section class="panel listen">
+    <div class="ph"><h2>Listen live</h2><button class="btn small" data-act="sheet" data-arg="feed-add">${icon('plus')} Add a feed</button></div>
+    <div class="feeds">
+      ${own.map(f => `<div class="feed"><button class="fplay" data-act="feed-play" data-arg="${esc(f.id)}" data-feed-btn="${esc(f.id)}" aria-label="Play ${esc(f.name)}" aria-pressed="${PLAYING && PLAYING.id === f.id ? 'true' : 'false'}">${PLAYING && PLAYING.id === f.id ? '■' : '▶'}</button><span class="fname">${esc(f.name)}<small>${esc(f.note || 'Plays in RigBoard')}</small></span><button class="btn small ghost" data-act="feed-del" data-arg="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">${icon('x')}</button></div>`).join('')}
+      ${LIVE_FEEDS.map(f => `<div class="feed"><a class="fplay ext" href="https://www.broadcastify.com/listen/feed/${f.id}" target="_blank" rel="noopener" aria-label="Open ${esc(f.name)} on Broadcastify">${icon('ext')}</a><span class="fname">${esc(f.name)}<small>${esc(f.note)}</small></span><span class="ftag">Broadcastify</span></div>`).join('')}
+    </div>
+    <div class="note">Scanner feeds run 15 to 60 seconds behind and can drop out: for awareness, never in place of your radio. Broadcastify feeds open on Broadcastify; feeds you add play here. <a href="${FEEDS_ALL}" target="_blank" rel="noopener">All county feeds</a></div>
+  </section>`;
+}
+function feedAddSheet() {
+  const f = UI.form;
+  return {
+    title: 'Add a feed',
+    body: `${field('Name', input('feed-name', 'fname', f.fname, 'e.g. Hatzalah dispatch'))}
+      ${field('Stream link', input('feed-url', 'furl', f.furl, 'https://…', 'inputmode="url" autocapitalize="off"'))}
+      ${field('Note · optional', input('feed-note', 'fnote', f.fnote, 'What it carries'))}
+      <div class="note">The direct audio stream (an MP3, AAC or HLS link starting with https://), not a web page. Add only feeds your squad has the right to use: your own scanner stream, or one its owner has OK'd. Every tablet in the squad sees it.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="feed-save">Save feed</button>`,
+  };
+}
+const FEED_ACTIONS = {
+  'feed-play'(id) { const f = (C.feeds || []).find(x => x.id === id); if (!f) return; if (PLAYING && PLAYING.id === id) stopFeed(); else playFeed(f); },
+  'feed-stop'() { stopFeed(); },
+  'feed-save'() {
+    const f = UI.form, name = (f.fname || '').trim(), url = (f.furl || '').trim();
+    if (!name) { showToast('Give the feed a name', false); return; }
+    if (!safeUrl(url) || !/^https:/i.test(url)) { showToast('The stream link has to start with https://', false); return; }
+    C.feeds = (C.feeds || []).concat({ id: uid(), name, url, note: (f.fnote || '').trim() });
+    saveConfig(); UI.sheet = null; UI.form = {}; render(); showToast(`Feed added: ${name}`, false);
+  },
+  'feed-del'(id) { if (PLAYING && PLAYING.id === id) stopFeed(); C.feeds = (C.feeds || []).filter(x => x.id !== id); saveConfig(); render(); },
+};
 const CHANNELS = [
   { name: 'EMS Countywide', freq: '153.755', use: 'Interagency EMS' },
   { name: 'Monmouth EMS 2', freq: '155.340', use: 'Ambulance, county and hospital' },
@@ -1786,6 +1872,8 @@ function defaultConfig() {
     roster: [],
     members: [],
     contacts: [],
+    favHosp: [],   // the squad's usual hospitals, starred; listed first
+    feeds: [],     // { id, name, url, note } audio streams the squad may play in the app
     cameras: [],   // { id, name, org, url, ll } added by the squad: other agencies' or businesses' cameras
   };
 }
@@ -1959,6 +2047,8 @@ function sampleState() {
 /* Boards first set up before the squad was named carry the placeholder name. */
 function migrateConfig(c) {
   if (!Array.isArray(c.cameras)) c.cameras = [];
+  if (!Array.isArray(c.favHosp)) c.favHosp = [];
+  if (!Array.isArray(c.feeds)) c.feeds = [];
   if (c.agency && c.agency.name === 'Squad 78') c.agency = { ...c.agency, name: 'Hatzalah Jersey Shore', num: c.agency.num || '78' };
   return c;
 }
@@ -1978,7 +2068,7 @@ function sampleConfig() {
 function read(key) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function write(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* in-memory only */ } }
 const saveDev = () => write(K.dev, DEV);
-function saveConfig() { write(K.cfg, C); Sync.pushConfig(); }
+function saveConfig() { C.savedAt = now(); write(K.cfg, C); Sync.pushConfig(); }
 function loadUi() { const v = read(K.ui) || {}; UI.view = v.view || homeView(); if (v.mapLayer) UI.mapLayer = v.mapLayer; }
 function saveUi() { write(K.ui, { view: UI.view, mapLayer: UI.mapLayer }); }
 
@@ -2055,7 +2145,7 @@ function header() {
     : `<button class="tag" data-act="sheet" data-arg="mci">No MCI declared</button>`;
   const suggest = !lvl && tagRuleMet() ? `<button class="tag suggest" data-act="sheet" data-arg="mci">Tag rule met · declare?</button>`
     : nts.length > 1 ? `<button class="tag suggest" data-act="sheet" data-arg="mci">${nts.length} notices</button>` : '';
-  const sample = S.sample ? `<span class="tag sample">Sample incident</span>` : '';
+  const sample = S.sample ? `<button class="tag sample" data-act="sheet" data-arg="inc-clear">Sample incident · clear it</button>` : '';
   const title = [I.type, I.location].filter(Boolean).join(' · ') || 'New incident';
   const sub = [
     I.municipality && esc(I.municipality),
@@ -2327,7 +2417,7 @@ function mapView() {
         ${hospFilterChips()}
         <div>${near.map(h => {
           const mi = hospMiles(h);
-          return `<button class="load" data-act="map-hosp" data-arg="${h.id}"><span class="nm">${esc(h.short)} <span class="note">${esc(h.town)}</span></span><span class="dist">${mi != null ? `${mi.toFixed(1)} mi · ~${estMin(mi)}′` : ''}</span><span class="why">${h.caps.slice(0, 4).map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</span></button>`;
+          return `<button class="load" data-act="map-hosp" data-arg="${h.id}"><span class="nm">${isFav(h) ? '<span class="favmark">★</span> ' : ''}${esc(h.short)} <span class="note">${esc(h.town)}</span></span><span class="dist">${mi != null ? `${mi.toFixed(1)} mi · ~${estMin(mi)}′` : ''}</span><span class="why">${h.caps.slice(0, 4).map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</span></button>`;
         }).join('') || '<div class="empty">No hospital matches every filter</div>'}</div>
       </section>
     </div>
@@ -2396,10 +2486,13 @@ const CAMERA_ACTIONS = {
   'cam-show'(ll) { UI.sheet = null; UI.form = {}; UI.view = 'map'; render(); setTimeout(() => { if (MAP) MAP.setView(ll.split(',').map(Number), 16); }, 50); },
 };
 
+const isFav = h => (C.favHosp || []).includes(h.id);
+const favFirst = list => list.filter(isFav).concat(list.filter(h => !isFav(h)));
+const starBtn = h => `<button class="star ${isFav(h) ? 'on' : ''}" data-act="hosp-fav" data-arg="${h.id}" aria-pressed="${isFav(h)}" aria-label="${isFav(h) ? 'Remove from' : 'Add to'} favorites">${isFav(h) ? '★' : '☆'}</button>`;
 function hospFilterChips() {
-  return `<div class="chips">${SPECIALTIES.map(s => opt('hosp-filter', s.k, UI.hospFilter.includes(s.k), esc(s.name), 'small')).join('')}</div>`;
+  return `<div class="chips">${opt('hosp-filter', 'fav', UI.hospFilter.includes('fav'), '★ Favorites', 'small')}${SPECIALTIES.map(s => opt('hosp-filter', s.k, UI.hospFilter.includes(s.k), esc(s.name), 'small')).join('')}</div>`;
 }
-const filteredHospitals = () => HOSPITALS.filter(h => UI.hospFilter.every(k => (h.tags || []).includes(k)));
+const filteredHospitals = () => HOSPITALS.filter(h => UI.hospFilter.every(k => (k === 'fav' ? isFav(h) : (h.tags || []).includes(k))));
 
 /* ---------- Transport view ---------- */
 const readyUnits = () => S.units.filter(u => TRANSPORT_KINDS.includes(u.kind) && (u.status === 'onscene' || u.status === 'staged'));
@@ -2449,15 +2542,15 @@ function peopleTable() {
 
 /* ---------- Hospitals view ---------- */
 function hospitalsView() {
-  const list = byDistance(filteredHospitals());
+  const list = favFirst(byDistance(filteredHospitals()));
   return `<div class="view">
     <div class="toolbar"><h2 class="view-title grow">Hospitals</h2><span class="note">${sceneLL() ? 'Nearest first.' : 'Pin the scene to sort by distance.'} Tap a hospital to enter what it reports.</span></div>
     ${hospFilterChips()}
     <div class="grid-hosp">
       ${list.map(h => {
         const cap = hospCap(h.id), hs = hospState(h.id), mi = hospMiles(h);
-        return `<button class="panel hosp" data-act="sheet" data-arg="hosp:${h.id}">
-          <div class="ph"><div><h3>${esc(h.name)}</h3><div class="sub">${esc(h.town)} · ${esc(h.sys)}${h.lic ? ` · ${h.lic.beds} licensed beds` : ''}</div></div>${mi != null ? `<span class="dist">${mi.toFixed(1)} mi<br><span class="note">~${estMin(mi)} min</span></span>` : ''}</div>
+        return `<div class="panel hosp ${isFav(h) ? 'fav' : ''}" role="button" tabindex="0" data-act="sheet" data-arg="hosp:${h.id}">
+          <div class="ph"><div><h3>${starBtn(h)}${esc(h.name)}</h3><div class="sub">${esc(h.town)} · ${esc(h.sys)}${h.lic ? ` · ${h.lic.beds} licensed beds` : ''}</div></div>${mi != null ? `<span class="dist">${mi.toFixed(1)} mi<br><span class="note">~${estMin(mi)} min</span></span>` : ''}</div>
           <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
           ${liveEdHtml(h)}
           <div class="ph"><span class="lbl">MCI capacity · sent / can take</span>${hs.ed ? `<span class="pill ${isDivert(hs.ed) ? 'diversion' : 'open'}">${isDivert(hs.ed) ? esc(hs.ed) : 'ED open'}</span>` : ''}</div>
@@ -2467,16 +2560,16 @@ function hospitalsView() {
           }).join('')}</div>
           <div class="beds">${BED_TYPES.map(b => { const v = hs.beds ? hs.beds[b.k] : null; return `<div class="bedcell"><span class="lbl">${b.name}</span><span class="v ${v == null ? 'none' : ''}">${v == null ? '—' : v}</span></div>`; }).join('')}</div>
           <div class="note">${hs.notifiedAt ? `<span class="ok-t">Notified ${hhmm(hs.notifiedAt)}</span>` : 'Not notified'}${hs.capAt ? ` · reported ${hhmm(hs.capAt)}` : ' · nothing reported yet'}${h.phones ? ` · ${h.phones.ed ? 'ED' : 'Main'} <span class="num">${esc(h.phones.ed || h.phones.main)}</span>` : ''}</div>
-        </button>`;
-      }).join('') || '<div class="empty">No hospital matches every filter</div>'}
+        </div>`;
+      }).join('') || `<div class="empty">${UI.hospFilter.includes('fav') && !(C.favHosp || []).length ? 'No favorites yet. Tap the ☆ on a hospital to add it.' : 'No hospital matches every filter'}</div>`}
     </div>
   </div>`;
 }
 
 /* ---------- Phone view ---------- */
 function allContacts() {
-  const fromHosp = byDistance(HOSPITALS).filter(h => h.phones).map(h => ({
-    group: 'Hospitals · nearest first', name: h.short, num: h.phones.ed || h.phones.main,
+  const fromHosp = favFirst(byDistance(HOSPITALS)).filter(h => h.phones).map(h => ({
+    group: 'Hospitals · favorites, then nearest', name: (isFav(h) ? '★ ' : '') + h.short, num: h.phones.ed || h.phones.main,
     note: `${h.town} · ${h.phones.ed ? 'Emergency Dept' : 'main line (no published ED number)'}${h.phones.ed && h.phones.main ? ' · main ' + h.phones.main : ''}`,
   }));
   return [...fromHosp, ...CONTACTS, ...C.contacts.map(c => ({ ...c, mine: true }))];
@@ -2527,6 +2620,7 @@ function icsView() {
 function radioView() {
   const scripts = radioScripts();
   return `<div class="view">
+    ${listenPanel()}
     <div class="toolbar"><h2 class="view-title grow">Radio reports</h2><span class="note">Written from what's on the board. Read them as they are, or copy them into a message.</span></div>
     <div class="grid2">
       ${scripts.map((s, i) => `<section class="panel">
@@ -2534,12 +2628,6 @@ function radioView() {
         <div class="note">${esc(s.when)}</div>
         <p class="script" id="script-${i}">${s.html}</p>
       </section>`).join('')}
-      <section class="panel">
-        <div class="ph"><h2>Listen live</h2><span class="meta">Broadcastify</span></div>
-        <div class="note">Public scanner feeds. They run 15 to 60 seconds behind and can drop out: for awareness, never in place of your radio.</div>
-        <div>${LIVE_FEEDS.map(f => `<a class="load" href="https://www.broadcastify.com/listen/feed/${f.id}" target="_blank" rel="noopener"><span class="nm">${esc(f.name)} <span class="note">${esc(f.note)}</span></span><span class="why">${icon('ext')} Listen</span></a>`).join('')}</div>
-        <a class="btn small" href="${FEEDS_ALL}" target="_blank" rel="noopener">${icon('ext')} All Monmouth County feeds</a>
-      </section>
       <section class="panel">
         <div class="ph"><h2>Channel reference</h2></div>
         <div class="note">As published in the Monmouth County EMS communications plan (2023) and the NJ JEMS plan. Confirm with County Communications before you rely on any of them.</div>
@@ -2557,6 +2645,7 @@ function radioScripts() {
   const I = S.incident;
   const cmd = I.commandName || 'Command';
   const loc = [I.location, I.municipality].filter(Boolean).join(', ') || '[location]';
+  const type = I.type || '[incident type]';
   const n = totalPts();
   const onScene = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
   const amb = onScene.filter(u => TRANSPORT_KINDS.includes(u.kind));
@@ -2570,9 +2659,9 @@ function radioScripts() {
   const methane = [
     ['M', 'Major incident', mciLine],
     ['E', 'Exact location', `${loc}.${coords}`],
-    ['T', 'Type', `${I.type}.`],
+    ['T', 'Type', `${type}.`],
     ['H', 'Hazards', I.hazards.length ? `${I.hazards.join(', ')}.` : 'None noted.'],
-    ['A', 'Access', [I.access, I.staging && `Staging at ${I.staging}`].filter(Boolean).join('. ') + '.'],
+    ['A', 'Access', ([I.access, I.staging && `Staging at ${I.staging}`].filter(Boolean).join('. ') || '[access route]') + '.'],
     ['N', 'Number of casualties', `${counts}.`],
     ['E', 'Emergency services', `On scene: ${amb.length} transport units${fireSpec.length ? ', ' + fireSpec.join(', ') : ''}${onScene.some(u => u.kind === 'PD') ? ', police' : ''}. Requesting: ${reqText}.`],
   ];
@@ -2583,8 +2672,8 @@ function radioScripts() {
     ['A', 'Actions', `${BENCHMARKS.filter(b => S.bench[b.id]).slice(-3).map(b => b.label + ' ' + hhmm(S.bench[b.id])).join('; ')}. Transported ${totalSent()} (${sentList}). Remaining on scene: ${listCounts(remaining, txc)}.`],
     ['N', 'Needs', `${reqText}.`],
   ];
-  const hospLine = `This is ${cmd}. We have an MCI at ${loc}, ${I.type.toLowerCase()}. ${counts}. First patients are ${totalSent() ? 'already en route' : 'about to leave'}. How many Red, Yellow and Green can you accept right now? Our transport officer will call each unit in with a tag number.`;
-  const handoff = `${cmd} · ${loc}\n${I.type}. Dispatched ${hhmm(I.dispatchAt)}, ${mins(now() - I.dispatchAt)} ago.\nEMS Command: ${I.ic || 'unassigned'}. ${I.mciLevel ? levelLabel(I.mciLevel) + '.' : 'No MCI declared.'}\nPatients: ${counts}. Transported ${totalSent()}; ${remainingTx()} awaiting transport.\nPositions: ${ICS_POSITIONS.filter(p => S.ics[p.id]).map(p => p.label + ' – ' + S.ics[p.id].who).join('; ') || 'none assigned'}.\nUnits: ${S.units.filter(u => !['released', 'available'].includes(u.status)).length} assigned (${unitsBy('onscene').length} on scene, ${unitsBy('staged').length} staged, ${unitsBy('enroute').length} en route, ${unitsBy('transporting').length} transporting). ${S.people.filter(p => !p.out).length} members checked in.\nOpen requests: ${reqText}.\nStaging: ${I.staging || 'not set'}. Hazards: ${I.hazards.join(', ') || 'none noted'}.`;
+  const hospLine = `This is ${cmd}. We have an MCI at ${loc}, ${type.toLowerCase()}. ${counts}. First patients are ${totalSent() ? 'already en route' : 'about to leave'}. How many Red, Yellow and Green can you accept right now? Our transport officer will call each unit in with a tag number.`;
+  const handoff = `${cmd} · ${loc}\n${type}. Dispatched ${hhmm(I.dispatchAt)}, ${mins(now() - I.dispatchAt)} ago.\nEMS Command: ${I.ic || 'unassigned'}. ${I.mciLevel ? levelLabel(I.mciLevel) + '.' : 'No MCI declared.'}\nPatients: ${counts}. Transported ${totalSent()}; ${remainingTx()} awaiting transport.\nPositions: ${ICS_POSITIONS.filter(p => S.ics[p.id]).map(p => p.label + ' – ' + S.ics[p.id].who).join('; ') || 'none assigned'}.\nUnits: ${S.units.filter(u => !['released', 'available'].includes(u.status)).length} assigned (${unitsBy('onscene').length} on scene, ${unitsBy('staged').length} staged, ${unitsBy('enroute').length} en route, ${unitsBy('transporting').length} transporting). ${S.people.filter(p => !p.out).length} members checked in.\nOpen requests: ${reqText}.\nStaging: ${I.staging || 'not set'}. Hazards: ${I.hazards.join(', ') || 'none noted'}.`;
 
   const ambOnScene = amb.length + S.units.filter(u => TRANSPORT_KINDS.includes(u.kind) && u.status === 'enroute').length;
   const ambNeeded = Math.max(0, remainingTx() - ambOnScene);
@@ -2799,7 +2888,7 @@ function agencySheet() {
         <div class="field"><span class="lbl">&nbsp;</span><button class="btn" data-act="ag-add">${icon('plus')} Add unit</button></div>
       </div>
       ${field('Type', `<div class="opt-grid">${OWN_KINDS.map(k => opt('f-set', 'akind=' + k, f.akind === k, `${kindTag(k)} ${esc(kindOf(k).name)}`)).join('')}</div>`)}
-      <div class="note">Saved to every tablet that shares this board. Mutual aid units go in with Load mutual aid on the Units screen.</div>`,
+      <div class="note">Units save as soon as you add them, and go to every tablet that shares this board. Mutual aid units go in with Load mutual aid on the Units screen.</div>`,
     foot: `<button class="btn" data-act="close">Cancel</button>${missing ? `<button class="btn" data-act="agency-save" data-arg="add">Save and add ${missing} to this incident</button>` : ''}<button class="btn primary" data-act="agency-save">Save</button>`,
   };
 }
@@ -2944,7 +3033,7 @@ function sheetHtml() {
     transport: transportSheet, par: parSheet, unit: unitSheet, 'unit-add': unitAddSheet, 'load-units': loadUnitsSheet, request: requestSheet,
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
-    role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet, 'cam-add': camAddSheet, cam: camSheet,
+    role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet, 'cam-add': camAddSheet, cam: camSheet, 'feed-add': feedAddSheet, 'inc-clear': incClearSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -2959,7 +3048,7 @@ function sheetHtml() {
 const opt = (act, arg, pressed, label, cls = '') => `<button class="opt ${cls}" data-act="${act}" data-arg="${esc(arg)}" aria-pressed="${pressed ? 'true' : 'false'}">${label}</button>`;
 const field = (label, inner) => `<div class="field"><span class="lbl">${label}</span>${inner}</div>`;
 const stepper = (name, value, min = 0, max = 999, cls = '') => `<div class="stepper ${cls}"><button data-act="step" data-arg="${name}:-1:${min}:${max}" aria-label="Decrease">−</button><span class="v">${value}</span><button data-act="step" data-arg="${name}:1:${min}:${max}" aria-label="Increase">+</button></div>`;
-const input = (id, fieldName, value, ph, extra = '') => `<input id="${id}" type="text" placeholder="${esc(ph)}" data-field="${fieldName}" value="${esc(value || '')}" autocomplete="off" ${extra}>`;
+const input = (id, fieldName, value, ph, extra = '') => `<input id="${id}" ${/\btype=/.test(extra) ? '' : 'type="text"'} placeholder="${esc(ph)}" data-field="${fieldName}" value="${esc(value || '')}" autocomplete="off" ${extra}>`;
 
 function transportSheet() {
   const f = UI.form, units = readyUnits(), k = f.cat;
@@ -2981,7 +3070,7 @@ function transportSheet() {
         const left = c != null ? c - s : null, mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed;
         const exempt = (k === 'R' && h.trauma) || (f.burn && h.tags.includes('burn')), live = liveEd(h);
         const capTxt = liveDiverted(live) && !exempt ? `<span class="crit-t">${esc(live.status)}${live.reason ? ' · ' + esc(live.reason) : ''}</span>` : isDivert(ed) && !exempt ? `<span class="crit-t">${esc(ed)}</span>` : left == null ? (live ? `ED ${esc(live.status.toLowerCase())}` : 'capacity not reported') : left > 0 ? `${left} ${cat(k).color} open` : '<span class="crit-t">at capacity</span>';
-        return opt('f-set', 'hosp=' + h.id, f.hosp === h.id, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${capTxt}${k === 'R' && h.trauma ? ' · ' + esc(h.trauma) : ''}</small>${capPills(h, k)}`, 'tall');
+        return opt('f-set', 'hosp=' + h.id, f.hosp === h.id, `${isFav(h) ? '<span class="favmark">★</span> ' : ''}${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${capTxt}${k === 'R' && h.trauma ? ' · ' + esc(h.trauma) : ''}</small>${capPills(h, k)}`, 'tall');
       }).join('')}</div>`)}`,
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="tx-save" ${k && f.unit && f.hosp ? '' : 'disabled'}>Log departure</button>`,
   };
@@ -3133,7 +3222,8 @@ function hospSheet(id) {
   const mi = hospMiles(h);
   return {
     title: h.name,
-    body: `<div class="note">${esc(h.town)} · ${esc(h.sys)}${mi != null ? ` · ${mi.toFixed(1)} mi from the scene, about ${estMin(mi)} min` : ''}</div>
+    body: `<div class="toolbar">${starBtn(h)}<span class="note">${isFav(h) ? 'One of your favorites' : 'Tap the star to add it to your favorites'}</span></div>
+      <div class="note">${esc(h.town)} · ${esc(h.sys)}${mi != null ? ` · ${mi.toFixed(1)} mi from the scene, about ${estMin(mi)} min` : ''}</div>
       <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
       ${h.note ? `<div class="note">${esc(h.note)}</div>` : ''}
       ${h.phones ? `<div class="toolbar">${[['ed', 'ED'], ['main', 'Main'], ['burn', 'Burn transfer'], ['psych', 'Psych screening'], ['hbo', 'Hyperbaric']].filter(([k]) => h.phones[k]).map(([k, n]) => `<button class="btn small" data-act="copy-text" data-arg="${esc(h.phones[k])}">${n} <span class="num">${esc(h.phones[k])}</span></button>`).join('')}</div>` : ''}
@@ -3263,7 +3353,7 @@ function menuSheet() {
         <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>
         ${SH.sample ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
-        <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
+        ${S.sample ? '<button class="opt tall" data-act="sheet" data-arg="inc-clear">Clear the sample incident<small>Back to an empty board</small></button>' : '<button class="opt tall" data-act="load-sample">Load the sample incident<small>Practice: bus crash, Ocean Township, 19 patients</small></button>'}
       </div>
       <div class="rblock">${rbMark(40)}<div><b>RigBoard</b><small>EMS command for squads · prototype</small></div></div>
       <div class="note">${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
@@ -3527,7 +3617,7 @@ const Sync = {
     str.writing = false;
     syncChip();
   },
-  flushAll() { STREAMS.forEach(str => { if (str.shared) this.flush(str); else if (str.error) this.announce(str); }); },
+  flushAll() { STREAMS.forEach(str => { if (str.shared) this.flush(str); else if (str.error) this.announce(str); }); if (this.cfgDirty) this.pushConfig(); },
 
   fail(str, e) {
     const code = (e && e.code) || 'unavailable';
@@ -3540,15 +3630,20 @@ const Sync = {
   },
   stop() { this.state = 'local'; this.db = null; this.peers = []; STREAMS.forEach(s => { s.shared = false; }); syncChip(); },
 
+  /* The squad's settings are one document: the newest save wins. A tablet whose save never reached the store
+     (offline, reconnecting) keeps its newer copy and sends it again, instead of being overwritten by the old one. */
   onConfig(snap) {
-    if (!snap.exists) return;
-    C = migrateConfig({ ...defaultConfig(), ...snap.data() });
+    if (!snap.exists) { if (C.savedAt) this.pushConfig(); return; }
+    const d = snap.data() || {};
+    if ((d.savedAt || 0) < (C.savedAt || 0)) { this.pushConfig(); return; }
+    if ((d.savedAt || 0) === (C.savedAt || 0) && C.savedAt) return;
+    C = migrateConfig({ ...defaultConfig(), ...d });
     write(K.cfg, C);
     if (!UI.sheet) render();
   },
   pushConfig() {
     if (!this.db) return;
-    const go = () => this.db.doc(CONFIG_DOC).set(JSON.parse(JSON.stringify(C))).catch(() => {});
+    const go = () => this.db.doc(CONFIG_DOC).set(JSON.parse(JSON.stringify(C))).then(() => { this.cfgDirty = false; }).catch(() => { this.cfgDirty = true; });
     this.cfgWriting = (this.cfgWriting || Promise.resolve()).then(go);
   },
   setRole() { if (this.room) this.room.presence({ role: DEV.role, dev: DEV.id }).catch(() => {}); },
@@ -4008,10 +4103,10 @@ function callSheet(id) {
 function callHospSheet(id) {
   const c = SH.calls.find(x => x.id === id);
   const o = townLL(c && c.town) || sceneLL();
-  const list = o ? HOSPITALS.slice().sort((a, b) => miles(o, a.ll) - miles(o, b.ll)) : HOSPITALS;
+  const list = favFirst(o ? HOSPITALS.slice().sort((a, b) => miles(o, a.ll) - miles(o, b.ll)) : HOSPITALS);
   return {
     title: 'Transporting to',
-    body: `<div class="opt-grid wide">${list.slice(0, 10).map(h => { const mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed; return opt('call-hosp', `${id}=${h.id}`, false, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${h.trauma ? esc(h.trauma) + ' · ' : ''}${liveDiverted(liveEd(h)) ? `<span class="crit-t">${esc(liveEd(h).status)}${liveEd(h).reason ? ' · ' + esc(liveEd(h).reason) : ''}</span>` : isDivert(ed) ? esc(ed) : esc(h.town)}</small>`, 'tall'); }).join('')}</div>`,
+    body: `<div class="opt-grid wide">${list.slice(0, Math.max(10, (C.favHosp || []).length + 4)).map(h => { const mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed; return opt('call-hosp', `${id}=${h.id}`, false, `${isFav(h) ? '<span class="favmark">★</span> ' : ''}${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${h.trauma ? esc(h.trauma) + ' · ' : ''}${liveDiverted(liveEd(h)) ? `<span class="crit-t">${esc(liveEd(h).status)}${liveEd(h).reason ? ' · ' + esc(liveEd(h).reason) : ''}</span>` : isDivert(ed) ? esc(ed) : esc(h.town)}</small>`, 'tall'); }).join('')}</div>`,
     foot: `<button class="btn" data-act="close">Cancel</button>`,
   };
 }
@@ -4046,6 +4141,13 @@ function crewSheet(id) {
   };
 }
 const sampleTag = () => SH.sample ? '<button class="tag sample" data-act="sheet" data-arg="shift-new">Sample · clear it</button>' : '';
+function incClearSheet() {
+  return {
+    title: 'Clear the sample incident',
+    body: `<div class="note">Takes the made-up bus crash off the board, with its patients, units and log, and leaves an empty board until you start a real incident. Every tablet sharing it clears too. You can load the sample again from the menu for practice.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="inc-clear">Clear the sample</button>`,
+  };
+}
 function shiftNewSheet() {
   return {
     title: 'Clear the sample',
@@ -4368,11 +4470,12 @@ function connectSheet() {
       foot: `<button class="btn danger" data-act="relay-leave">Disconnect this tablet</button><span class="grow"></span>${planEnded() ? '<button class="btn" data-act="relay-retry">Try again</button>' : ''}<button class="btn primary" data-act="close">Done</button>`,
     };
   }
-  const tabs = `<div class="chips">${opt('f-set', 'rmode=join', f.rmode === 'join', 'Join with an invite')}${opt('f-set', 'rmode=setup', f.rmode === 'setup', 'Set up the squad · first time')}</div>`;
+  const tabs = `<div class="chips">${opt('f-set', 'rmode=join', f.rmode === 'join', 'Join with an invite')}${opt('f-set', 'rmode=setup', f.rmode === 'setup', 'New squad · relay owner only')}</div>`;
   // The web build knows its relay; ask only when joining somewhere else, or when setting up a relay.
   const common = BAKED_RELAY_URL && f.rmode !== 'setup' && relayBase(f.rurl) === relayBase(BAKED_RELAY_URL) ? '' : field('Relay address', input('r-url', 'rurl', f.rurl, 'https://pcr-relay.your-name.workers.dev', 'inputmode="url" autocapitalize="off"'));
   const body = f.rmode === 'setup'
-    ? `${common}<div class="grid2">${field('Setup code', input('r-boot', 'rboot', f.rboot, 'The BOOTSTRAP_CODE from GitHub', 'autocapitalize="off"'))}${field('Agency', input('r-org', 'rorg', f.rorg || C.agency.name, 'Hatzalah Jersey Shore'))}</div>
+    ? `<div class="note warn-t">Only for whoever runs RigBoard's server, to create a new squad. Joining your squad? Use <b>Join with an invite</b> and the code your squad's admin sent you.</div>
+       ${common}<div class="grid2">${field("Relay owner's setup code", input('r-boot', 'rboot', f.rboot, 'The private setup code', 'autocapitalize="off" type="password"'))}${field('Agency', input('r-org', 'rorg', f.rorg || C.agency.name, 'Hatzalah Jersey Shore'))}</div>
        ${field('Your name', input('r-name', 'rname2', f.rname2, 'Name, as the log should show it'))}
        ${field('Plan', `<div class="chips">${opt('f-set', 'rplan=trial', f.rplan !== 'comp', `${TRIAL_DAYS}-day free trial`)}${opt('f-set', 'rplan=comp', f.rplan === 'comp', 'No end date · my own squad')}</div>`)}
        <div class="note">Creates the squad on your relay and makes this tablet its admin. Do this once; every other tablet joins with an invite. The trial starts the first time a tablet shares a board.</div>`
@@ -4606,6 +4709,11 @@ const A = {
   'use-cstage'(i) { const c = COUNTY_STAGING[Number(i)]; dispatch('staging', { staging: `${c.name}, ${c.note}`, ll: c.ll, at: now() }, `Staging set: ${c.name}`, 'bench'); },
   'map-goto'(ll) { if (MAP) MAP.setView(ll.split(',').map(Number), 15); },
   'use-me'() { if (!DEV.me) return; dispatch('pin', { field: 'll', ll: DEV.me.ll }, `Scene pinned at my location, ${fmtLL(DEV.me.ll)} (±${DEV.me.acc} m)`, 'note'); },
+  'hosp-fav'(id) {
+    const a = C.favHosp || (C.favHosp = []), i = a.indexOf(id), h = hosp(id);
+    if (i >= 0) a.splice(i, 1); else a.push(id);
+    saveConfig(); render(); showToast(`${h ? h.short : 'Hospital'} ${i >= 0 ? 'removed from' : 'added to'} favorites`, false);
+  },
   'hosp-filter'(k) { const a = UI.hospFilter; const i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else a.push(k); render(); },
   'copy-text'(text, el) { copyText(text, el); },
 
@@ -4693,10 +4801,13 @@ const A = {
     if (!name) { showToast('Type the unit number first', false); document.getElementById('ag-unit')?.focus(); return; }
     if (f.roster.some(r => r.name === name)) { showToast(`${name} is already in the list`, false); return; }
     f.roster.push({ name, kind: f.akind || 'BLS' }); f.unum = '';
-    render();
+    // Saved right away: a unit typed in and added is the squad's, whether or not Save is tapped after.
+    C.roster = f.roster.map(r => ({ ...r })); saveConfig();
+    if (!SH.units.some(u => u.name === name)) sdispatch('unitAdd', { units: [{ id: uid(), name, kind: f.akind || 'BLS', status: 'in', since: now(), note: '' }] }, `${name} added to the supervisor board`, 'units', { toast: false });
+    render(); showToast(`${name} saved`, false);
     document.getElementById('ag-unit')?.focus();
   },
-  'ag-del'(i) { UI.form.roster.splice(Number(i), 1); render(); },
+  'ag-del'(i) { const r = UI.form.roster.splice(Number(i), 1)[0]; C.roster = UI.form.roster.map(x => ({ ...x })); saveConfig(); render(); if (r) showToast(`${r.name} removed from your units`, false); },
   'ag-logo-del'() { UI.form.alogo = ''; render(); },
   'agency-save'(addNow) {
     const f = UI.form;
@@ -4812,13 +4923,14 @@ const A = {
     }
   },
   'load-sample'() { startIncident(sampleState(), 'Sample incident loaded'); },
+  'inc-clear'() { const view = UI.view; startIncident(freshIncident(), 'Sample cleared'); UI.view = view; render(); },
 
   'log-filter'(k) { UI.logFilter = k; render(); },
   'quick-note'(text) { dispatch('note', {}, text, 'note'); },
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
 
-Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS, MEMBER_ACTIONS, CAMERA_ACTIONS);
+Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS, MEMBER_ACTIONS, CAMERA_ACTIONS, FEED_ACTIONS);
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -4848,6 +4960,7 @@ document.addEventListener('input', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && UI.sheet) closeSheet();
   if (e.key === 'Enter' && e.target && e.target.id === 'ag-unit') { e.preventDefault(); A['ag-add'](); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.getAttribute && e.target.getAttribute('role') === 'button' && e.target.dataset.act) { e.preventDefault(); e.target.click(); }
 });
 document.addEventListener('submit', e => {
   e.preventDefault();
