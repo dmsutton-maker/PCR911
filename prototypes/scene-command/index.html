@@ -1265,7 +1265,72 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .logo-pick { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .logo-pick label.btn { cursor: pointer; }
 .rbmark { border-radius: 22%; flex: none; display: block; }
-.rail .brand { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0 10px; font: 700 12px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.rail .brand { padding: 4px 0 8px; margin-bottom: 4px; border-bottom-color: var(--line); border-radius: var(--r) var(--r) 0 0; }
+.rail .brand[aria-current="page"] { border-color: var(--line); }
+.home { max-width: 1180px; }
+.home-q { margin: 2px 0 2px; font: 700 26px/1.15 var(--display); }
+.ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.ws { display: flex; flex-direction: column; gap: 10px; background: var(--surface); border: 2px solid var(--line); border-radius: calc(var(--r) * 1.5); padding: 16px; }
+.ws.cur { border-color: var(--accent); }
+.ws-mci.live { border-color: var(--crit); }
+.ws-ev.live { border-color: var(--ok); }
+.ws-main { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 200px; border-radius: var(--r); }
+.ws-main:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.ws-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ws-ico { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: var(--raised); color: var(--accent); margin-right: auto; }
+.ws-ico svg { width: 30px; height: 30px; }
+.ws-mci .ws-ico { color: var(--crit); } .ws-ev .ws-ico { color: var(--ok); }
+.ws-badge { font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 8px; border-radius: 6px; border: 1.5px solid var(--accent); color: var(--accent); }
+.ws-badge.crit { background: var(--crit); border-color: var(--crit); color: var(--on-solid); }
+.ws-badge.ok { border-color: var(--ok); color: var(--ok); }
+.ws-name { font: 700 32px/1 var(--display); margin-top: 6px; }
+.ws-what { font-weight: 600; font-size: 17px; }
+.ws-now { color: var(--muted); font-size: 15px; margin-top: auto; }
+.ws-jobs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 10px; }
+.ws-jobs .lbl { margin-right: 4px; }
+.home-more { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.home-more .grow { flex: 1; }
+.donebar { flex-direction: row; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-color: var(--ok); }
+.donebar b { display: block; font: 700 20px/1.15 var(--display); color: var(--ok); }
+.donebar small { color: var(--muted); font-size: 14px; }
+/* the report preview reads like the paper it becomes, in day or night mode */
+.rdoc { background: #fff; color: #18202a; border-radius: 10px; padding: 22px 24px; font-size: 14px; line-height: 1.4; color-scheme: light; }
+.rdoc-h { display: flex; gap: 14px; align-items: center; border-bottom: 2px solid #0B1B2B; padding-bottom: 12px; }
+.rdoc-logo img { height: 52px; max-width: 110px; object-fit: contain; display: block; }
+.rdoc-logo .rbmark { width: 48px; height: 48px; }
+.rdoc-org { font: 700 12px/1.2 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #5a6470; }
+.rdoc h1 { margin: 2px 0; font: 700 24px/1.1 var(--display); color: #0B1B2B; }
+.rdoc-sub { color: #3c4650; }
+.rdoc-warn { margin-top: 10px; font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: #b42828; }
+.rdoc-sec { margin-top: 16px; }
+.rdoc-sec h2 { margin: 0 0 6px; font: 700 16px/1.2 var(--display); color: #0B1B2B; }
+.rdoc-kv { display: grid; grid-template-columns: minmax(110px, 170px) minmax(0, 1fr); gap: 3px 12px; margin: 0; }
+.rdoc-kv dt { color: #5a6470; font-weight: 700; }
+.rdoc-kv dd { margin: 0; }
+.rdoc-tw { overflow-x: auto; }
+.rdoc table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rdoc th { background: #0B1B2B; color: #fff; text-align: left; padding: 5px 7px; font-weight: 700; }
+.rdoc td { border: 1px solid #cdd4dc; padding: 4px 7px; vertical-align: top; }
+.rdoc tbody tr:nth-child(even) td { background: #f4f7fa; }
+.rdoc th, .rdoc td.rtri, .rdoc tbody tr td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.rdoc td.rtri { font-weight: 700; }
+.rdoc tbody tr td.rtri.t-R { background: #D7373F; color: #fff; } .rdoc tbody tr td.rtri.t-Y { background: #F2C230; color: #141414; } .rdoc tbody tr td.rtri.t-G { background: #2DB86A; color: #fff; }
+.rdoc tbody tr td.rtri.t-X { background: #8c9298; color: #fff; } .rdoc tbody tr td.rtri.t-B { background: #141414; color: #fff; } .rdoc tbody tr td.rtri.t-W { background: #fff; color: #141414; }
+.rdoc-empty, .rdoc-note { color: #6e767e; font-style: italic; margin: 2px 0 0; }
+.rdoc-sign { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 36px; }
+.rdoc-sign div { border-top: 1px solid #78808a; padding-top: 4px; color: #5a6470; font-size: 12px; }
+.rdoc-foot { margin-top: 18px; color: #78808a; font-size: 11px; }
+@media print {
+  body.printing, html:has(body.printing) { height: auto !important; background: #fff !important; }
+  body.printing #app, body.printing #toast-root, body.printing #map-park, body.printing #playerbar, body.printing .sheet-h, body.printing .sheet-f { display: none !important; }
+  body.printing .sheet-wrap { position: static; display: block; padding: 0; background: none; }
+  body.printing .sheet { width: auto; max-height: none; overflow: visible; border: 0; padding: 0; background: #fff; border-radius: 0; display: block; }
+  body.printing .rdoc { padding: 0; border-radius: 0; font-size: 10.5pt; }
+  body.printing .rdoc-tw { overflow: visible; }
+  body.printing .rdoc tr { break-inside: avoid; }
+  body.printing .rdoc-sec h2 { break-after: avoid; }
+  @page { margin: 14mm; }
+}
 .rblock { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
 .rblock b { display: block; font: 700 24px/1 var(--display); }
 .rblock small { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
@@ -1352,7 +1417,14 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
   .rail button { flex: 1 0 56px; min-height: 56px; font-size: 11px; gap: 3px; }
   .rail button svg { width: 22px; height: 22px; }
   .rail .spacer { display: none; }
-  .rail .brand { display: none; }
+  .rail .brand { padding: 0; margin: 0; border-radius: var(--r); }
+  .rail .brand .rbmark { width: 22px; height: 22px; }
+  .ws-grid { grid-template-columns: minmax(0, 1fr); }
+  .ws-main { min-height: 0; }
+  .ws-name { font-size: 26px; }
+  .mhead .clock { display: none; }
+  .ws { padding: 12px; } .ws-ico { width: 44px; height: 44px; }
+  .rdoc { padding: 14px; font-size: 13px; } .rdoc-kv { grid-template-columns: minmax(0, 1fr); } .rdoc-kv dd { margin-bottom: 4px; }
   #playerbar { right: 12px; left: 12px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
   #playerbar .pname { flex: 1; }
   .feeds { grid-template-columns: minmax(0, 1fr); }
@@ -1858,6 +1930,8 @@ const ICON = {
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20.5c.9-4 3.6-6 7-6s6.1 2 7 6"/>',
   clip: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
   flag: '<path d="M5 21V3.5"/><path d="M5 4h12l-2.5 4.5L17 13H5"/>',
+  home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h4.5v-5.5h3V20H18V9.5"/>',
+  doc: '<path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14 3v4.5h5M9 12.5h7M9 16h7"/>',
   tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0l-8-8z"/><circle cx="8" cy="8" r="1.6"/>',
 };
 const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
@@ -1874,19 +1948,31 @@ let UI = { view: '', sheet: null, form: {}, logFilter: 'all', unitGroup: 'all', 
 let toastTimer = null;
 
 const ROLES = {
-  command:   { name: 'Command',   home: 'board',     note: 'The whole board: triage, units, transport, hospitals, ICS, radio' },
+  supervisor: { name: 'Supervisor', home: 'shift',   note: 'Everyday calls: units in service, active calls, crew on duty, today\'s numbers' },
+  command:   { name: 'Command',   home: 'board',     note: 'The whole MCI board: triage, units, transport, hospitals, ICS, radio' },
   triage:    { name: 'Triage',    home: 'triage',    note: 'Big counters, re-triage, the triage report' },
   transport: { name: 'Transport', home: 'transport', note: 'Loading units, hospital capacity, the transport log' },
+  event:     { name: 'Event',     home: 'event',     note: 'A planned event: posts on the map, members at their posts, patients' },
   member:    { name: 'Member',    home: 'member',    note: 'For a phone: active calls, I\'m responding, on scene, directions' },
-  supervisor: { name: 'Supervisor', home: 'shift',   note: 'Everyday calls: units in service, active calls, crew on duty, today\'s numbers' },
 };
+/* Each workspace has its own tabs: only what that job needs. */
 const RAILS = {
-  command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log', 'shift', 'event'],
+  command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log'],
   triage:    ['triage', 'board', 'units', 'map', 'phone', 'log'],
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
-  supervisor: ['shift', 'event', 'hospitals', 'map', 'phone', 'radio', 'board'],
+  supervisor: ['shift', 'hospitals', 'map', 'phone', 'radio', 'log'],
+  event:     ['event', 'map', 'hospitals', 'phone', 'radio', 'log'],
   member:    ['member', 'shift', 'phone'],
 };
+const MCI_ROLES = ['command', 'triage', 'transport'];
+/* Which workspace the screen is in: the Home screen, the Supervisor board, an MCI, an event, or a member's phone.
+   The workspace's own views say so; the shared ones (map, hospitals, phone, radio, log) follow the tablet's job. */
+const VIEW_WS = { shift: 'sup', event: 'event', member: 'member', board: 'mci', triage: 'mci', transport: 'mci', units: 'mci', ics: 'mci' };
+const ROLE_WS = { supervisor: 'sup', event: 'event', member: 'member', command: 'mci', triage: 'mci', transport: 'mci' };
+const wsNow = () => (UI.view === 'home' ? 'home' : VIEW_WS[UI.view] || ROLE_WS[DEV.role] || 'mci');
+const mciLive = () => !S.fresh && !S.sample && !S.bench.clear;
+/* A tablet left alone this long opens on the Home screen, to pick what it's working on. Phones stay on My calls. */
+const HOME_AFTER = 6 * 3600000;
 /* Inside Claude the page can share a board between tablets; as a plain web page it runs on each tablet alone. */
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === 'function');
 const homeView = () => (ROLES[DEV.role] || ROLES.command).home;
@@ -2097,8 +2183,14 @@ function read(key) { try { const raw = localStorage.getItem(key); return raw ? J
 function write(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* in-memory only */ } }
 const saveDev = () => write(K.dev, DEV);
 function saveConfig() { C.savedAt = now(); write(K.cfg, C); Sync.pushConfig(); }
-function loadUi() { const v = read(K.ui) || {}; UI.view = v.view || homeView(); if (v.mapLayer) UI.mapLayer = v.mapLayer; }
-function saveUi() { write(K.ui, { view: UI.view, mapLayer: UI.mapLayer }); }
+function loadUi() {
+  const v = read(K.ui) || {};
+  const stale = !v.view || !v.at || now() - v.at > HOME_AFTER;
+  UI.view = DEV.role === 'member' ? (v.view && !stale ? v.view : homeView()) : stale ? 'home' : v.view;
+  if (UI.view !== 'home' && UI.view !== homeView() && !(RAILS[DEV.role] || RAILS.command).includes(UI.view)) UI.view = homeView();
+  if (v.mapLayer) UI.mapLayer = v.mapLayer;
+}
+function saveUi() { write(K.ui, { view: UI.view, mapLayer: UI.mapLayer, at: now() }); }
 
 /* =====================================================================
    Derived numbers
@@ -2113,7 +2205,12 @@ const hospState = id => S.hospitals[id] || {};
 const hospCap = id => hospState(id).cap || null;
 const unitsBy = st => S.units.filter(u => u.status === st);
 const openRequests = () => S.requests.filter(r => r.status !== 'onscene' && r.status !== 'cancelled');
-const sceneLL = () => S.incident.ll || townLL(S.incident.municipality);
+const sceneLL = () => {
+  const w = wsNow(), me = DEV.me && DEV.me.ll;
+  if (w === 'event' && eventLive()) { const po = EV.posts.find(x => x.ll); return EV.event.ll || (po && po.ll) || me || S.incident.ll || null; }
+  if (w === 'sup' || w === 'member' || w === 'home') return (mciLive() && S.incident.ll) || me || S.incident.ll || townLL(S.incident.municipality);
+  return S.incident.ll || townLL(S.incident.municipality);
+};
 const hospMiles = h => miles(sceneLL(), h.ll);
 const byDistance = list => { const o = sceneLL(); return o ? list.slice().sort((a, b) => miles(o, a.ll) - miles(o, b.ll)) : list.slice(); };
 
@@ -2164,9 +2261,11 @@ function render() {
 }
 
 function header() {
-  if (UI.view === 'shift') return shiftHeader();
-  if (UI.view === 'member') return memberHeader();
-  if (UI.view === 'event') return eventHeader();
+  const w = wsNow();
+  if (w === 'home') return homeHeader();
+  if (w === 'sup') return shiftHeader();
+  if (w === 'member') return memberHeader();
+  if (w === 'event') return eventHeader();
   const I = S.incident;
   const lvl = I.mciLevel, nts = notices();
   const mci = lvl
@@ -2218,8 +2317,8 @@ function rail() {
     return '';
   };
   return `<nav class="rail" aria-label="Views">
-    <div class="brand" title="OpsBoard">${rbMark(38)}<span>OpsBoard</span></div>
-    ${(RAILS[DEV.role] || RAILS.command).map(id => VIEWS.find(v => v.id === id)).map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
+    <button class="brand" data-act="view" data-arg="home" ${UI.view === 'home' ? 'aria-current="page"' : ''} aria-label="Home: choose Supervisor, MCI or Event">${rbMark(34)}<span>Home</span></button>
+    ${(UI.view === 'home' ? [] : RAILS[DEV.role] || RAILS.command).map(id => VIEWS.find(v => v.id === id)).map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
     <span class="spacer"></span>
     <button data-act="sheet" data-arg="menu">${icon('menu')}Menu</button>
   </nav>`;
@@ -2227,6 +2326,7 @@ function rail() {
 
 function view() {
   switch (UI.view) {
+    case 'home': return homeScreen();
     case 'map': return mapView();
     case 'triage': return triageView();
     case 'shift': return shiftView();
@@ -2243,11 +2343,85 @@ function view() {
   }
 }
 
+/* ---------- Home: what is this tablet working on? ---------- */
+/* What's running in the other workspaces, as a tag in the header that goes there. */
+function elsewhere(w) {
+  const out = [];
+  if (w !== 'mci' && mciLive()) out.push(`<button class="tag mci" data-act="ws" data-arg="command">MCI running · open</button>`);
+  if (w !== 'event' && eventLive()) out.push(`<button class="tag live" data-act="ws" data-arg="event">Event: ${esc(EV.event.name || 'running')}</button>`);
+  return out.join('');
+}
+function homeHeader() {
+  const day = new Date(now()).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  return `<header class="head mhead">
+    <div class="inc">
+      <div class="inc-top">${syncChipHtml()}</div>
+      <h1>${agencyLogo()}${esc(C.agency.name)}</h1>
+      <div class="inc-sub">OpsBoard · ${esc(day)}</div>
+    </div>
+    <div class="clocks">
+      <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
+      <button class="iconbtn" data-act="mode" aria-label="Switch to ${DEV.mode === 'day' ? 'night' : 'day'} mode">${icon(DEV.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${DEV.mode === 'day' ? 'Night' : 'Day'}</span></button>
+    </div>
+  </header>`;
+}
+function homeScreen() {
+  const cur = ROLE_WS[DEV.role];
+  const st = shiftStats(), avail = SH.units.filter(u => u.status === 'in' && !busyCall(u)).length, onDuty = SH.crew.filter(p => !p.out).length;
+  const I = S.incident, live = mciLive(), evOn = eventLive();
+  const badge = (on, text, cls = '') => (on ? `<span class="ws-badge ${cls}">${text}</span>` : '');
+  const mciTitle = S.fresh ? 'No MCI running' : [I.type, I.location].filter(Boolean).join(' · ') || 'Incident';
+  const mciNow = S.fresh ? 'Start one when a call turns into a mass-casualty incident, or upgrade a call from the Supervisor board.'
+    : [I.mciLevel ? levelLabel(I.mciLevel) : 'No MCI declared', plural(totalPts(), 'patient'), `${S.transports.reduce((a, x) => a + x.n, 0)} transported`, S.bench.clear ? `cleared ${hhmm(S.bench.clear)}` : `since ${hhmm(I.dispatchAt)}`].join(' · ');
+  const E = EV.event, staff = EV.people.filter(x => x.st !== 'off').length;
+  const evTitle = EV.none ? 'No event running' : E.name || 'Event';
+  const evNow = EV.none ? 'A parade, the fireworks, a concert, a race: posts on the map, members at their posts, a patient log.'
+    : [E.location, plural(EV.posts.length, 'post'), plural(staff, 'member'), plural(EV.pts.length, 'patient'), EV.ended ? `ended ${hhmm(EV.ended)}` : ''].filter(Boolean).join(' · ');
+  const mciRole = MCI_ROLES.includes(DEV.role) ? DEV.role : 'command';
+  return `<div class="view home">
+    <h2 class="home-q">What are you working on?</h2>
+    <div class="ws-grid">
+      <section class="ws ws-sup ${cur === 'sup' ? 'cur' : ''}">
+        <button class="ws-main" data-act="ws" data-arg="supervisor">
+          <span class="ws-top"><span class="ws-ico">${icon('clip')}</span>${badge(cur === 'sup', 'Continue')}</span>
+          <span class="ws-name">Supervisor</span>
+          <span class="ws-what">Today's calls, units in service, crew on duty</span>
+          <span class="ws-now">${plural(st.active, 'active call')} · ${plural(avail, 'unit')} available · ${onDuty} on duty · ${plural(st.total, 'call')} today</span>
+        </button>
+      </section>
+      <section class="ws ws-mci ${cur === 'mci' ? 'cur' : ''} ${live ? 'live' : ''}">
+        <button class="ws-main" data-act="ws" data-arg="${mciRole}">
+          <span class="ws-top"><span class="ws-ico">${icon('tag')}</span>${badge(live, '● MCI running', 'crit')}${badge(cur === 'mci' && !live, 'Continue')}${badge(S.sample, 'Sample')}</span>
+          <span class="ws-name">MCI</span>
+          <span class="ws-what">${esc(mciTitle)}</span>
+          <span class="ws-now">${esc(mciNow)}</span>
+        </button>
+        <div class="ws-jobs"><span class="lbl">My job</span>${MCI_ROLES.map(r => `<button class="opt small" data-act="ws" data-arg="${r}" aria-pressed="${DEV.role === r}">${esc(ROLES[r].name)}</button>`).join('')}</div>
+      </section>
+      <section class="ws ws-ev ${cur === 'event' ? 'cur' : ''} ${evOn ? 'live' : ''}">
+        <button class="ws-main" data-act="ws" data-arg="event">
+          <span class="ws-top"><span class="ws-ico">${icon('flag')}</span>${badge(evOn, '● Event running', 'ok')}${badge(cur === 'event' && !evOn, 'Continue')}${badge(EV.sample, 'Sample')}</span>
+          <span class="ws-name">Event</span>
+          <span class="ws-what">${esc(evTitle)}</span>
+          <span class="ws-now">${esc(evNow)}</span>
+        </button>
+      </section>
+    </div>
+    <div class="home-more">
+      <button class="btn" data-act="ws" data-arg="member">${icon('person')} My calls · the member phone view</button>
+      <span class="grow"></span>
+      <button class="btn" data-act="sheet" data-arg="report:day">${icon('doc')} Today's report</button>
+      ${S.fresh ? '' : `<button class="btn" data-act="sheet" data-arg="report:inc">${icon('doc')} Incident report</button>`}
+      ${EV.none ? '' : `<button class="btn" data-act="sheet" data-arg="report:event">${icon('doc')} Event report</button>`}
+    </div>
+  </div>`;
+}
+
 /* ---------- Board ---------- */
 function boardView() {
   return `<div class="board">
     <div class="col c1" data-scroll="b1">${triagePanel()}</div>
-    <div class="col c2" data-scroll="b2">${scenePanel()}${benchPanel()}${resourcesPanel()}</div>
+    <div class="col c2" data-scroll="b2">${S.bench.clear ? `<section class="panel donebar"><div><b>Scene clear ${hhmm(S.bench.clear)}</b><small>${esc(durWords(S.bench.clear - S.incident.dispatchAt))} after dispatch · ${plural(totalPts(), 'patient')}</small></div><button class="btn primary" data-act="sheet" data-arg="report:inc">${icon('doc')} Final report</button></section>` : ''}${scenePanel()}${benchPanel()}${resourcesPanel()}</div>
     <div class="col c3" data-scroll="b3">${miniMap()}${transportSummary()}${hospLoadPanel()}</div>
   </div>`;
 }
@@ -2407,26 +2581,22 @@ function hospLoadPanel() {
 }
 
 /* ---------- Map view ---------- */
+const PIN_NAMES = { scene: 'Scene', staging: 'Staging', lz: 'LZ' };
+function pinChip() {
+  const m = UI.pinMode || '';
+  if (!m) return '';
+  if (m === 'post') return '<span class="mchip warn">Tap the map where the post is</span>';
+  if (m.startsWith('post-move:')) return '<span class="mchip warn">Tap the post\'s new spot</span>';
+  return `<span class="mchip warn">Tap the map to place the ${esc(PIN_NAMES[m] || 'pin')} pin</span>`;
+}
 function mapView() {
-  const I = S.incident;
+  const I = S.incident, w = wsNow();
   const pins = [
     { k: 'scene', name: 'Scene', ll: I.ll },
     { k: 'staging', name: 'Staging', ll: I.stagingLL },
     { k: 'lz', name: 'LZ', ll: I.lzLL },
   ];
-  const near = byDistance(filteredHospitals()).slice(0, 8);
-  return `<div class="mapview">
-    <section class="mapcard" aria-label="Map">
-      <div class="mapslot" data-map-slot="full"></div>
-      <div class="mapctl tr">
-        <button class="mbtn" data-act="locate">${icon('locate')}<span>Locate me</span></button>
-        <button class="mbtn" data-act="map-layer" aria-pressed="${UI.mapLayer === 'sat'}">${icon('layers')}<span>${UI.mapLayer === 'sat' ? 'Satellite' : 'Map'}</span></button>
-        <button class="mbtn" data-act="map-fit">${icon('expand')}<span>Fit</span></button>
-      </div>
-      <div class="mapctl bl">${UI.pinMode ? `<span class="mchip warn">Tap the map to place the ${esc(pins.find(p => p.k === UI.pinMode).name)} pin</span>` : ''}${UI.mapLayer === 'sat' && UI.live === 'blocked' ? `<span class="mchip warn">Live imagery is blocked here. Showing the built-in ${insideSample(I.ll) ? 'aerial and ' : ''}map.</span>` : ''}</div>
-    </section>
-    <div class="mapside">
-      <section class="panel">
+  const scenePanel = `<section class="panel">
         <div class="ph"><h2>Pins</h2><span class="meta">Choose one, then tap the map</span></div>
         <div class="opt-grid">${pins.map(p => opt('pin-mode', p.k, UI.pinMode === p.k, `${esc(p.name)}<small>${p.ll ? esc(fmtLL(p.ll)) : 'Not set'}</small>`, 'tall')).join('')}</div>
         ${DEV.me ? `<button class="btn block" data-act="use-me">${icon('locate')} Use my location as the scene</button>` : ''}
@@ -2437,22 +2607,49 @@ function mapView() {
             <a class="btn small" href="https://maps.apple.com/?ll=${I.ll[0]},${I.ll[1]}&q=Scene&t=k&z=18" target="_blank" rel="noopener">${icon('ext')} Apple Maps</a>
             <a class="btn small" href="https://www.google.com/maps/@${I.ll[0]},${I.ll[1]},200m/data=!3m1!1e3" target="_blank" rel="noopener">${icon('ext')} Google</a>
           </div>` : `<div class="note">${I.municipality ? `Centered on ${esc(I.municipality)}. ` : ''}Choose Scene, then tap where the incident is. Or use Locate me.</div>`}
-      </section>
-      ${camerasPanel()}
-      <section class="panel">
+      </section>`;
+  const mciOn = mciLive() && I.ll ? `<section class="panel">
+        <div class="ph"><h2>MCI running</h2><span class="meta">${esc(levelLabel(I.mciLevel) || 'MCI')}</span></div>
+        <div class="note">${esc([I.type, I.location].filter(Boolean).join(' · '))}</div>
+        <div class="toolbar"><button class="btn small" data-act="map-goto" data-arg="${I.ll.join(',')}">Show the scene</button><button class="btn small" data-act="ws" data-arg="command">Open the MCI</button></div>
+      </section>` : '';
+  const stagingPanel = `<section class="panel">
         <div class="ph"><h2>County staging areas</h2><span class="meta">Activate through County Communications</span></div>
-        <div>${COUNTY_STAGING.map((c, i) => { const mi = miles(sceneLL(), c.ll); return `<div class="load"><span class="nm">${esc(c.name)} <span class="note">${esc(c.note)}</span></span><span class="dist">${mi != null ? mi.toFixed(1) + ' mi' : ''}</span><span class="why"><button class="btn small" data-act="use-cstage" data-arg="${i}">Use as staging</button><button class="btn small" data-act="map-goto" data-arg="${c.ll.join(',')}">Show</button></span></div>`; }).join('')}</div>
-      </section>
-      <section class="panel">
+        <div>${COUNTY_STAGING.map((c, i) => { const mi = miles(sceneLL(), c.ll); return `<div class="load"><span class="nm">${esc(c.name)} <span class="note">${esc(c.note)}</span></span><span class="dist">${mi != null ? mi.toFixed(1) + ' mi' : ''}</span><span class="why">${w === 'mci' ? `<button class="btn small" data-act="use-cstage" data-arg="${i}">Use as staging</button>` : ''}<button class="btn small" data-act="map-goto" data-arg="${c.ll.join(',')}">Show</button></span></div>`; }).join('')}</div>
+      </section>`;
+  const side = w === 'event' ? mapPostsPanel() + camerasPanel() + nearHospPanel()
+    : w === 'mci' ? scenePanel + camerasPanel() + stagingPanel + nearHospPanel()
+    : mciOn + camerasPanel() + nearHospPanel() + stagingPanel;
+  return `<div class="mapview">
+    <section class="mapcard" aria-label="Map">
+      <div class="mapslot" data-map-slot="full"></div>
+      <div class="mapctl tr">
+        <button class="mbtn" data-act="locate">${icon('locate')}<span>Locate me</span></button>
+        <button class="mbtn" data-act="map-layer" aria-pressed="${UI.mapLayer === 'sat'}">${icon('layers')}<span>${UI.mapLayer === 'sat' ? 'Satellite' : 'Map'}</span></button>
+        <button class="mbtn" data-act="map-fit">${icon('expand')}<span>Fit</span></button>
+      </div>
+      <div class="mapctl bl">${pinChip()}${UI.mapLayer === 'sat' && UI.live === 'blocked' ? `<span class="mchip warn">Live imagery is blocked here. Showing the built-in ${insideSample(I.ll) ? 'aerial and ' : ''}map.</span>` : ''}</div>
+    </section>
+    <div class="mapside">${side}</div>
+  </div>`;
+}
+function nearHospPanel() {
+  const near = favFirst(byDistance(filteredHospitals())).slice(0, 8);
+  return `<section class="panel">
         <div class="ph"><h2>Nearest hospitals</h2></div>
         ${hospFilterChips()}
         <div>${near.map(h => {
           const mi = hospMiles(h);
           return `<button class="load" data-act="map-hosp" data-arg="${h.id}"><span class="nm">${isFav(h) ? '<span class="favmark">★</span> ' : ''}${esc(h.short)} <span class="note">${esc(h.town)}</span></span><span class="dist">${mi != null ? `${mi.toFixed(1)} mi · ~${estMin(mi)}′` : ''}</span><span class="why">${h.caps.slice(0, 4).map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</span></button>`;
         }).join('') || '<div class="empty">No hospital matches every filter</div>'}</div>
-      </section>
-    </div>
-  </div>`;
+      </section>`;
+}
+function mapPostsPanel() {
+  if (EV.none) return `<section class="panel"><div class="ph"><h2>Posts</h2></div><div class="note">No event running.</div><button class="btn small primary" data-act="sheet" data-arg="ev-new">${icon('plus')} Start an event</button></section>`;
+  return `<section class="panel">
+        <div class="ph"><h2>Posts</h2>${EV.ended ? '' : `<button class="btn small" data-act="sheet" data-arg="post-new">${icon('plus')} Add a post</button>`}</div>
+        <div>${EV.posts.map(po => { const staff = postStaff(po); return `<div class="load"><span class="nm"><span class="pk k-${po.kind}">${esc(postLabel(po)) || '·'}</span> ${esc(po.name)}</span><span class="dist">${staff.length ? plural(staff.length, 'member') : '<span class="warn-t">nobody</span>'}</span><span class="why">${po.ll ? `<button class="btn small" data-act="map-goto" data-arg="${po.ll.join(',')}">Show</button>` : ''}<button class="btn small" data-act="sheet" data-arg="post:${po.id}">Open</button></span></div>`; }).join('') || '<div class="note">No posts yet. Add one, then tap the map where it is.</div>'}</div>
+      </section>`;
 }
 
 /* Cameras. New Jersey publishes no open feed of its traffic cameras, so the board doesn't pull them in by itself;
@@ -2573,13 +2770,19 @@ function peopleTable() {
 
 /* ---------- Hospitals view ---------- */
 function hospitalsView() {
-  const list = favFirst(byDistance(filteredHospitals()));
+  const list = favFirst(byDistance(filteredHospitals())), mciWs = wsNow() === 'mci';
   return `<div class="view">
-    <div class="toolbar"><h2 class="view-title grow">Hospitals</h2><span class="note">${sceneLL() ? 'Nearest first.' : 'Pin the scene to sort by distance.'} Tap a hospital to enter what it reports.</span></div>
+    <div class="toolbar"><h2 class="view-title grow">Hospitals</h2><span class="note">${mciWs ? `${sceneLL() ? 'Nearest first.' : 'Pin the scene to sort by distance.'} Tap a hospital to enter what it reports.` : `Favorites first${sceneLL() ? ', then nearest' : ''}. ED status live from NJ Divert.`}</span></div>
     ${hospFilterChips()}
     <div class="grid-hosp">
       ${list.map(h => {
         const cap = hospCap(h.id), hs = hospState(h.id), mi = hospMiles(h);
+        if (!mciWs) return `<div class="panel hosp ${isFav(h) ? 'fav' : ''}" role="button" tabindex="0" data-act="sheet" data-arg="hosp:${h.id}">
+          <div class="ph"><div><h3>${starBtn(h)}${esc(h.name)}</h3><div class="sub">${esc(h.town)} · ${esc(h.sys)}${h.lic ? ` · ${h.lic.beds} licensed beds` : ''}</div></div>${mi != null ? `<span class="dist">${mi.toFixed(1)} mi<br><span class="note">~${estMin(mi)} min</span></span>` : ''}</div>
+          <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
+          ${liveEdHtml(h)}
+          ${h.phones ? `<div class="toolbar"><span class="note grow">${h.phones.ed ? 'ED' : 'Main'} <span class="num">${esc(h.phones.ed || h.phones.main)}</span></span><a class="btn small" href="tel:${esc((h.phones.ed || h.phones.main).replace(/[^0-9+]/g, ''))}">Call</a></div>` : ''}
+        </div>`;
         return `<div class="panel hosp ${isFav(h) ? 'fav' : ''}" role="button" tabindex="0" data-act="sheet" data-arg="hosp:${h.id}">
           <div class="ph"><div><h3>${starBtn(h)}${esc(h.name)}</h3><div class="sub">${esc(h.town)} · ${esc(h.sys)}${h.lic ? ` · ${h.lic.beds} licensed beds` : ''}</div></div>${mi != null ? `<span class="dist">${mi.toFixed(1)} mi<br><span class="note">~${estMin(mi)} min</span></span>` : ''}</div>
           <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
@@ -2649,11 +2852,12 @@ function icsView() {
 
 /* ---------- Radio view ---------- */
 function radioView() {
-  const scripts = radioScripts();
+  const mciWs = wsNow() === 'mci', scripts = mciWs ? radioScripts() : [];
   return `<div class="view">
     ${listenPanel()}
-    <div class="toolbar"><h2 class="view-title grow">Radio reports</h2><span class="note">Written from what's on the board. Read them as they are, or copy them into a message.</span></div>
+    ${mciWs ? `<div class="toolbar"><h2 class="view-title grow">Radio reports</h2><span class="note">Written from what's on the board. Read them as they are, or copy them into a message.</span></div>` : ''}
     <div class="grid2">
+      ${wsNow() === 'event' && eventLive() && EV.event.channel ? `<section class="panel"><div class="ph"><h2>Event channel</h2></div><p class="script">${esc(EV.event.channel)}</p><div class="note">${esc(EV.event.name)}. Set under Edit event.</div></section>` : ''}
       ${scripts.map((s, i) => `<section class="panel">
         <div class="ph"><h2>${esc(s.title)}</h2><button class="btn small" data-act="copy" data-arg="${i}">${icon('copy')} Copy</button></div>
         <div class="note">${esc(s.when)}</div>
@@ -2750,11 +2954,23 @@ const LOG_KINDS = [
   { k: 'people', name: 'People' }, { k: 'request', name: 'Requests' }, { k: 'bench', name: 'Benchmarks' }, { k: 'par', name: 'PAR' }, { k: 'note', name: 'Notes' },
 ];
 const logKinds = () => LOG_KINDS.filter(k => k.k !== 'par' || parOn());
+const QUICK_NOTES = {
+  mci: ['Extrication complete', 'Fire knocked down', 'Road reopened', 'Medical examiner notified', 'Rehab set up', 'Weather changing'],
+  sup: ['Shift change', 'Unit out of service', 'Unit back in service', 'Hospital on diversion', 'Road closed', 'Weather advisory'],
+  event: ['Gates open', 'Crowd building', 'Weather changing', 'Lost child reported', 'Lost child found', 'Crowd leaving'],
+};
+const LOG_TITLES = { mci: 'Incident log', sup: 'Today\'s log', member: 'Today\'s log', event: 'Event log' };
+const REPORT_OF = { mci: 'inc', event: 'event', sup: 'day', member: 'day' };
+const logStream = () => { const w = wsNow(); return w === 'mci' ? INC : w === 'event' ? EVS : SHIFT; };
 function logView() {
-  const list = S.log.filter(e => UI.logFilter === 'all' || e.kind === UI.logFilter).slice().reverse();
-  const quick = ['Extrication complete', 'Fire knocked down', 'Road reopened', 'Medical examiner notified', 'Rehab set up', 'Weather changing'];
+  const w = wsNow(), str = logStream(), log = str.state.log || [];
+  if (w === 'event' && EV.none) return `<div class="view"><div class="toolbar"><h2 class="view-title grow">Event log</h2></div><div class="empty">No event running. Start one from the Event tab.</div></div>`;
+  const kinds = w === 'mci' ? logKinds() : [{ k: 'all', name: 'All' }, ...[...new Set(log.map(e => e.kind).filter(Boolean))].map(k => LOG_KINDS.find(x => x.k === k) || { k, name: k[0].toUpperCase() + k.slice(1) })];
+  const filter = kinds.some(k => k.k === UI.logFilter) ? UI.logFilter : 'all';
+  const list = log.filter(e => filter === 'all' || e.kind === filter).slice().reverse();
+  const quick = QUICK_NOTES[w] || QUICK_NOTES.sup;
   return `<div class="view">
-    <div class="toolbar"><h2 class="view-title grow">Incident log</h2><span class="note">Every tap on the board is stamped here, for the after-action report.</span></div>
+    <div class="toolbar"><h2 class="view-title grow">${LOG_TITLES[w] || 'Log'}</h2><span class="note">Every tap is stamped here, for the final report.</span><button class="btn" data-act="sheet" data-arg="report:${REPORT_OF[w] || 'day'}">${icon('doc')} Final report</button></div>
     <section class="panel">
       <form class="composer" data-form="note">
         <input id="note-input" type="text" placeholder="Add a note to the log" data-field="note" value="${esc(UI.form.note || '')}" autocomplete="off">
@@ -2762,9 +2978,9 @@ function logView() {
       </form>
       <div class="chips">${quick.map(q => `<button class="opt small" data-act="quick-note" data-arg="${esc(q)}">${esc(q)}</button>`).join('')}</div>
     </section>
-    <div class="chips">${logKinds().map(k => opt('log-filter', k.k, UI.logFilter === k.k, k.name, 'small')).join('')}</div>
+    ${kinds.length > 2 ? `<div class="chips">${kinds.map(k => opt('log-filter', k.k, filter === k.k, k.name, 'small')).join('')}</div>` : ''}
     <section class="panel">
-      <div class="log">${list.length ? list.map(e => `<div class="entry"><span class="lt">${hhmm(e.t)}</span><span class="lk">${esc(e.kind)}${e.role ? `<small>${esc((ROLES[e.role] || {}).name || e.role)}</small>` : ''}</span><span class="lx">${esc(e.text)}</span></div>`).join('') : '<div class="empty">Nothing logged in this category yet</div>'}</div>
+      <div class="log">${list.length ? list.map(e => `<div class="entry"><span class="lt">${hhmm(e.t)}</span><span class="lk">${esc(e.kind || 'note')}${e.role ? `<small>${esc((ROLES[e.role] || {}).name || e.role)}</small>` : ''}</span><span class="lx">${esc(e.text)}</span></div>`).join('') : '<div class="empty">Nothing logged in this category yet</div>'}</div>
     </section>
   </div>`;
 }
@@ -3017,9 +3233,10 @@ function syncMarkers() {
   const I = S.incident;
   ML.pins.clearLayers();
   if (DEV.me) L.marker(DEV.me.ll, { icon: pinIcon('me', '', 22), keyboard: false, title: 'You' }).addTo(ML.pins);
-  if (I.lzLL) L.marker(I.lzLL, { icon: pinIcon('lz', 'LZ', 34), title: 'Landing zone' }).addTo(ML.pins);
-  if (I.stagingLL) L.marker(I.stagingLL, { icon: pinIcon('staging', 'S', 34), title: 'Staging' }).addTo(ML.pins);
-  if (I.ll) L.marker(I.ll, { icon: pinIcon('scene', 'SCENE', 40), title: 'Scene', zIndexOffset: 1000 }).addTo(ML.pins);
+  const showInc = wsNow() === 'mci' || mciLive();
+  if (showInc && I.lzLL) L.marker(I.lzLL, { icon: pinIcon('lz', 'LZ', 34), title: 'Landing zone' }).addTo(ML.pins);
+  if (showInc && I.stagingLL) L.marker(I.stagingLL, { icon: pinIcon('staging', 'S', 34), title: 'Staging' }).addTo(ML.pins);
+  if (showInc && I.ll) L.marker(I.ll, { icon: pinIcon('scene', 'SCENE', 40), title: 'Scene', zIndexOffset: 1000 }).addTo(ML.pins);
   COUNTY_STAGING.forEach(c => L.marker(c.ll, { icon: pinIcon('cstage', 'S', 30), title: c.name }).bindTooltip(`County staging: ${c.name}`, { direction: 'top', offset: [0, -14] }).addTo(ML.pins));
   C.cameras.filter(c => c.ll).forEach(c => L.marker(c.ll, { icon: pinIcon('cam', 'CAM', 30), title: c.name }).bindTooltip(`Camera: ${c.name}`, { direction: 'top', offset: [0, -14] }).on('click', () => openSheet('cam:' + c.id)).addTo(ML.pins));
   if (eventLive()) EV.posts.filter(po => po.ll).forEach(po => {
@@ -3050,19 +3267,328 @@ function placeMap() {
   if (kind !== mapKind) { mapKind = kind; frameMap(kind); }
 }
 function frameMap(kind) {
-  const I = S.incident;
+  const I = S.incident, w = wsNow();
   const center = sceneLL();
-  const evPts = kind === 'event' && eventLive() ? EV.posts.map(po => po.ll).concat([EV.event.ll]).filter(Boolean) : [];
+  const evPts = (kind === 'event' || (kind === 'full' && w === 'event')) && eventLive() ? EV.posts.map(po => po.ll).concat([EV.event.ll]).filter(Boolean) : [];
   if (evPts.length > 1) MAP.fitBounds(L.latLngBounds(evPts).pad(0.25), { maxZoom: 17.5 });
   else if (evPts.length === 1) MAP.setView(evPts[0], 16.5);
   else if (kind === 'mini' || kind === 'event') { if (center) MAP.setView(center, I.ll ? 16.5 : 13); else MAP.setView([40.27, -74.17], 10); }
   else {
-    const pts = [I.ll, I.stagingLL, I.lzLL].filter(Boolean);
+    const pts = w === 'mci' || mciLive() ? [I.ll, I.stagingLL, I.lzLL].filter(Boolean) : [];
     if (pts.length > 1) MAP.fitBounds(L.latLngBounds(pts).pad(0.6), { maxZoom: 17.5 });
-    else if (center) MAP.setView(center, I.ll ? 17 : 13);
+    else if (center) MAP.setView(center, I.ll && center === I.ll ? 17 : 13);
     else MAP.setView([40.27, -74.17], 10);
   }
   syncLabels();
+}
+
+/* =====================================================================
+   Final reports. At the end of an MCI, an event or the day: a summary of
+   everything on the board, shown here and saved as a PDF or printed.
+   Each report is built as plain data (sections of facts and tables) so
+   the preview and the PDF say the same thing.
+   ===================================================================== */
+const JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+const AUTOTABLE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+const fmtDT = t => (t ? new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '');
+const fmtDay = t => new Date(t).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+const durWords = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
+const roleName = r => (ROLES[r] || {}).name || r || '';
+const logRows = log => log.slice().sort((a, b) => a.t - b.t).map(e => [hhmm(e.t), e.kind || 'note', e.text, roleName(e.role)]);
+const logSection = log => ({ h: 'Timeline', table: { head: ['Time', 'Kind', 'Entry', 'Tablet'], rows: logRows(log), widths: [44, 62, 0, 70] }, empty: 'Nothing logged.' });
+const hName = id => (id ? (hosp(id) || {}).short || id : '');
+const fileSafe = s => String(s || '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+const ymd = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+function incidentReport() {
+  const I = S.incident, end = S.bench.clear || now();
+  const sent = S.transports.reduce((a, x) => a + x.n, 0);
+  const sections = [];
+  sections.push({ h: 'Summary', kv: [
+    ['Incident', I.type || 'Not recorded'],
+    ['Location', [I.location, I.municipality].filter(Boolean).join(', ') || 'Not recorded'],
+    I.ll && ['Coordinates', `${fmtLL(I.ll)} (${fmtDDM(I.ll)})`],
+    ['Command', [I.commandName, I.ic && `EMS Command: ${I.ic}`].filter(Boolean).join(' · ') || 'Not recorded'],
+    ['MCI level', I.mciLevel ? levelLabel(I.mciLevel) : 'Not declared'],
+    ['Dispatched', fmtDT(I.dispatchAt)],
+    ['Scene clear', S.bench.clear ? fmtDT(S.bench.clear) : `Still open when this report was made (${hhmm(now())})`],
+    ['Duration', durWords(end - I.dispatchAt)],
+    ['Staging', I.staging || 'Not recorded'],
+    ['Hazards', (I.hazards || []).join(', ') || 'None noted'],
+    ['Triage method', S.method || 'START'],
+    ['Patients', `${totalPts()} triaged · ${sent} transported`],
+    ['Units', `${S.units.length} on the board · ${squadsInvolved()} EMS agencies`],
+  ].filter(Boolean) });
+  sections.push({ h: 'Patients by triage category', tri: true, table: {
+    head: ['Category', 'Triaged', 'Transported', 'Left on scene'],
+    rows: catsList().map(c => [`${c.color} · ${c.name}`, S.triage[c.k] || 0, TX_CATS.includes(c.k) ? sentCat(c.k) : '', TX_CATS.includes(c.k) ? remaining(c.k) : '']),
+    keys: catsList().map(c => c.k),
+  } });
+  sections.push({ h: 'Benchmarks', table: { head: ['Benchmark', 'Time', 'After dispatch'], rows: BENCHMARKS.map(b => [b.label, S.bench[b.id] ? hhmm(S.bench[b.id]) : 'Not marked', S.bench[b.id] ? durWords(S.bench[b.id] - I.dispatchAt) : '']) } });
+  sections.push({ h: 'Transports', table: {
+    head: ['Time', 'Unit', 'Category', 'Patients', 'Hospital', 'Tags · age'],
+    rows: S.transports.slice().sort((a, b) => a.t - b.t).map(x => [hhmm(x.t), (unitIn(S, x.unit) || {}).name || x.unit || '', cat(x.cat).color, x.n, hName(x.hosp), [x.tags, x.age].filter(Boolean).join(' · ')]),
+  }, empty: 'No transports logged.' });
+  const hs = HOSPITALS.filter(h => S.hospitals[h.id] || hospSent(h.id));
+  sections.push({ h: 'Hospitals', table: {
+    head: ['Hospital', 'Notified', 'Red', 'Yellow', 'Green', 'ED status'],
+    rows: hs.map(h => { const st = hospState(h.id), cap = st.cap || {}; return [h.short, st.notifiedAt ? hhmm(st.notifiedAt) : '', ...TX_CATS.map(k => `${hospSent(h.id, k)}${cap[k] != null ? ' / ' + cap[k] : ''}`), st.ed || '']; }),
+  }, note: 'Sent / could take, as reported.', empty: 'No hospitals notified or sent patients.' });
+  sections.push({ h: 'Units', table: {
+    head: ['Unit', 'Agency', 'Type', 'Crew', 'Status at close', 'Task'],
+    rows: S.units.map(u => [u.name, u.agency || '', u.kind || '', u.crew || '', (STATUSES.find(x => x.k === u.status) || {}).name || u.status || '', u.task || '']),
+  }, empty: 'No units on the board.' });
+  sections.push({ h: 'People checked in', table: {
+    head: ['Member #', 'Name', 'Cert', 'Unit', 'Task', 'In', 'Out'],
+    rows: S.people.map(x => [x.num || '', x.name || '', x.cert || '', (unitIn(S, x.unit) || {}).name || x.unit || '', x.task || '', hhmm(x.t), x.out ? hhmm(x.out) : '']),
+  }, empty: 'Nobody checked in on the board.' });
+  sections.push({ h: 'Resource requests', table: {
+    head: ['Time', 'Request', 'Qty', 'Status', 'Note'],
+    rows: S.requests.map(r => [hhmm(r.t), r.what, r.qty || 1, reqStatusName(r.status), r.note || '']),
+  }, empty: 'No requests.' });
+  const ics = ICS_POSITIONS.filter(p => S.ics[p.id] && S.ics[p.id].who);
+  sections.push({ h: 'Incident command (ICS)', table: { head: ['Position', 'Who', 'Since'], rows: ics.map(p => [p.label, S.ics[p.id].who, hhmm(S.ics[p.id].t)]) }, empty: 'No ICS positions filled.' });
+  sections.push(logSection(S.log));
+  return {
+    kind: 'inc', title: 'MCI final report', sample: S.sample,
+    subtitle: [I.type, [I.location, I.municipality].filter(Boolean).join(', '), fmtDay(I.dispatchAt)].filter(Boolean).join(' · '),
+    file: `OpsBoard-MCI-${ymd(I.dispatchAt)}-${fileSafe(I.location || I.type || 'incident')}`,
+    sections, sign: true,
+  };
+}
+
+function eventReport() {
+  const E = EV.event, end = EV.ended || now(), by = o => EV.pts.filter(x => x.outcome === o).length;
+  const onFor = x => durWords((x.st === 'off' ? x.at : end) - x.t);
+  const sections = [];
+  sections.push({ h: 'Summary', kv: [
+    ['Event', E.name || 'Event'],
+    ['Type', E.type || ''],
+    ['Location', E.location || 'Not recorded'],
+    (E.start || E.end) && ['Scheduled', [E.start, E.end].filter(Boolean).join('–')],
+    ['Started', fmtDT(EV.startedAt)],
+    ['Ended', EV.ended ? fmtDT(EV.ended) : `Still running when this report was made (${hhmm(now())})`],
+    ['Duration', durWords(end - EV.startedAt)],
+    E.channel && ['Radio channel', E.channel],
+    E.notes && ['Notes', E.notes],
+  ].filter(Boolean) });
+  sections.push({ h: 'Totals', kv: [
+    ['Posts', String(EV.posts.length)],
+    ['Members', String(EV.people.length)],
+    ['Units', String(EV.units.length)],
+    ['Patients seen', String(EV.pts.length)],
+    ['Treated and released', String(by('Treated & released'))],
+    ['Transported', String(by('Transported'))],
+    ['Refused (RMA)', String(by('Refused (RMA)'))],
+  ] });
+  sections.push({ h: 'Posts', table: {
+    head: ['Post', 'Kind', 'Members', 'Units', 'Where'],
+    rows: EV.posts.map(po => [`${postLabel(po) ? postLabel(po) + ' · ' : ''}${po.name}`, postKind(po.kind).name, EV.people.filter(x => x.post === po.id).map(x => x.name).join(', '), postUnits(po).map(u => u.name).join(', '), po.ll ? fmtLL(po.ll) : '']),
+  }, empty: 'No posts.' });
+  sections.push({ h: 'Members', table: {
+    head: ['Member #', 'Name', 'Cert', 'Post', 'Checked in', 'Time on'],
+    rows: EV.people.slice().sort((a, b) => a.t - b.t).map(x => [x.num || '', x.name, x.cert || '', x.post ? postName(x.post) : '', hhmm(x.t), onFor(x)]),
+  }, empty: 'Nobody checked in.' });
+  sections.push({ h: 'Patients', table: {
+    head: ['Time', 'Complaint', 'Age', 'Outcome', 'Hospital', 'Unit', 'Post'],
+    rows: EV.pts.slice().sort((a, b) => a.t - b.t).map(x => [hhmm(x.t), x.complaint, x.age || '', x.outcome, hName(x.hosp), x.unit || '', x.post ? postName(x.post) : '']),
+  }, note: 'No names. Each patient\'s own care report is written as usual.', empty: 'Nobody seen.' });
+  sections.push(logSection(EV.log));
+  return {
+    kind: 'event', title: 'Event final report', sample: EV.sample,
+    subtitle: [E.name, E.location, fmtDay(EV.startedAt)].filter(Boolean).join(' · '),
+    file: `OpsBoard-Event-${ymd(EV.startedAt)}-${fileSafe(E.name || 'event')}`,
+    sections, sign: true,
+  };
+}
+
+function dayReport() {
+  const st = shiftStats(), calls = SH.calls.slice().sort((a, b) => a.times.disp - b.times.disp);
+  const sections = [];
+  sections.push({ h: 'Summary', kv: [
+    ['Day', fmtDay(SH.startedAt)],
+    ['Calls', String(st.total)],
+    ['Still active', String(st.active)],
+    ['Transports', String(st.transports)],
+    ['Refusals', String(st.refusals)],
+    ['Covered by mutual aid', String(st.mutual)],
+    st.turnout != null && ['Average turnout', fmtMin(st.turnout)],
+    st.response != null && ['Average response', fmtMin(st.response)],
+    st.wall != null && ['Average time at hospital', fmtMin(st.wall)],
+    ['Crew on duty', `${SH.crew.length} checked in today`],
+  ].filter(Boolean) });
+  sections.push({ h: 'Calls', table: {
+    head: ['Dispatched', 'Type', 'Address', 'Unit', 'Outcome', 'Hospital', 'Response', 'Clear'],
+    rows: calls.map(c => [hhmm(c.times.disp), c.type, [c.address, c.town].filter(Boolean).join(', '), c.unit || '', c.outcome || STEP_NAMES[c.status] || c.status, hName(c.hosp), c.times.onscene ? fmtMin(c.times.onscene - c.times.disp) : '', c.times.clear ? hhmm(c.times.clear) : '']),
+  }, empty: 'No calls today.' });
+  sections.push({ h: 'Units', table: {
+    head: ['Unit', 'Type', 'Status', 'Note'],
+    rows: SH.units.map(u => [u.name, u.kind || '', u.status === 'oos' ? 'Out of service' : busyCall(u) ? 'On a call' : 'In service', u.note || '']),
+  }, empty: 'No units.' });
+  sections.push({ h: 'Crew', table: {
+    head: ['Member #', 'Name', 'Cert', 'Unit', 'On duty', 'Off duty'],
+    rows: SH.crew.slice().sort((a, b) => a.t - b.t).map(x => [x.num || '', x.name, x.cert || '', x.unit || '', hhmm(x.t), x.out ? hhmm(x.out) : '']),
+  }, empty: 'Nobody checked in.' });
+  sections.push(logSection(SH.log));
+  return {
+    kind: 'day', title: 'Supervisor daily report', sample: SH.sample,
+    subtitle: fmtDay(SH.startedAt),
+    file: `OpsBoard-Day-${ymd(SH.startedAt)}`,
+    sections, sign: true,
+  };
+}
+const reportModel = kind => (kind === 'inc' ? incidentReport() : kind === 'event' ? eventReport() : dayReport());
+
+/* The preview: the same report as a page in the sheet. */
+function reportHtml(m) {
+  const cell = v => esc(v == null ? '' : String(v));
+  return `<div class="rdoc-h">
+      <div class="rdoc-logo">${logoOk(C.agency.logo) ? `<img src="${C.agency.logo}" alt="">` : rbMark(48)}</div>
+      <div><div class="rdoc-org">${esc(C.agency.name)}${C.agency.num ? ' · squad ' + esc(C.agency.num) : ''}</div><h1>${esc(m.title)}</h1><div class="rdoc-sub">${esc(m.subtitle)}</div></div>
+    </div>
+    ${m.sample ? '<div class="rdoc-warn">Sample data · practice only</div>' : ''}
+    ${m.sections.map(sec => `<section class="rdoc-sec">
+      <h2>${esc(sec.h)}</h2>
+      ${sec.kv ? `<dl class="rdoc-kv">${sec.kv.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${cell(v)}</dd>`).join('')}</dl>` : ''}
+      ${sec.table ? (sec.table.rows.length ? `<div class="rdoc-tw"><table><thead><tr>${sec.table.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${sec.table.rows.map((r, i) => `<tr>${r.map((v, j) => `<td${sec.tri && j === 0 ? ` class="rtri t-${sec.table.keys[i]}"` : ''}>${cell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : `<p class="rdoc-empty">${esc(sec.empty || 'None.')}</p>`) : ''}
+      ${sec.note ? `<p class="rdoc-note">${esc(sec.note)}</p>` : ''}
+    </section>`).join('')}
+    ${m.sign ? `<div class="rdoc-sign"><div>Prepared by</div><div>Signature</div><div>Date</div></div>` : ''}
+    <p class="rdoc-foot">Made with OpsBoard ${esc(fmtDT(now()))}. Practice data until your squad's privacy review is done; this is not a patient care report.</p>`;
+}
+function reportSheet(kind) {
+  const m = reportModel(kind || 'day');
+  return {
+    title: m.title,
+    body: `<div class="rdoc" id="report-doc">${reportHtml(m)}</div>`,
+    foot: `<button class="btn" data-act="close">Close</button><span class="grow"></span><button class="btn" data-act="report-print">Print</button><button class="btn primary" data-act="report-pdf" data-arg="${esc(m.kind)}" id="report-pdf">${icon('doc')} Save PDF</button>`,
+  };
+}
+
+/* The PDF. jsPDF is loaded from cdnjs the first time a report opens, so the board itself stays small. */
+let pdfLoading = null, logoPng = null;
+const loadScript = src => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.async = true; el.onload = res; el.onerror = () => { el.remove(); rej(new Error('Could not load ' + src)); }; document.head.appendChild(el); });
+const pdfReady = () => !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable);
+function loadPdfLib() {
+  if (pdfReady()) return Promise.resolve(window.jspdf.jsPDF);
+  if (!pdfLoading) pdfLoading = (window.jspdf ? Promise.resolve() : loadScript(JSPDF_URL)).then(() => (pdfReady() ? null : loadScript(AUTOTABLE_URL))).then(() => {
+    if (!pdfReady()) throw new Error('PDF maker did not start');
+    return window.jspdf.jsPDF;
+  }).catch(e => { pdfLoading = null; throw e; });
+  return pdfLoading;
+}
+/* The squad's logo goes into the PDF as a PNG, redrawn once on a canvas. */
+function prepLogo() {
+  const src = logoOk(C.agency.logo) ? C.agency.logo : '';
+  if (!src) { logoPng = null; return Promise.resolve(); }
+  if (logoPng && logoPng.src === src) return Promise.resolve();
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => { try { const cv = document.createElement('canvas'); cv.width = img.naturalWidth; cv.height = img.naturalHeight; cv.getContext('2d').drawImage(img, 0, 0); logoPng = { src, data: cv.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight }; } catch (e) { logoPng = null; } res(); };
+    img.onerror = () => { logoPng = null; res(); };
+    img.src = src;
+  });
+}
+function prepReport() { loadPdfLib().catch(() => {}); prepLogo(); }
+
+/* The PDF's built-in fonts only have Western European letters; anything else is swapped for a plain one. */
+const PDF_SWAP = { '→': '->', '←': '<-', '−': '-', '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '′': "'", '★': '*', '☆': '*', '●': '', '…': '...', '≥': '>=', '≤': '<=', '×': 'x', '•': '·' };
+const pdfText = v => String(v == null ? '' : v).replace(/[^\x00-\xFF]/g, ch => (ch in PDF_SWAP ? PDF_SWAP[ch] : '')).replace(/\s+/g, ' ').trim();
+const TRI_RGB = { R: [215, 55, 63], Y: [242, 194, 48], G: [45, 184, 106], X: [140, 146, 152], B: [20, 20, 20], W: [255, 255, 255] };
+const TRI_INK = { R: [255, 255, 255], Y: [20, 20, 20], G: [255, 255, 255], X: [255, 255, 255], B: [255, 255, 255], W: [20, 20, 20] };
+const NAVY = [11, 27, 43];
+function buildPdf(jsPDF, m) {
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40;
+  doc.setProperties({ title: pdfText(`${m.title} · ${m.subtitle}`), subject: pdfText(m.title), creator: 'OpsBoard', author: pdfText(C.agency.name) });
+  // header: the squad's logo (or the OpsBoard mark), the squad, the title
+  let x = M;
+  if (logoPng) { const h = 46, w = Math.min(92, h * (logoPng.w / logoPng.h || 1)); doc.addImage(logoPng.data, 'PNG', M, M - 6, w, h); x = M + w + 12; }
+  else {
+    const s = 46 / 512, at = (v, o) => o + v * s, oy = M - 6;
+    doc.setFillColor(...NAVY); doc.roundedRect(M, oy, 46, 46, 10, 10, 'F');
+    [[92, 92, [215, 55, 63]], [268, 92, [242, 194, 48]], [92, 268, [45, 184, 106]], [268, 268, [234, 242, 248]]].forEach(([rx, ry, c]) => { doc.setFillColor(...c); doc.roundedRect(at(rx, M), at(ry, oy), 152 * s, 152 * s, 30 * s, 30 * s, 'F'); });
+    doc.setFillColor(...NAVY); doc.rect(at(331, M), at(302, oy), 26 * s, 84 * s, 'F'); doc.rect(at(302, M), at(331, oy), 84 * s, 26 * s, 'F');
+    x = M + 58;
+  }
+  doc.setTextColor(90, 100, 110); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
+  doc.text(pdfText(`${C.agency.name}${C.agency.num ? ' · squad ' + C.agency.num : ''}`).toUpperCase(), x, M + 4);
+  doc.setTextColor(...NAVY); doc.setFontSize(20); doc.text(pdfText(m.title), x, M + 24);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(60, 70, 80);
+  doc.text(doc.splitTextToSize(pdfText(m.subtitle), W - x - M), x, M + 38);
+  let y = M + 58;
+  doc.setDrawColor(...NAVY); doc.setLineWidth(1.2); doc.line(M, y, W - M, y); y += 8;
+  if (m.sample) { doc.setFont('helvetica', 'bold'); doc.setTextColor(180, 40, 40); doc.setFontSize(10); doc.text('SAMPLE DATA · PRACTICE ONLY', M, y + 10); y += 16; }
+  const heading = h => {
+    if (y > H - 110) { doc.addPage(); y = M; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(...NAVY); doc.text(pdfText(h), M, y + 16); y += 22;
+  };
+  const after = () => { y = doc.lastAutoTable.finalY + 6; };
+  const base = { margin: { left: M, right: M, bottom: 48 }, styles: { font: 'helvetica', fontSize: 9, cellPadding: 3.5, textColor: [25, 30, 35], lineColor: [205, 212, 220], lineWidth: 0.5, overflow: 'linebreak' } };
+  m.sections.forEach(sec => {
+    heading(sec.h);
+    if (sec.kv) {
+      doc.autoTable({ ...base, startY: y, theme: 'plain', body: sec.kv.map(([k, v]) => [pdfText(k), pdfText(v)]), columnStyles: { 0: { fontStyle: 'bold', cellWidth: 130, textColor: [80, 90, 100] } }, styles: { ...base.styles, lineWidth: 0, cellPadding: 2.5 } });
+      after();
+    }
+    if (sec.table) {
+      if (!sec.table.rows.length) { doc.setFont('helvetica', 'italic'); doc.setFontSize(9.5); doc.setTextColor(110, 118, 126); doc.text(pdfText(sec.empty || 'None.'), M, y + 10); y += 18; }
+      else {
+        const colStyles = {};
+        (sec.table.widths || []).forEach((w, i) => { if (w) colStyles[i] = { cellWidth: w }; });
+        doc.autoTable({
+          ...base, startY: y, theme: 'grid', head: [sec.table.head.map(pdfText)], body: sec.table.rows.map(r => r.map(pdfText)),
+          headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: 'bold' }, alternateRowStyles: { fillColor: [244, 247, 250] }, columnStyles: colStyles,
+          didParseCell: d => { if (sec.tri && d.section === 'body' && d.column.index === 0) { const k = sec.table.keys[d.row.index]; d.cell.styles.fillColor = TRI_RGB[k]; d.cell.styles.textColor = TRI_INK[k]; d.cell.styles.fontStyle = 'bold'; } },
+        });
+        after();
+      }
+    }
+    if (sec.note) { doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(110, 118, 126); doc.text(pdfText(sec.note), M, y + 8); y += 14; }
+    y += 6;
+  });
+  if (m.sign) {
+    if (y > H - 120) { doc.addPage(); y = M; }
+    y += 30; doc.setDrawColor(120, 128, 136); doc.setLineWidth(0.6); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 100, 110);
+    const cw = (W - 2 * M - 40) / 3;
+    ['Prepared by', 'Signature', 'Date'].forEach((l, i) => { const lx = M + i * (cw + 20); doc.line(lx, y, lx + cw, y); doc.text(l, lx, y + 12); });
+  }
+  const pages = doc.internal.getNumberOfPages(), made = pdfText(`Made with OpsBoard ${fmtDT(now())}`);
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 128, 136);
+    doc.text(pdfText(`${m.title} · ${made} · Practice data; not a patient care report`), M, H - 24);
+    doc.text(`Page ${i} of ${pages}`, W - M, H - 24, { align: 'right' });
+  }
+  return doc;
+}
+async function saveReportPdf(kind) {
+  const btn = document.getElementById('report-pdf');
+  const busy = on => { if (btn) { btn.disabled = on; btn.innerHTML = on ? 'Making the PDF…' : `${icon('doc')} Save PDF`; } };
+  busy(true);
+  let jsPDF;
+  try { jsPDF = pdfReady() ? window.jspdf.jsPDF : await loadPdfLib(); await prepLogo(); }
+  catch (e) { busy(false); showToast('Couldn\'t load the PDF maker; it needs a connection the first time. Use Print: it can save a PDF too.', false); return; }
+  const m = reportModel(kind), name = m.file + '.pdf';
+  let blob;
+  try { blob = buildPdf(jsPDF, m).output('blob'); }
+  catch (e) { console.warn(e); busy(false); showToast('Couldn\'t make the PDF. Use Print instead.', false); return; }
+  busy(false);
+  const file = typeof File === 'function' ? new File([blob], name, { type: 'application/pdf' }) : null;
+  const touch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+  if (touch && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: m.title }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }   // closed the share sheet; otherwise fall through to a download
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+  showToast(`Saved ${name}`, false);
+}
+function printReport() {
+  const done = () => { document.body.classList.remove('printing'); window.removeEventListener('afterprint', done); };
+  document.body.classList.add('printing');
+  window.addEventListener('afterprint', done);
+  try { window.print(); } catch (e) { done(); showToast('This browser can\'t print from here. Use Save PDF.', false); }
 }
 
 /* =====================================================================
@@ -3077,6 +3603,7 @@ function sheetHtml() {
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
     role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet, 'cam-add': camAddSheet, cam: camSheet, 'feed-add': feedAddSheet, 'inc-clear': incClearSheet,
     'ev-new': evNewSheet, 'post-new': postNewSheet, post: postSheet, 'ev-person': evPersonSheet, 'ev-unit': evUnitSheet, 'ev-pt': evPtSheet, 'ev-end': evEndSheet,
+    report: reportSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -3271,14 +3798,14 @@ function hospSheet(id) {
       ${h.note ? `<div class="note">${esc(h.note)}</div>` : ''}
       ${h.phones ? `<div class="toolbar">${[['ed', 'ED'], ['main', 'Main'], ['burn', 'Burn transfer'], ['psych', 'Psych screening'], ['hbo', 'Hyperbaric']].filter(([k]) => h.phones[k]).map(([k, n]) => `<button class="btn small" data-act="copy-text" data-arg="${esc(h.phones[k])}">${n} <span class="num">${esc(h.phones[k])}</span></button>`).join('')}</div>` : ''}
       ${h.lic ? `<div class="note">Licensed (NJ DOH): ${[['beds', 'beds'], ['icu', 'ICU/CCU'], ['peds', 'pediatric'], ['picu', 'PICU'], ['burn', 'burn'], ['psych', 'psych']].filter(([k]) => h.lic[k]).map(([k, n]) => `${h.lic[k]} ${n}`).join(' · ')}</div>` : ''}
-      ${field('ED status', `<div class="opt-grid">${ED_STATUS.map(s => opt('f-set', 'ed=' + s, f.ed === s, s)).join('')}</div>`)}
+      ${wsNow() !== 'mci' ? `${liveEdHtml(h)}${h.phones ? `<div class="toolbar">${[['ed', 'ED'], ['main', 'Main']].filter(([k]) => h.phones[k]).map(([k, n]) => `<a class="btn small" href="tel:${esc(h.phones[k].replace(/[^0-9+]/g, ''))}">Call ${n}</a>`).join('')}</div>` : ''}<div class="note">MCI capacity and beds are entered from the MCI board.</div>` : `${field('ED status', `<div class="opt-grid">${ED_STATUS.map(s => opt('f-set', 'ed=' + s, f.ed === s, s)).join('')}</div>`)}
       <div class="note">ED divert ends after 2 hours, other diverts after 4. Trauma patients are never diverted from a trauma center, or burn patients from a burn center.</div>
       <div class="ph"><h2>MCI capacity · how many it can take now</h2></div>
       <div class="grid2">${TX_CATS.map(k => field(`${cat(k).color} · ${cat(k).name} <span class="note">(${hospSent(id, k)} sent)</span>`, stepper('cap.' + k, f.cap[k], 0, 99))).join('')}</div>
       <div class="ph"><h2>Beds available by type</h2><span class="meta">Leave at zero if it didn't report one</span></div>
       <div class="grid2">${BED_TYPES.map(b => field(b.name, stepper('beds.' + b.k, f.beds[b.k] ?? 0, 0, 99, 'sm'))).join('')}</div>
-      <div class="switch"><span>${hs.notifiedAt ? `Notified at ${hhmm(hs.notifiedAt)}` : 'Not yet notified'}</span>${hs.notifiedAt ? '' : `<button class="btn" data-act="hosp-notify" data-arg="${id}">Mark notified now</button>`}</div>`,
-    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="hosp-save" data-arg="${id}">Save report</button>`,
+      <div class="switch"><span>${hs.notifiedAt ? `Notified at ${hhmm(hs.notifiedAt)}` : 'Not yet notified'}</span>${hs.notifiedAt ? '' : `<button class="btn" data-act="hosp-notify" data-arg="${id}">Mark notified now</button>`}</div>`}`,
+    foot: wsNow() !== 'mci' ? `<button class="btn primary" data-act="close">Done</button>` : `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="hosp-save" data-arg="${id}">Save report</button>`,
   };
 }
 
@@ -3380,24 +3907,28 @@ function contactSheet() {
   };
 }
 
+const REPORT_NAMES = { inc: 'Incident report', event: 'Event report', day: 'Today\'s report' };
 function menuSheet() {
+  const w = wsNow(), mciWs = w === 'mci', rep = REPORT_OF[w];
   return {
     title: 'Menu',
     body: `<div class="switch"><span>Display on this tablet</span><div class="chips">${opt('mode-set', 'night', DEV.mode !== 'day', 'Night')}${opt('mode-set', 'day', DEV.mode === 'day', 'Day · sunlight')}</div></div>
-      <div class="switch"><span>Triage method</span><div class="chips">${opt('method', 'START', S.method !== 'SALT', 'START')}${opt('method', 'SALT', S.method === 'SALT', 'SALT')}${opt('white-toggle', '', !!S.white, 'Count White · uninjured')}</div></div>
+      ${mciWs ? `<div class="switch"><span>Triage method</span><div class="chips">${opt('method', 'START', S.method !== 'SALT', 'START')}${opt('method', 'SALT', S.method === 'SALT', 'SALT')}${opt('white-toggle', '', !!S.white, 'Count White · uninjured')}</div></div>
       <div class="switch"><span>PAR checks<br><small class="note">A timed check that every crew on scene is accounted for. Applies to every tablet.</small></span><div class="chips">${opt('par-feature', 'off', !parOn(), 'Hide')}${opt('par-feature', 'on', parOn(), 'Use')}</div></div>
-      ${parOn() ? `<div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>` : ''}
+      ${parOn() ? `<div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>` : ''}` : ''}
       <div class="opt-grid wide">
+        ${w === 'home' ? '' : `<button class="opt tall" data-act="view" data-arg="home">Home<small>Switch to Supervisor, MCI or Event</small></button>`}
+        ${rep && !(rep === 'event' && EV.none) && !(rep === 'inc' && S.fresh) ? `<button class="opt tall" data-act="sheet" data-arg="report:${rep}">${REPORT_NAMES[rep]}<small>Summary and timeline · save as PDF</small></button>` : ''}
         ${IN_CLAUDE || DEMO ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `${esc(RELAY.org || 'Signed in')}${RELAY.plan ? ' · ' + esc(planWords(RELAY.plan)) : ''}` : `Free on this tablet · share free for ${TRIAL_DAYS} days`}</small></button>`}
         <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="agency">${agencyLogo('alogo sm')}My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
-        <button class="opt tall" data-act="${eventLive() ? 'view' : 'sheet'}" data-arg="${eventLive() ? 'event' : 'ev-new'}">${eventLive() ? 'Event: ' + esc(EV.event.name || 'running') : 'Start an event'}<small>${eventLive() ? `${plural(EV.posts.length, 'post')} · ${plural(EV.people.filter(x => x.st !== 'off').length, 'member')}` : 'Posts on the map, members, patients'}</small></button>
-        <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
+        ${w === 'event' ? `<button class="opt tall" data-act="sheet" data-arg="${eventLive() ? 'ev-new:edit' : 'ev-new'}">${eventLive() ? 'Edit event' : 'Start an event'}<small>${eventLive() ? `${esc(EV.event.name || 'Event')} · ${plural(EV.posts.length, 'post')} · ${plural(EV.people.filter(x => x.st !== 'off').length, 'member')}` : 'Posts on the map, members, patients'}</small></button>` : ''}
+        ${mciWs ? `<button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
         <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
-        <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>` : ''}
         <button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>
-        ${SH.sample ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
-        ${S.sample ? '<button class="opt tall" data-act="sheet" data-arg="inc-clear">Clear the sample incident<small>Back to an empty board</small></button>' : '<button class="opt tall" data-act="load-sample">Load the sample incident<small>Practice: bus crash, Ocean Township, 19 patients</small></button>'}
+        ${SH.sample && w !== 'mci' && w !== 'event' ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
+        ${mciWs || w === 'home' ? (S.sample ? '<button class="opt tall" data-act="sheet" data-arg="inc-clear">Clear the sample incident<small>Back to an empty board</small></button>' : '<button class="opt tall" data-act="load-sample">Load the sample incident<small>Practice: bus crash, Ocean Township, 19 patients</small></button>') : ''}
       </div>
       <div class="rblock">${rbMark(40)}<div><b>OpsBoard</b><small>EMS · fire · police · events · prototype</small></div></div>
       <div class="note">${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
@@ -3634,7 +4165,7 @@ const STREAMS = [INC, SHIFT, EVS];
 const dispatch = (...a) => INC.dispatch(...a);
 const sdispatch = (...a) => SHIFT.dispatch(...a);
 const edispatch = (...a) => EVS.dispatch(...a);
-const streamOfView = () => (UI.view === 'shift' || UI.view === 'member' ? SHIFT : UI.view === 'event' ? EVS : INC);
+const streamOfView = () => { const w = wsNow(); return w === 'mci' ? INC : w === 'event' ? EVS : SHIFT; };
 
 /* =====================================================================
    Sync between tablets, through this page's shared store.
@@ -3804,10 +4335,10 @@ function syncChipHtml() {
 }
 function syncChip() { const el = document.getElementById('sync-chip'); if (el) el.outerHTML = syncChipHtml(); }
 
-function startIncident(base, msg) {
+function startIncident(base, msg, { stay = false } = {}) {
   UI.sheet = null; UI.form = {}; mapKind = null;
   INC.start(base);
-  UI.view = DEV.role === 'supervisor' ? 'board' : homeView();
+  if (!stay) { if (!MCI_ROLES.includes(DEV.role)) setJob('command'); UI.view = homeView(); saveUi(); }
   render(); showToast(msg, false);
 }
 
@@ -3956,7 +4487,7 @@ function shiftHeader() {
   const day = new Date(now()).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
   return `<header class="head">
     <div class="inc">
-      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${sampleTag()}</div>
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${sampleTag()}${elsewhere('sup')}</div>
       <h1>${agencyLogo()}${esc(C.agency.name)} · Supervisor</h1>
       <div class="inc-sub">${esc(day)} · <b>${onDuty} on duty</b> · ${plural(avail, 'unit')} available · ${plural(s.active, 'active call')}</div>
     </div>
@@ -4064,7 +4595,7 @@ function callRespSheet(id) {
 function todayPanel() {
   const s = shiftStats();
   return `<section class="panel" aria-label="Today">
-    <div class="ph"><h2>Today</h2><span class="meta">since ${hhmm(SH.startedAt)}</span></div>
+    <div class="ph"><h2>Today</h2><span class="meta">since ${hhmm(SH.startedAt)}</span><button class="btn small" data-act="sheet" data-arg="report:day">${icon('doc')} Report</button></div>
     <div class="stats">
       <div class="stat"><span class="lbl">Calls</span><span class="v num">${s.total}</span></div>
       <div class="stat"><span class="lbl">Transports</span><span class="v num">${s.transports}</span></div>
@@ -4090,7 +4621,7 @@ function eventHeader() {
   const E = EV.event, staff = EV.people.filter(x => x.st !== 'off');
   return `<header class="head">
     <div class="inc">
-      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${EV.sample ? '<span class="tag sample">Sample event</span>' : ''}${EV.ended ? `<span class="tag">Ended ${hhmm(EV.ended)}</span>` : ''}</div>
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${EV.sample ? '<span class="tag sample">Sample event</span>' : ''}${EV.ended ? `<span class="tag">Ended ${hhmm(EV.ended)}</span>` : ''}${elsewhere('event')}</div>
       <h1>${agencyLogo()}${EV.none ? 'Event' : esc(E.name || 'Event')}</h1>
       <div class="inc-sub">${EV.none ? 'No event running' : [esc(E.type), E.location && esc(E.location), (E.start || E.end) && esc([E.start, E.end].filter(Boolean).join('–')), `<b>${plural(staff.length, 'member')}</b>`, plural(EV.posts.length, 'post')].filter(Boolean).join(' · ')}</div>
     </div>
@@ -4121,7 +4652,7 @@ function eventMap() {
       <button class="mbtn" data-act="map-layer" aria-pressed="${UI.mapLayer === 'sat'}" aria-label="Satellite imagery">${icon('layers')}<span>${UI.mapLayer === 'sat' ? 'Satellite' : 'Map'}</span></button>
       <button class="mbtn" data-act="map-fit" aria-label="Show every post">${icon('expand')}</button>
     </div>
-    <div class="mapctl bl">${UI.pinMode === 'post' ? '<span class="mchip warn">Tap the map where the post is</span>' : /^post-move:/.test(UI.pinMode || '') ? '<span class="mchip warn">Tap the post\'s new spot</span>' : ''}</div>
+    <div class="mapctl bl">${pinChip()}</div>
   </section>`;
 }
 const stChip = x => `<span class="schip st-${x.st}">${esc(x.name)}<small>${esc(PERSON_ST[x.st] || '')}</small></span>`;
@@ -4168,10 +4699,11 @@ function eventActionsPanel() {
     <div class="ph"><h2>Event</h2></div>
     <div class="note">${[EV.event.channel && `Channel: <b>${esc(EV.event.channel)}</b>`, EV.event.notes && esc(EV.event.notes)].filter(Boolean).join(' · ') || 'Add the radio channel and notes under Edit event.'}</div>
     <div class="toolbar">
+      ${EV.ended ? `<button class="btn small primary" data-act="sheet" data-arg="report:event">${icon('doc')} Final report</button>` : ''}
       <button class="btn small" data-act="ev-brief" id="ev-brief">${icon('copy')} Copy briefing</button>
       ${EV.ended ? '' : `<button class="btn small" data-act="sheet" data-arg="ev-new:edit">Edit event</button>`}
       ${EV.ended ? '' : `<button class="btn small mci-up" data-act="ev-mci">Upgrade to MCI</button>`}
-      ${EV.ended ? `<button class="btn small primary" data-act="sheet" data-arg="ev-new">Start a new event</button>` : `<button class="btn small danger" data-act="sheet" data-arg="ev-end">End the event</button>`}
+      ${EV.ended ? `<button class="btn small" data-act="sheet" data-arg="ev-new">Start a new event</button>` : `<button class="btn small" data-act="sheet" data-arg="report:event">${icon('doc')} Report so far</button><button class="btn small danger" data-act="sheet" data-arg="ev-end">End the event</button>`}
     </div>
   </section>`;
 }
@@ -4307,7 +4839,7 @@ const EVENT_ACTIONS = {
     const base = blankEvent({ name, type: f.type, location: (f.location || '').trim(), start: (f.start || '').trim(), end: (f.end || '').trim(), channel: (f.channel || '').trim(), notes: (f.notes || '').trim() });
     base.units = C.roster.map(r => ({ id: uid(), name: r.name, kind: r.kind, post: '' }));
     UI.sheet = null; UI.form = {};
-    EVS.start(base); UI.view = 'event'; saveUi(); mapKind = null; render();
+    EVS.start(base); setJob('event'); UI.view = 'event'; saveUi(); mapKind = null; render();
     showToast(`Event started: ${name}. Add posts next.`, false);
   },
   'ev-save'() {
@@ -4369,7 +4901,7 @@ const EVENT_ACTIONS = {
   },
   'ev-pt-del'(id) { edispatch('ptDel', { id }, 'Patient entry removed', 'note'); },
   'ev-brief'(arg, el) { copyText(eventBriefing(), el); },
-  'ev-end'() { UI.sheet = null; UI.form = {}; edispatch('evEnd', { at: now() }, `Event ended: ${EV.event.name}`, 'note'); },
+  'ev-end'() { UI.sheet = null; UI.form = {}; edispatch('evEnd', { at: now() }, `Event ended: ${EV.event.name}`, 'note', { toast: false }); openSheet('report:event'); showToast('Event ended. Here is the final report.', false); },
   'ev-mci'() {
     const cmd = EV.people.find(x => x.st !== 'off' && x.cert === 'Officer');
     UI.sheet = 'newinc';
@@ -5030,7 +5562,8 @@ function takeInviteFromAddress() {
 /* =====================================================================
    Actions
    ===================================================================== */
-function openSheet(name) { UI.sheet = name; UI.form = {}; render(); }
+function openSheet(name) { UI.sheet = name; UI.form = {}; if (/^report(:|$)/.test(name)) prepReport(); render(); }
+function setJob(r) { if (!ROLES[r] || DEV.role === r) return; DEV.role = r; saveDev(); Sync.setRole(); }
 function closeSheet() { UI.sheet = null; UI.form = {}; render(); }
 function showToast(msg, undoId) {
   clearTimeout(toastTimer);
@@ -5070,9 +5603,18 @@ const A = {
   share() { if (Sync.db) Sync.announce(streamOfView()); },
   role(r) {
     if (DEV.role === r) return;
-    DEV.role = r; saveDev(); Sync.setRole();
+    setJob(r);
     UI.sheet = null; UI.form = {}; UI.view = homeView(); saveUi(); render();
     showToast(`This tablet is now ${ROLES[r].name}.`, false);
+  },
+  /* From the Home screen: open a workspace. With nothing running there yet, start one. */
+  ws(r) {
+    setJob(r);
+    UI.sheet = null; UI.form = {}; UI.pinMode = null; mapKind = null;
+    UI.view = homeView(); saveUi(); render();
+    app.querySelector('.main')?.scrollTo?.(0, 0);
+    if (r === 'command' && S.fresh) openSheet('newinc');
+    else if (r === 'event' && EV.none) openSheet('ev-new');
   },
 
   tri(arg) {
@@ -5365,20 +5907,22 @@ const A = {
     if (f.fromCall) {
       const c = SH.calls.find(x => x.id === f.fromCall);
       if (c) sdispatch('note', {}, `${c.type} at ${c.address} became an MCI`, 'note', { toast: false });
-      DEV.role = 'command'; saveDev(); Sync.setRole(); UI.view = 'board'; saveUi(); render();
+      setJob('command'); UI.view = 'board'; saveUi(); render();
       showToast('MCI started from the call. This tablet is now Command.', false);
     }
     if (f.fromEvent) {
       edispatch('note', {}, `The event became an MCI: ${base.incident.type || 'incident'}${base.incident.location ? ' at ' + base.incident.location : ''}`, 'note', { toast: false });
-      DEV.role = 'command'; saveDev(); Sync.setRole(); UI.view = 'board'; saveUi(); render();
+      setJob('command'); UI.view = 'board'; saveUi(); render();
       showToast(`MCI started with ${plural(base.people.length, 'member')} and ${plural(EV.units.length, 'unit')} from the event on scene. This tablet is now Command.`, false);
     }
   },
   'load-sample'() { startIncident(sampleState(), 'Sample incident loaded'); },
-  'inc-clear'() { const view = UI.view; startIncident(freshIncident(), 'Sample cleared'); UI.view = view; render(); },
+  'inc-clear'() { startIncident(freshIncident(), 'Sample cleared', { stay: true }); },
 
   'log-filter'(k) { UI.logFilter = k; render(); },
-  'quick-note'(text) { dispatch('note', {}, text, 'note'); },
+  'report-pdf'(kind) { saveReportPdf(kind); },
+  'report-print'() { printReport(); },
+  'quick-note'(text) { logStream().dispatch('note', {}, text, 'note'); },
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
 
@@ -5420,7 +5964,7 @@ document.addEventListener('submit', e => {
     const text = (UI.form.note || '').trim();
     if (!text) return;
     UI.form.note = '';
-    dispatch('note', {}, text, 'note');
+    logStream().dispatch('note', {}, text, 'note');
     document.getElementById('note-input')?.focus();
   }
 });
@@ -5433,11 +5977,11 @@ let lastDayCheck = 0;
 function tick() {
   const t = now();
   if (t % 5000 < 1000) document.querySelectorAll('img[data-cam]').forEach(img => { const u = img.dataset.cam; img.src = u + (u.includes('?') ? '&' : '?') + '_t=' + t; });
-  if (t - lastDayCheck > 60000) { lastDayCheck = t; maybeNewDay(); }
+  if (t - lastDayCheck > 60000) { lastDayCheck = t; maybeNewDay(); if (document.visibilityState === 'visible') saveUi(); }
   const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
   set('now', hhmm(t));
   document.querySelectorAll('[data-since]').forEach(el => { const v = dur(t - Number(el.dataset.since)); if (el.textContent !== v) el.textContent = v; });
-  if ((UI.view === 'shift' || UI.view === 'member' || UI.view === 'event') && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
+  if (['shift', 'member', 'event', 'home'].includes(UI.view) && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
   set('elapsed', S.fresh ? '--:--' : dur(t - S.incident.dispatchAt));
   const due = S.par.last + S.par.interval * 60000, left = due - t;
   set('par', left >= 0 ? dur(left) : '+' + dur(-left));

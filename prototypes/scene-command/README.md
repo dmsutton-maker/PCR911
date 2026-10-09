@@ -6,9 +6,13 @@ Served at https://dmsutton-maker.github.io/PCR911/scene-command/ (the address ke
 
 A touch-first EMS command app for iPads in landscape, with a phone view for members, set up for Hatzalah Jersey Shore (county number 78) in Monmouth County, NJ. It has two boards that any number of tablets share live: a **supervisor board** for everyday calls, and a **scene board** for an MCI. It's free on one tablet; sharing between tablets and phones is the squad plan, free for the first 60 days (see server/README.md). Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
 
-## Tablets and jobs
+## Home, workspaces and jobs
 
-Each tablet picks a job, and each job has its own home screen. Tablets start on the Supervisor board; phones on My calls. All of them share the same incident and the same supervisor board. The supervisor board is one board per day: it turns over by itself at 6 AM, carrying units, crew still on duty and any open call, so there is no shift to start.
+A tablet opens on **Home**, which asks what you're working on: **Supervisor** (everyday calls), **MCI** (pick your job: Command, Triage or Transport) or **Event**. Each tile shows what's running there now. Picking MCI or Event with nothing running starts one. Each workspace has its own tabs on the side, only what that job needs: an event has Event, Map (posts, cameras, hospitals), Hospitals, Phone, Radio and Log, with no triage, transport, units or ICS; the supervisor has no MCI tabs either. The Map, Hospitals, Radio and Log tabs follow the workspace, so the event's log is the event's and the supervisor's is today's. The Home button is at the top of the side tabs (at the left of the bottom bar on a phone). A tablet goes back to Home after six hours unused; otherwise it reopens where it was. Phones open on My calls.
+
+**Final reports.** At the end of an MCI, an event or the day, the Final report (on the log, in Menu, on Home, on the board once the scene is clear, and opened by itself when an event ends) shows a summary of everything: times, benchmarks, triage counts, transports, hospitals, units, people and their hours, requests, ICS, patients (no names) and the full time-stamped timeline, with signature lines. **Save PDF** makes a Letter-size PDF with the squad's logo (on an iPad it opens the share sheet: Files, Mail, AirDrop, Print); **Print** prints the same report. The PDF maker loads from cdnjs the first time, so the first PDF needs a connection; Print always works.
+
+Each tablet picks a job, and each job has its own home screen. All of them share the same incident and the same supervisor board. The supervisor board is one board per day: it turns over by itself at 6 AM, carrying units, crew still on duty and any open call, so there is no shift to start.
 
 | Job | Home screen |
 |---|---|
@@ -34,7 +38,7 @@ This is a clickable prototype for deciding what the real thing should be. It is 
 | **Phone** | Directory of published numbers, plus your own |
 | **ICS** | Unified command, command staff, operations and the medical group; tap a box to assign it |
 | **Radio** | METHANE, CAN, triage report, hospital notification, mutual-aid request, air medical request and command transfer, all written from the board. Also a channel reference. **Listen live** at the top: the county's public Broadcastify feeds (they open on Broadcastify, whose terms don't allow playing them inside another app), and feeds the squad adds that it has the right to use, which play right in OpsBoard in a bar that stays up across screens |
-| **Log** | Every tap, time-stamped and marked with which tablet made it, for the after-action report |
+| **Log** | Every tap, time-stamped and marked with which tablet made it, for the final report. One log per workspace: the incident's, the event's, today's |
 | **Supervisor** | The supervisor board for everyday calls (see above) |
 | **Event** | For a planned event rather than an emergency (a parade, the fireworks, a concert, a race). Posts on the map (numbered posts, first aid, command post, roaming, ambulance standby, cooling, gates), placed by tapping the map; members and units assigned to each; who's at their post, on break or done; a patient log (seen, released, transported, refused) with no patient names; a copyable briefing. Members' phones show their post with directions and "I'm at my post", and can check in to the event themselves. **Upgrade to MCI** starts an incident with the event's members and units already on scene. |
 
