@@ -4404,6 +4404,7 @@ const streamOfView = () => { const w = wsNow(); return w === 'mci' ? INC : w ===
    boards run on this tablet alone.
    ===================================================================== */
 const CONFIG_DOC = 'squad/config';
+const guestStream = str => !isGuest() || str !== SHIFT;   // a guest shares the incident and the event, not the day
 const STOP_CODES = ['revoked', 'not_granted', 'capability_disabled', 'capability_removed'];
 const CHUNK = 300;   // events per document, well under the store's 256 KiB per document
 const Sync = {
@@ -4417,8 +4418,8 @@ const Sync = {
     try { db = await use('db'); } catch (e) { db = null; }
     if (!db) { this.state = 'local'; syncChip(); return; }
     this.db = db; this.state = 'ready';
-    STREAMS.forEach(str => db.doc(str.pointer).onSnapshot(s => this.onPointer(str, s), e => this.stop(e)));
-    db.doc(CONFIG_DOC).onSnapshot(s => this.onConfig(s), () => {});
+    STREAMS.filter(guestStream).forEach(str => db.doc(str.pointer).onSnapshot(s => this.onPointer(str, s), e => this.stop(e)));
+    if (!isGuest()) db.doc(CONFIG_DOC).onSnapshot(s => this.onConfig(s), () => {});
     syncChip();
     try {
       const room = await use('room');
@@ -4470,7 +4471,7 @@ const Sync = {
 
   /* Make this tablet's board the one every tablet follows. */
   async announce(str) {
-    if (!this.db) return;
+    if (!this.db || !guestStream(str)) return;
     const id = str.base.id;
     str.sharing = true; syncChip();
     try {
@@ -4483,7 +4484,7 @@ const Sync = {
   },
 
   push(str) {
-    if (!this.db) return;
+    if (!this.db || !guestStream(str)) return;
     if (!str.shared || str.id !== str.base.id) return str.sharing ? null : this.announce(str);
     return this.flush(str);
   },
@@ -4535,7 +4536,7 @@ const Sync = {
     if (!UI.sheet) render();
   },
   pushConfig() {
-    if (!this.db) return;
+    if (!this.db || isGuest()) return;
     const go = () => this.db.doc(CONFIG_DOC).set(JSON.parse(JSON.stringify(C))).then(() => { this.cfgDirty = false; }).catch(() => { this.cfgDirty = true; });
     this.cfgWriting = (this.cfgWriting || Promise.resolve()).then(go);
   },
@@ -5702,9 +5703,11 @@ function connectSheet() {
     const live = relayConn && relayConn.isOpen();
     return {
       title: 'Squad sharing',
-      body: `<div class="note">${relayRefusal && !planEnded() ? `<span class="crit-t">${esc(relayRefusal)}</span> ` : ''}This tablet is ${live ? '<span class="ok-t">connected</span>' : 'set up but not connected right now'} to <b>${esc(RELAY.org || 'the squad')}</b> as <b>${esc(RELAY.name || '')}</b>${RELAY.role === 'admin' ? ' (admin)' : ''}. Every tablet signed in to the squad shares the same incident and supervisor board.</div>
+      body: `<div class="note">${relayRefusal && !planEnded() ? `<span class="crit-t">${esc(relayRefusal)}</span> ` : ''}This tablet is ${live ? '<span class="ok-t">connected</span>' : 'set up but not connected right now'} to <b>${esc(RELAY.org || 'the squad')}</b> as <b>${esc(RELAY.name || '')}</b>${RELAY.role === 'admin' ? ' (admin)' : ''}. ${isGuest() ? 'It shares the squad\'s MCI and events.' : 'Every tablet signed in to the squad shares the same incident and supervisor board.'}</div>
         <div class="note">Relay: <span class="num">${esc(RELAY.url)}</span></div>
         ${planPanel()}
+        ${isGuest() ? `<div class="note">Guest access for <b>${esc(AGENCIES[RELAY.agency] ? AGENCIES[RELAY.agency].long : 'another department')}</b>${RELAY.dept ? ' · ' + esc(RELAY.dept) : ''}${RELAY.until ? ` until <b>${esc(fmtDT(Date.parse(RELAY.until)))}</b>` : ''}. This device shares the MCI and events only.</div>` : ''}
+        ${RELAY.role === 'admin' && !planEnded() ? guestInvitePanel() : ''}
         ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Add a tablet</h2></div>
           <div class="note">Makes a new invite link. Open it on the other tablet, or type its code there. Making a new one stops earlier invite links from working; tablets already joined are not affected.</div>
           ${f.invite ? `<div class="coord" style="word-break:break-all">${esc(f.invite.link)}<small>Invite code ${esc(f.invite.code)}</small></div>
@@ -5734,7 +5737,9 @@ function connectSheet() {
   };
 }
 function relaySaved(url, data, role) {
-  RELAY = { url, token: data.token, name: (data.member && data.member.name) || data.adminName || '', org: (data.org && data.org.name) || data.orgName || '', role: role || (data.member && data.member.role) || 'member' };
+  const mem = data.member || {};
+  RELAY = { url, token: data.token, name: mem.name || data.adminName || '', org: (data.org && data.org.name) || data.orgName || '', role: role || mem.role || 'member' };
+  if (RELAY.role === 'guest') Object.assign(RELAY, { guest: true, agency: mem.agency, dept: mem.dept || '', until: mem.expiresAt });
   write(RELAY_KEY, RELAY);
   showToast(`Signed in to ${RELAY.org || 'the squad'}. Connecting…`, false);
   setTimeout(() => location.reload(), 700);
@@ -5767,8 +5772,31 @@ function ownerSheet() {
     foot: `<button class="btn" data-act="sheet" data-arg="connect">Back</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
   };
 }
+/* Another department joins the MCI or an event: a guest link for one agency, good for a set time. Its devices see
+   only the incident and event boards, in their own colors, never the squad's daily calls or roster. */
+function guestInvitePanel() {
+  const f = UI.form, ag = f.gagency || 'fire', hrs = Number(f.ghours || 24);
+  const g = f.guest;
+  return `<div class="ph"><h2>Invite another department</h2></div>
+    <div class="note">For fire or police working an MCI or event with you. Their phones and tablets open in their own colors and screens, see only the incident and events, and stop working when the link runs out.</div>
+    <div class="switch"><span>Department</span><div class="chips">${opt('f-set', 'gagency=fire', ag === 'fire', 'Fire')}${opt('f-set', 'gagency=police', ag === 'police', 'Police')}</div></div>
+    ${field('Name · optional', input('g-dept', 'gdept', f.gdept, ag === 'fire' ? 'e.g. Ocean Township Fire' : 'e.g. Ocean Township PD'))}
+    <div class="switch"><span>Works for</span><div class="chips">${[[12, '12 hours'], [24, '1 day'], [72, '3 days'], [168, '1 week']].map(([h, l]) => opt('f-set', 'ghours=' + h, hrs === h, l)).join('')}</div></div>
+    ${g ? `<div class="coord" style="word-break:break-all">${esc(g.link)}<small>${esc(AGENCIES[g.agency].name)} guest code ${esc(g.code)} · until ${esc(fmtDT(Date.parse(g.expiresAt)))}</small></div>
+      <div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(g.link)}">${icon('copy')} Copy link</button><button class="btn small" data-act="copy-text" data-arg="${esc(g.code)}">Copy code</button>${navigator.share ? `<button class="btn small" data-act="guest-share">Send…</button>` : ''}<button class="btn small" data-act="relay-guest">Make another</button></div>`
+      : `<button class="btn" data-act="relay-guest">Make a ${ag === 'fire' ? 'fire' : 'police'} guest link</button>`}`;
+}
 const RELAY_ACTIONS = {
   'relay-retry'() { location.reload(); },
+  async 'relay-guest'() {
+    const f = UI.form, agency = f.gagency || 'fire', hours = Number(f.ghours || 24);
+    try {
+      const { url, data } = await relayCall('/v1/guest-invites', { agency, hours, dept: (f.gdept || '').trim() }, { authorization: 'Bearer ' + RELAY.token });
+      f.guest = { code: data.inviteCode, agency: data.agency, expiresAt: data.expiresAt, link: inviteLinkFor(url, data.inviteCode) };
+      render();
+    } catch (e) { showToast(e.message, false); }
+  },
+  'guest-share'() { const g = UI.form.guest; if (g && navigator.share) navigator.share({ title: 'OpsBoard guest link', text: `Join ${RELAY.org || 'our'} MCI board on OpsBoard (${AGENCIES[g.agency].name}). Code ${g.code}.`, url: g.link }).catch(() => {}); },
   async 'owner-load'() {
     const f = UI.form; f.oerr = '';
     try { const { data } = await relayCall('/v1/owner/squads', {}, { 'x-bootstrap-code': (f.ocode || '').trim() }); f.squads = data.squads || []; }
@@ -5929,7 +5957,7 @@ const A = {
 
   'f-set'(arg) {
     const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
-    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'atype', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert', 'ptkind', 'ptwhere'];
+    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'atype', 'gagency', 'ghours', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert', 'ptkind', 'ptwhere'];
     UI.form[k] = UI.form[k] === v && !sticky.includes(k) ? '' : v;
     if (k === 'cat') UI.form.n = 1;
     render();
@@ -6299,6 +6327,7 @@ if ((DEV.v || 1) < 2) {
 saveDev();
 if (!DEMO) { try { Object.keys(localStorage).filter(k => k.startsWith('sc3:') && k !== RELAY_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ } }
 C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || (DEMO ? sampleConfig() : {})) });
+if (isGuest()) C.agency = { ...C.agency, name: RELAY.org || C.agency.name, logo: '' };   // a guest never reads the squad's settings
 fitRole();
 INC.load(DEMO ? sampleState : freshIncident);
 SHIFT.load(DEMO ? sampleShift : () => blankShift());

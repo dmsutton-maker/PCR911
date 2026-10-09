@@ -62,8 +62,17 @@ const ACCOUNT_ROUTES = new Set([
   '/v1/members',
   '/v1/members/status',
   '/v1/invites',
+  '/v1/guest-invites',
   '/v1/audit',
 ]);
+
+/* Guests: another department (fire, police) working an MCI or event with the squad. A guest invite is for one
+   agency and runs out; a guest device can reach only the incident and event boards, never the squad's daily
+   calls, its roster or its settings. */
+const GUEST_AGENCIES = ['fire', 'police'];
+const GUEST_HOURS = [12, 24, 72, 168];
+const GUEST_PATHS = /^(now\/incident|now\/event|mci(\/.*)?|evts(\/.*)?)$/;
+const guestPathOk = (path) => GUEST_PATHS.test(path);
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -165,6 +174,7 @@ async function authenticate(request, env, tokenOverride) {
     if (pointer) {
       const member = await store.get(`mem:${pointer.orgId}:${pointer.memberId}`, 'json');
       if (member && member.status === 'active') {
+        if (member.role === 'guest' && Date.parse(member.expiresAt || '') <= Date.now()) return { kind: 'expired', member };
         return { kind: 'member', orgId: pointer.orgId, member };
       }
       if (member) return { kind: 'revoked', member };
@@ -303,6 +313,11 @@ async function join(request, env) {
   if (!invite || invite.disabled) {
     return fail(401, 'That invite code is not valid. Ask your admin for a current one.', request, env);
   }
+  const guest = invite.role === 'guest';
+  if (guest && !(Date.parse(invite.expiresAt || '') > Date.now())) {
+    return fail(401, 'That guest invite has run out. Ask the squad for a new one.', request, env);
+  }
+  const role = guest ? 'guest' : invite.role === 'admin' ? 'admin' : 'member';
 
   const org = await store.get(`org:${invite.orgId}`, 'json');
   if (!org) return fail(404, 'That invite points at an organization that no longer exists.', request, env);
@@ -318,7 +333,8 @@ async function join(request, env) {
       orgId: invite.orgId,
       name,
       certLevel,
-      role: invite.role === 'admin' ? 'admin' : 'member',
+      role,
+      ...(guest ? { agency: invite.agency, dept: invite.dept || '', expiresAt: invite.expiresAt } : {}),
       status: 'active',
       joinedAt: now,
       lastSeenAt: now,
@@ -327,13 +343,13 @@ async function join(request, env) {
   );
   await store.put(`tok:${await sha256(token)}`, JSON.stringify({ orgId: invite.orgId, memberId }));
 
-  await audit(env, invite.orgId, { action: 'member_joined', memberId, name });
+  await audit(env, invite.orgId, { action: guest ? 'guest_joined' : 'member_joined', memberId, name, ...(guest ? { agency: invite.agency, dept: invite.dept || '' } : {}) });
 
   return json(
     {
       token,
-      member: { id: memberId, name, certLevel, role: invite.role === 'admin' ? 'admin' : 'member' },
-      org: { id: org.id, name: org.name, config: org.config },
+      member: { id: memberId, name, certLevel, role, ...(guest ? { agency: invite.agency, dept: invite.dept || '', expiresAt: invite.expiresAt } : {}) },
+      org: { id: org.id, name: org.name, ...(guest ? {} : { config: org.config }) },
     },
     200,
     request,
@@ -354,8 +370,9 @@ async function me(auth, request, env) {
         name: auth.member.name,
         certLevel: auth.member.certLevel,
         role: auth.member.role,
+        ...(auth.member.role === 'guest' ? { agency: auth.member.agency, dept: auth.member.dept || '', expiresAt: auth.member.expiresAt } : {}),
       },
-      org: org ? { id: org.id, name: org.name, config: org.config } : null,
+      org: org ? { id: org.id, name: org.name, ...(auth.member.role === 'guest' ? {} : { config: org.config }) } : null,
     },
     200,
     request,
@@ -446,7 +463,7 @@ async function rotateInvite(auth, request, env) {
   const list = await store.list({ prefix: 'invite:' });
   for (const key of list.keys) {
     const invite = await store.get(key.name, 'json');
-    if (invite?.orgId === auth.orgId && !invite.disabled) {
+    if (invite?.orgId === auth.orgId && !invite.disabled && invite.role !== 'guest') {
       await store.put(key.name, JSON.stringify({ ...invite, disabled: true }));
     }
   }
@@ -464,6 +481,24 @@ async function rotateInvite(auth, request, env) {
   });
 
   return json({ inviteCode, role }, 200, request, env);
+}
+
+async function guestInvite(auth, request, env) {
+  const store = kv(env);
+  const body = await request.json().catch(() => ({}));
+  const agency = String(body?.agency || '');
+  if (!GUEST_AGENCIES.includes(agency)) return fail(400, `A guest invite is for one of: ${GUEST_AGENCIES.join(', ')}.`, request, env);
+  const hours = GUEST_HOURS.includes(Number(body?.hours)) ? Number(body.hours) : 24;
+  const dept = String(body?.dept || '').trim().slice(0, 80);
+  const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  const inviteCode = randomCode();
+  await store.put(
+    `invite:${inviteCode}`,
+    JSON.stringify({ orgId: auth.orgId, role: 'guest', agency, dept, expiresAt, createdAt: new Date().toISOString(), by: auth.member.id, disabled: false }),
+    { expirationTtl: hours * 60 * 60 + 7 * 24 * 60 * 60 },
+  );
+  await audit(env, auth.orgId, { action: 'guest_invite_made', memberId: auth.member.id, name: auth.member.name, agency, dept, hours });
+  return json({ inviteCode, agency, dept, expiresAt }, 200, request, env);
 }
 
 async function readAudit(auth, request, env) {
@@ -626,24 +661,88 @@ function ownerGuard(request, env) {
   return null;
 }
 
+async function orgMembers(store, orgId) {
+  const out = [];
+  let cursor;
+  do {
+    const page = await store.list({ prefix: `mem:${orgId}:`, cursor });
+    for (const { name } of page.keys) { const m = await store.get(name, 'json'); if (m) out.push(m); }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor && out.length < 2000);
+  return out;
+}
+async function boardStats(env, orgId) {
+  if (!env.BOARD) return null;
+  try {
+    const res = await env.BOARD.get(env.BOARD.idFromName(orgId)).fetch('https://board.internal/stats');
+    return res.ok ? await res.json() : null;
+  } catch { return null; }
+}
+const latest = (...ts) => ts.map((t) => (typeof t === 'number' ? t : Date.parse(t || ''))).filter(Number.isFinite).reduce((a, b) => Math.max(a, b), 0) || null;
+
+async function squadSummary(env, store, org, withStats) {
+  const record = await store.get(`plan:${org.id}`, 'json');
+  const members = await orgMembers(store, org.id);
+  const now = Date.now();
+  const people = members.filter((m) => m.role !== 'guest');
+  const guests = members.filter((m) => m.role === 'guest');
+  const out = {
+    id: org.id, name: org.name, createdAt: org.createdAt, plan: record ? boardPlan(record) : null,
+    planSince: record ? record.trialStartedAt || record.setAt || null : null,
+    members: {
+      active: people.filter((m) => m.status === 'active').length,
+      admins: people.filter((m) => m.status === 'active' && m.role === 'admin').length,
+      revoked: people.filter((m) => m.status !== 'active').length,
+      guests: guests.filter((m) => m.status === 'active' && Date.parse(m.expiresAt || '') > now).length,
+      guestAgencies: [...new Set(guests.filter((m) => m.status === 'active' && Date.parse(m.expiresAt || '') > now).map((m) => m.agency))],
+    },
+  };
+  if (withStats) {
+    const b = await boardStats(env, org.id);
+    out.board = b;
+    out.lastActiveAt = latest(b && b.lastWriteAt, ...(b ? b.devices.map((d) => d.at) : []), ...members.map((m) => m.lastSeenAt));
+  }
+  return out;
+}
+
 async function ownerSquads(request, env) {
   const refused = ownerGuard(request, env);
   if (refused) return refused;
   const store = kv(env);
-  const squads = [];
+  const orgs = [];
   let cursor;
   do {
     const page = await store.list({ prefix: 'org:', cursor });
-    for (const { name } of page.keys) {
-      const org = await store.get(name, 'json');
-      if (!org) continue;
-      const record = await store.get(`plan:${org.id}`, 'json');
-      squads.push({ id: org.id, name: org.name, createdAt: org.createdAt, plan: record ? boardPlan(record) : null });
-    }
+    for (const { name } of page.keys) { const org = await store.get(name, 'json'); if (org) orgs.push(org); }
     cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor && squads.length < 2000);
+  } while (cursor && orgs.length < 2000);
+  const body = await request.clone().json().catch(() => ({}));
+  const withStats = body?.stats !== false;
+  const squads = [];
+  for (let i = 0; i < orgs.length; i += 8) squads.push(...(await Promise.all(orgs.slice(i, i + 8).map((o) => squadSummary(env, store, o, withStats)))));
   squads.sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  return json({ squads, trialDays: trialDays(env), graceDays: BOARD_GRACE_DAYS }, 200, request, env);
+  return json({ squads, trialDays: trialDays(env), graceDays: BOARD_GRACE_DAYS, at: new Date().toISOString() }, 200, request, env);
+}
+
+/* One squad in full, for the owner: its people (names and roles, never tokens), guests and when they run out,
+   the devices that use its board, and its recent audit log. */
+async function ownerSquad(request, env) {
+  const refused = ownerGuard(request, env);
+  if (refused) return refused;
+  const store = kv(env);
+  const body = await request.json().catch(() => null);
+  const org = body?.orgId ? await store.get(`org:${String(body.orgId)}`, 'json') : null;
+  if (!org) return fail(404, 'No squad with that ID on this relay.', request, env);
+  const summary = await squadSummary(env, store, org, true);
+  const members = (await orgMembers(store, org.id)).map((m) => ({
+    id: m.id, name: m.name, role: m.role, status: m.status, joinedAt: m.joinedAt, lastSeenAt: m.lastSeenAt,
+    ...(m.role === 'guest' ? { agency: m.agency, dept: m.dept || '', expiresAt: m.expiresAt } : {}),
+  })).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  const list = await store.list({ prefix: `aud:${org.id}:`, limit: 200 });
+  const audit = [];
+  for (const key of list.keys) { const e = await store.get(key.name, 'json'); if (e) audit.push(e); }
+  audit.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return json({ ...summary, people: members, audit: audit.slice(0, 60) }, 200, request, env);
 }
 
 async function ownerSetPlan(request, env) {
@@ -701,6 +800,7 @@ async function openBoard(request, env) {
   const token = offered.find((p) => p && p !== BOARD_PROTOCOL) || '';
   const auth = await authenticate(request, env, token);
   if (auth.kind === 'revoked') return refuseSocket(4403, 'Your access to this organization has been withdrawn.');
+  if (auth.kind === 'expired') return refuseSocket(4403, 'This guest access has ended. Ask the squad for a new guest link.');
   if (auth.kind !== 'member') return refuseSocket(4401, 'This tablet is not signed in to the squad.');
 
   // The trial starts the first time a squad shares a board, not when it was set
@@ -719,6 +819,7 @@ async function openBoard(request, env) {
   const headers = new Headers(request.headers);
   headers.set('x-member-id', auth.member.id);
   headers.set('x-member-name', auth.member.name || '');
+  headers.set('x-member-role', auth.member.role || 'member');
   headers.set('x-plan', JSON.stringify(plan));
   return stub.fetch(new Request(request, { headers }));
 }
@@ -735,12 +836,15 @@ async function openBoard(request, env) {
  */
 export class Board extends DurableObject {
   async fetch(request) {
-    // Reached only through openBoard, after the caller was authenticated.
+    // The relay owner's console asks for a summary; nothing outside this worker can reach a Durable Object.
+    if (new URL(request.url).pathname === '/stats') return Response.json(await this.stats());
+    // Otherwise reached only through openBoard, after the caller was authenticated.
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({
       member: request.headers.get('x-member-id') || '',
       name: request.headers.get('x-member-name') || '',
+      guest: request.headers.get('x-member-role') === 'guest',
       plan: JSON.parse(request.headers.get('x-plan') || 'null'),
       peer: '', dev: '', role: '', at: Date.now(), subs: [],
     });
@@ -783,6 +887,9 @@ export class Board extends DurableObject {
     const a = ws.deserializeAttachment() || { subs: [] };
     const bad = (why) => this.send(ws, { type: 'err', rid: m.rid, code: 'invalid_argument', message: why });
     const pathOk = typeof m.path === 'string' && BOARD_PATH.test(m.path) && !m.path.split('/').some((x) => x === '.' || x === '..');
+    if (a.guest && pathOk && ['sub', 'get', 'set'].includes(m.type) && !guestPathOk(m.path)) {
+      return this.send(ws, { type: 'err', rid: m.rid, path: m.path, code: 'permission_denied', message: 'Guests see the incident and event boards only.' });
+    }
 
     switch (m.type) {
       case 'hello':
@@ -792,6 +899,8 @@ export class Board extends DurableObject {
         if (m.role !== undefined) a.role = String(m.role).slice(0, 20);
         a.at = Date.now();
         ws.serializeAttachment(a);
+        // Which devices use this board, and when last: for the owner's console. Counts and names, no board data.
+        if (a.dev) await this.ctx.storage.put(`m:dev:${a.member}:${a.dev}`, { name: a.name, role: a.role, guest: !!a.guest, at: a.at });
         if (m.type === 'hello') this.send(ws, { type: 'welcome', name: a.name, plan: a.plan || null });
         this.broadcastPeers();
         return;
@@ -822,6 +931,7 @@ export class Board extends DurableObject {
         if (!m.data || typeof m.data !== 'object' || Array.isArray(m.data)) return bad('A document is an object.');
         if (JSON.stringify(m.data).length > BOARD_MAX_DOC) return bad('That document is over 256 KB.');
         await this.ctx.storage.put('d:' + m.path, m.data);
+        if (Date.now() - (this.lastWrite || 0) > 30000) { this.lastWrite = Date.now(); await this.ctx.storage.put('m:last', this.lastWrite); }
         this.send(ws, { type: 'ok', rid: m.rid });
         const parent = m.path.split('/').slice(0, -1).join('/');
         for (const other of this.ctx.getWebSockets()) {
@@ -833,6 +943,78 @@ export class Board extends DurableObject {
       default:
         return bad('Unknown message.');
     }
+  }
+
+  /* What this squad has and how it is being used, without anything a patient or member typed: the squad's setup in
+     counts, which devices connect, and whether an MCI, an event or today's board is running. */
+  async stats() {
+    const st = this.ctx.storage, doc = async (p) => (await st.get('d:' + p)) ?? null;
+    const evsOf = async (root) => {
+      const out = [];
+      for (const [, d] of await st.list({ prefix: `d:${root}/devices/` })) if (d && Array.isArray(d.events)) out.push(...d.events);
+      const undone = new Set(out.filter((e) => e.type === 'undo').map((e) => e.p && e.p.target));
+      return out.filter((e) => e.type !== 'undo' && !undone.has(e.id)).sort((x, y) => x.t - y.t);
+    };
+    const board = async (pointer, root) => {
+      const ptr = await doc(pointer);
+      if (!ptr || !ptr.id) return null;
+      const d = await doc(`${root}/${ptr.id}`);
+      if (!d || !d.base) return null;
+      return { id: ptr.id, base: d.base, createdAt: d.createdAt || ptr.at || null, events: await evsOf(`${root}/${ptr.id}`) };
+    };
+    const last = (evs) => (evs.length ? evs[evs.length - 1].t : null);
+    const count = (evs, type) => evs.filter((e) => e.type === type).length;
+
+    let incident = null;
+    const inc = await board('now/incident', 'mci');
+    if (inc) {
+      const I = { ...(inc.base.incident || {}) };
+      let level = I.mciLevel || 0, clear = !!(inc.base.bench || {}).clear, pts = Object.values(inc.base.triage || {}).reduce((a, n) => a + (Number(n) || 0), 0);
+      for (const e of inc.events) {
+        if (e.type === 'incEdit' && e.p && e.p.fields) Object.assign(I, e.p.fields);
+        if (e.type === 'mci' && e.p) level = e.p.L || 0;
+        if (e.type === 'tri' && e.p) pts += e.p.d || 0;
+        if (e.type === 'bench' && e.p && e.p.id === 'clear') clear = !!e.p.on;
+      }
+      const used = !inc.base.fresh || inc.events.some((e) => e.type === 'incEdit' || e.type === 'mci');
+      incident = used ? {
+        type: String(I.type || '').slice(0, 60), place: [I.location, I.municipality].filter(Boolean).join(', ').slice(0, 120),
+        level, patients: Math.max(0, pts), transports: count(inc.events, 'tx') + (inc.base.transports || []).length,
+        clear, sample: !!inc.base.sample, startedAt: I.dispatchAt || inc.createdAt, lastAt: last(inc.events),
+        agencies: [...new Set(inc.events.map((e) => e.role).filter(Boolean))],
+      } : null;
+    }
+    let event = null;
+    const ev = await board('now/event', 'evts');
+    if (ev && !ev.base.none) {
+      const ended = ev.events.find((e) => e.type === 'evEnd');
+      event = {
+        name: String((ev.base.event || {}).name || '').slice(0, 80), place: String((ev.base.event || {}).location || '').slice(0, 120),
+        posts: (ev.base.posts || []).length + count(ev.events, 'postAdd') - count(ev.events, 'postDel'),
+        people: (ev.base.people || []).length + count(ev.events, 'personAdd'),
+        patients: (ev.base.pts || []).length + count(ev.events, 'ptAdd') - count(ev.events, 'ptDel'),
+        sample: !!ev.base.sample, startedAt: ev.base.startedAt || ev.createdAt, endedAt: ended ? ended.t : (ev.base.ended || null), lastAt: last(ev.events),
+      };
+    }
+    let day = null;
+    const dy = await board('now/day', 'days');
+    if (dy) {
+      day = {
+        id: dy.id, calls: (dy.base.calls || []).length + count(dy.events, 'callAdd'),
+        crew: (dy.base.crew || []).length + count(dy.events, 'crewIn'), sample: !!dy.base.sample, lastAt: last(dy.events),
+      };
+    }
+    const c = await doc('squad/config');
+    const config = c ? {
+      name: String((c.agency || {}).name || '').slice(0, 80), type: (c.agency || {}).type || 'ems', num: String((c.agency || {}).num || '').slice(0, 10),
+      logo: !!(c.agency || {}).logo, units: (c.roster || []).length, members: (c.members || []).length,
+      cameras: (c.cameras || []).length, feeds: (c.feeds || []).length, favorites: (c.favHosp || []).length, contacts: (c.contacts || []).length,
+      par: !!(c.features || {}).par, savedAt: c.savedAt || null,
+    } : null;
+    const devices = [...(await st.list({ prefix: 'm:dev:' })).values()].sort((x, y) => y.at - x.at).slice(0, 200);
+    const online = this.ctx.getWebSockets().map((w) => w.deserializeAttachment() || {}).filter((a) => a.peer)
+      .map((a) => ({ name: a.name, role: a.role, guest: !!a.guest, since: a.at }));
+    return { online, devices, lastWriteAt: (await st.get('m:last')) || null, config, incident, event, day };
   }
 
   async webSocketClose(ws, code) {
@@ -934,6 +1116,7 @@ export default {
     // The relay owner's screens: also the setup code, checked inside.
     if (path === '/v1/owner/squads' && request.method === 'POST') return ownerSquads(request, env);
     if (path === '/v1/owner/plan' && request.method === 'POST') return ownerSetPlan(request, env);
+    if (path === '/v1/owner/squad' && request.method === 'POST') return ownerSquad(request, env);
 
     // The board authenticates inside, from the WebSocket subprotocol, and is
     // not counted against the daily AI request limit: a tablet reconnecting
@@ -953,6 +1136,7 @@ export default {
         env,
       );
     }
+    if (auth.kind === 'expired') return fail(403, 'This guest access has ended. Ask the squad for a new guest link.', request, env);
     if (auth.kind === 'unknown') {
       return fail(401, 'This device is not signed in. Open the invite link you were sent.', request, env);
     }
@@ -975,6 +1159,7 @@ export default {
 
     if (path === '/v1/generate') {
       if (request.method !== 'POST') return fail(405, 'Method not allowed.', request, env);
+      if (auth.kind === 'member' && auth.member.role === 'guest') return fail(403, 'Guests use the shared boards only.', request, env);
       return generate(auth, request, env);
     }
 
@@ -1007,6 +1192,7 @@ export default {
       return setMemberStatus(auth, request, env);
     }
     if (path === '/v1/invites' && request.method === 'POST') return rotateInvite(auth, request, env);
+    if (path === '/v1/guest-invites' && request.method === 'POST') return guestInvite(auth, request, env);
     if (path === '/v1/audit' && request.method === 'GET') return readAudit(auth, request, env);
 
     return fail(404, 'Not found.', request, env);
