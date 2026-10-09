@@ -5764,6 +5764,7 @@ function ownerSheet() {
   return {
     title: 'Relay owner · squads and plans',
     body: `<div class="note">For whoever runs this relay. Turn a squad's plan on when it pays, or give a squad no end date. Each tablet always keeps working on its own; this only decides whether a squad's tablets can share.</div>
+      ${IN_CLAUDE ? '' : '<a class="btn" href="owner.html" target="_blank" rel="noopener">Open the owner console · every agency, its setup and use</a>'}
       <div class="grid2">${field('Relay address', input('r-url', 'rurl', f.rurl, 'https://pcr-relay.your-name.workers.dev', 'inputmode="url" autocapitalize="off"'))}${field('Setup code', input('o-code', 'ocode', f.ocode, 'The BOOTSTRAP_CODE', 'autocapitalize="off" type="password"'))}</div>
       ${field('Squad plan paid through', input('o-paid', 'opaid', f.opaid, 'YYYY-MM-DD', 'inputmode="numeric"'))}
       <button class="btn" data-act="owner-load">${f.squads ? 'Refresh' : 'Show squads'}</button>

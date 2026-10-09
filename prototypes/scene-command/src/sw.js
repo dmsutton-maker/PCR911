@@ -55,7 +55,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === self.location.origin) {
-    if (req.mode === 'navigate') e.respondWith(page(req));
+    if (req.mode === 'navigate') { if (/\/(index\.html)?$/.test(url.pathname)) e.respondWith(page(req)); }   // the app only; owner.html is always live
     else if (FILES.some(f => url.pathname.endsWith('/' + f.replace('./', '')) && f !== './')) e.respondWith(file(req));
     return;
   }

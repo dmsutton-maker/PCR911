@@ -85,6 +85,9 @@ ${body}</body>
       { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
   }, null, 2));
+  // The relay owner's console: every agency on the relay, its plan, setup and use. Not part of the offline copy.
+  const owner = read('src/owner.html').replace("/*@RELAY_URL*/''", replacements["/*@RELAY_URL*/''"]);
+  writeFileSync(join(dir, 'owner.html'), owner);
   // The offline copy. A new version of the page gets a new cache name, so tablets pick it up the next time they're online.
   const version = createHash('sha256').update(page).digest('hex').slice(0, 12);
   const libs = [...new Set([...page.matchAll(/https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/[^"'\s)]+\.js/g)].map(m => m[0]))];

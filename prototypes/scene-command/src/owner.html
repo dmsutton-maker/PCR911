@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B1B2B">
+<title>OpsBoard Owner Console</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* OpsBoard owner console: every agency on the relay, its plan, its setup and how it is being used.
+   Same colors as the board: night by default, day for bright rooms. */
+:root {
+  --bg: #0B1B2B; --surface: #12293D; --raised: #183449; --line: #25506E;
+  --fg: #EAF2F8; --muted: #9FB6C8; --faint: #6F8AA0;
+  --accent: #4FA3E3; --accent-ink: #04121E; --ok: #4CC38A; --warn: #E8B14C; --crit: #E8695C;
+  --ag-ems: #4FA3E3; --ag-fire: #F0703F; --ag-pd: #7D8BFF;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 12px;
+  color-scheme: dark;
+}
+:root[data-mode="day"] {
+  --bg: #FFFFFF; --surface: #F2F5F8; --raised: #E2E9F0; --line: #8EA4B8;
+  --fg: #06131F; --muted: #2E4558; --faint: #536A7D;
+  --accent: #0B5FA5; --accent-ink: #FFFFFF; --ok: #0E7A45; --warn: #8C5A00; --crit: #B3261E;
+  --ag-ems: #0B5FA5; --ag-fire: #B8401C; --ag-pd: #2B3FBF;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 500 16px/1.4 var(--body); -webkit-text-size-adjust: 100%;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.top h1 { margin: 0; font: 700 28px/1 var(--display); letter-spacing: 0.01em; }
+.top .sub { color: var(--muted); font-size: 14px; }
+.grow { flex: 1; }
+.mark { width: 40px; height: 40px; border-radius: 22%; flex: none; }
+.btn { min-height: 44px; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--raised); border: 1.5px solid var(--line); color: var(--fg); font: 700 16px/1 var(--display); letter-spacing: 0.04em; text-decoration: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { background: transparent; border-color: var(--crit); color: var(--crit); }
+.btn.sm { min-height: 36px; font-size: 14px; padding: 0 10px; }
+.btn:disabled { opacity: 0.45; cursor: wait; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; }
+.lbl { font: 600 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.note { color: var(--muted); font-size: 14px; }
+.err { color: var(--crit); font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+input[type=text], input[type=password], input[type=date], input[type=search] { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); width: 100%; }
+input:focus-visible, .btn:focus-visible, .row:focus-visible, .chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.signin { max-width: 560px; display: flex; flex-direction: column; gap: 12px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.stat .v { font: 700 28px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.stat.warn .v { color: var(--warn); } .stat.crit .v { color: var(--crit); } .stat.ok .v { color: var(--ok); }
+.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bar input[type=search] { max-width: 280px; }
+.chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--line); background: transparent; color: var(--muted); font: 700 13px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.row { display: grid; grid-template-columns: minmax(200px, 1.4fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(170px, 1.2fr) minmax(150px, 1fr); gap: 12px; align-items: center;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r); padding: 12px 14px; text-align: left; width: 100%; }
+.row:hover { border-color: var(--accent); }
+.row.head { background: transparent; border: 0; padding: 0 14px; }
+.cell { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cell b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell small { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+.ag { display: inline-block; font: 700 11px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 6px; border-radius: 5px; color: #fff; background: var(--ag-ems); vertical-align: 2px; margin-right: 6px; }
+.ag.fire { background: var(--ag-fire); } .ag.police { background: var(--ag-pd); } .ag.ems { color: #04121E; }
+:root[data-mode="day"] .ag.ems { color: #fff; }
+.pill { display: inline-block; font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 7px; border-radius: 5px; border: 1.5px solid var(--line); color: var(--muted); white-space: nowrap; }
+.pill.ok { border-color: var(--ok); color: var(--ok); } .pill.warn { border-color: var(--warn); color: var(--warn); } .pill.crit { border-color: var(--crit); color: var(--crit); }
+.pill.live { background: var(--crit); border-color: var(--crit); color: #fff; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 5px; vertical-align: 1px; }
+.empty { color: var(--faint); padding: 18px 4px; }
+/* one agency, in full */
+.scrim { position: fixed; inset: 0; background: rgb(2 8 14 / 0.6); z-index: 20; display: flex; justify-content: flex-end; }
+.drawer { width: min(720px, 100%); height: 100%; overflow: auto; background: var(--bg); border-left: 1px solid var(--line); padding: 18px 18px 40px; display: flex; flex-direction: column; gap: 14px; }
+.drawer h2 { margin: 0; font: 700 26px/1.1 var(--display); }
+.drawer h3 { margin: 0 0 8px; font: 700 15px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.kv { display: grid; grid-template-columns: minmax(120px, 170px) minmax(0, 1fr); gap: 6px 12px; margin: 0; }
+.kv dt { color: var(--muted); font-weight: 600; } .kv dd { margin: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font: 600 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 7px 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); vertical-align: top; }
+.tw { overflow-x: auto; }
+.plans { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+.plans .field { width: 170px; }
+.toast { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; z-index: 30; max-width: calc(100vw - 32px); }
+[hidden] { display: none !important; }
+@media (max-width: 900px) {
+  .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .row.head { display: none; }
+}
+@media (max-width: 560px) {
+  .row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .kv { grid-template-columns: minmax(0, 1fr); } .kv dd { margin-bottom: 6px; }
+  .top h1 { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="drawer-root"></div>
+<div id="toast-root"></div>
+<script>
+(() => {
+'use strict';
+const BAKED_RELAY = /*@RELAY_URL*/'';
+const MARK = '<svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0B1B2B"/><rect x="92" y="92" width="152" height="152" rx="30" fill="#D7373F"/><rect x="268" y="92" width="152" height="152" rx="30" fill="#F2C230"/><rect x="92" y="268" width="152" height="152" rx="30" fill="#2DB86A"/><rect x="268" y="268" width="152" height="152" rx="30" fill="#EAF2F8"/><rect x="331" y="302" width="26" height="84" rx="5.2" fill="#0B1B2B"/><rect x="302" y="331" width="84" height="26" rx="5.2" fill="#0B1B2B"/></svg>';
+const AG = { ems: 'EMS', fire: 'Fire', police: 'Police' };
+const JOB = { command: 'EMS', triage: 'EMS', transport: 'EMS', supervisor: 'EMS', member: 'EMS', fire: 'Fire', police: 'Police', event: 'Event' };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ss = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} } };
+const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+const base = u => String(u || '').trim().replace(/\/+$/, '');
+const t = v => (typeof v === 'number' ? v : Date.parse(v || ''));
+const ago = v => { const ms = Date.now() - t(v); if (!Number.isFinite(ms)) return 'never'; const m = Math.round(ms / 60000); if (m < 2) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.round(m / 60); if (h < 36) return h + ' h ago'; const d = Math.round(h / 24); return d + (d === 1 ? ' day ago' : ' days ago'); };
+const date = v => { const n = t(v); return Number.isFinite(n) ? new Date(n).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''; };
+const dt = v => { const n = t(v); return Number.isFinite(n) ? new Date(n).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; };
+const daysLeft = v => Math.ceil((t(v) - Date.now()) / 86400000);
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const today = v => Number.isFinite(t(v)) && Date.now() - t(v) < 86400000;
+
+const S = {
+  relay: base(ss.get('owner:relay') || BAKED_RELAY),
+  code: ss.get('owner:code') || '',
+  squads: null, at: null, err: '', busy: false, filter: 'all', q: '', open: null, detail: null, paid: '',
+};
+document.documentElement.dataset.mode = ls.get('owner:mode') || 'night';
+{ const d = new Date(); d.setFullYear(d.getFullYear() + 1); S.paid = d.toISOString().slice(0, 10); }
+
+async function call(path, body) {
+  const r = await fetch(S.relay + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-bootstrap-code': S.code }, body: JSON.stringify(body || {}) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((data.error && data.error.message) || `The relay answered ${r.status}.`);
+  return data;
+}
+async function load(quiet) {
+  if (!S.code || !S.relay) return;
+  S.busy = true; if (!quiet) render();
+  try { const d = await call('/v1/owner/squads', {}); S.squads = d.squads; S.at = d.at; S.err = ''; }
+  catch (e) { S.err = e.message; if (!S.squads) S.squads = null; }
+  S.busy = false; render();
+  if (S.open) openSquad(S.open, true);
+}
+async function openSquad(id, quiet) {
+  S.open = id; if (!quiet) { S.detail = null; renderDrawer(); }
+  try { S.detail = await call('/v1/owner/squad', { orgId: id }); } catch (e) { S.detail = { error: e.message }; }
+  renderDrawer();
+}
+function toast(msg) { const r = document.getElementById('toast-root'); r.innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => { r.innerHTML = ''; }, 4000); }
+
+/* ---------- what a squad is doing, in words ---------- */
+const kind = sq => (sq.board && sq.board.config && sq.board.config.type) || 'ems';
+function planInfo(p) {
+  if (!p) return { label: 'Trial not started', note: 'Starts the first time a tablet shares', cls: '' };
+  if (p.tier === 'comp') return { label: 'No end date', note: 'Comp', cls: 'ok' };
+  if (p.tier === 'off') return { label: 'Sharing off', note: 'Turned off by the owner', cls: 'crit' };
+  if (p.tier === 'squad') return p.active ? { label: p.grace ? 'Payment due' : 'Paying', note: p.paidThrough ? 'Paid through ' + date(p.paidThrough) : 'Active', cls: p.grace ? 'warn' : 'ok' } : { label: 'Lapsed', note: 'Paid through ' + date(p.paidThrough), cls: 'crit' };
+  if (!p.active) return { label: 'Trial ended', note: 'Ended ' + date(p.endsAt), cls: 'crit' };
+  const d = daysLeft(p.endsAt);
+  return { label: 'Trial', note: `${plural(d, 'day')} left · ends ${date(p.endsAt)}`, cls: d <= 14 ? 'warn' : '' };
+}
+const mciLive = sq => { const i = sq.board && sq.board.incident; return !!(i && !i.clear && !i.sample); };
+const eventLive = sq => { const e = sq.board && sq.board.event; return !!(e && !e.endedAt && !e.sample); };
+const ending = sq => { const p = sq.plan; return !!(p && p.active && ((p.tier === 'trial' && daysLeft(p.endsAt) <= 14) || (p.tier === 'squad' && p.grace))); };
+const lapsed = sq => !!(sq.plan && !sq.plan.active);
+const FILTERS = [
+  ['all', 'All', () => true],
+  ['today', 'Active today', sq => today(sq.lastActiveAt)],
+  ['live', 'MCI or event running', sq => mciLive(sq) || eventLive(sq)],
+  ['trial', 'On trial', sq => !sq.plan || sq.plan.tier === 'trial'],
+  ['paying', 'Paying', sq => sq.plan && (sq.plan.tier === 'squad' || sq.plan.tier === 'comp') && sq.plan.active],
+  ['ending', 'Ending soon', ending],
+  ['lapsed', 'Lapsed or off', lapsed],
+  ['fire', 'Fire', sq => kind(sq) === 'fire'],
+  ['police', 'Police', sq => kind(sq) === 'police'],
+];
+function nowText(sq) {
+  const b = sq.board || {}, out = [];
+  if (mciLive(sq)) out.push(`<span class="pill live">MCI</span> ${esc(b.incident.type || 'Incident')}${b.incident.place ? ' · ' + esc(b.incident.place) : ''} · ${plural(b.incident.patients, 'patient')}`);
+  if (eventLive(sq)) out.push(`<span class="pill ok">Event</span> ${esc(b.event.name)} · ${plural(b.event.people, 'member')}`);
+  if (b.day && !b.day.sample) out.push(`${plural(b.day.calls, 'call')} today · ${b.day.crew} on duty`);
+  return out.join('<br>') || '<span class="note">Nothing running</span>';
+}
+function setupText(sq) {
+  const c = sq.board && sq.board.config;
+  if (!c) return '<span class="note">Not set up yet</span>';
+  const bits = [plural(c.units, 'unit'), c.members + ' on roster', c.cameras && plural(c.cameras, 'camera'), c.feeds && plural(c.feeds, 'feed'), c.logo && 'logo', c.par && 'PAR'].filter(Boolean);
+  return esc(bits.join(' · '));
+}
+
+/* ---------- screens ---------- */
+function signin() {
+  return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">OpsBoard · every agency on your relay</div></div></header>
+    <section class="panel signin">
+      <div class="note">For whoever runs OpsBoard's server. It shows every squad and department, its plan, its setup and how it is being used, and turns plans on and off. Nothing here shows patients, calls or anything a member typed.</div>
+      <div class="field"><span class="lbl">Relay address</span><input type="text" id="f-relay" value="${esc(S.relay)}" placeholder="https://pcr-relay.your-name.workers.dev" autocapitalize="off" inputmode="url"></div>
+      <div class="field"><span class="lbl">Owner setup code</span><input type="password" id="f-code" placeholder="The BOOTSTRAP_CODE" autocapitalize="off" autocomplete="current-password"></div>
+      <div class="note">Kept only until you close this tab.</div>
+      ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
+      <div><button class="btn primary" data-act="signin" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Opening…' : 'Open the console'}</button></div>
+    </section>`;
+}
+function main() {
+  const sqs = S.squads || [];
+  const f = FILTERS.find(x => x[0] === S.filter) || FILTERS[0];
+  const q = S.q.trim().toLowerCase();
+  const shown = sqs.filter(f[2]).filter(sq => !q || [sq.name, sq.board && sq.board.config && sq.board.config.name, sq.id].some(v => String(v || '').toLowerCase().includes(q)));
+  const online = sqs.reduce((a, sq) => a + ((sq.board && sq.board.online.length) || 0), 0);
+  const guests = sqs.reduce((a, sq) => a + sq.members.guests, 0);
+  const stat = (label, v, cls = '') => `<div class="stat ${cls}"><span class="lbl">${label}</span><span class="v">${v}</span></div>`;
+  return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">${esc(S.relay)} · ${S.at ? 'updated ' + esc(dt(S.at)) : ''}</div></div><span class="grow"></span>
+      <button class="btn sm" data-act="refresh" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Loading…' : 'Refresh'}</button>
+      <button class="btn sm" data-act="csv">Download CSV</button>
+      <button class="btn sm" data-act="mode">${document.documentElement.dataset.mode === 'day' ? 'Night' : 'Day'}</button>
+      <button class="btn sm" data-act="signout">Sign out</button></header>
+    ${S.err ? `<div class="panel err">${esc(S.err)}</div>` : ''}
+    <section class="stats" aria-label="Totals">
+      ${stat('Agencies', sqs.length)}
+      ${stat('Active today', sqs.filter(sq => today(sq.lastActiveAt)).length, 'ok')}
+      ${stat('MCIs running', sqs.filter(mciLive).length, sqs.some(mciLive) ? 'crit' : '')}
+      ${stat('Events running', sqs.filter(eventLive).length)}
+      ${stat('Devices online', online)}
+      ${stat('Guests active', guests)}
+      ${stat('Paying', sqs.filter(sq => sq.plan && sq.plan.tier === 'squad' && sq.plan.active).length, 'ok')}
+      ${stat('Ending soon', sqs.filter(ending).length, sqs.some(ending) ? 'warn' : '')}
+      ${stat('Lapsed or off', sqs.filter(lapsed).length, sqs.some(lapsed) ? 'crit' : '')}
+    </section>
+    <div class="bar">
+      <input type="search" id="f-q" placeholder="Find an agency" value="${esc(S.q)}" aria-label="Find an agency">
+      ${FILTERS.map(([k, label, fn]) => `<button class="chip" data-act="filter" data-arg="${k}" aria-pressed="${S.filter === k}">${label} · ${sqs.filter(fn).length}</button>`).join('')}
+    </div>
+    <div class="list">
+      <div class="row head" aria-hidden="true"><span class="lbl">Agency</span><span class="lbl">Plan</span><span class="lbl">People and devices</span><span class="lbl">Now</span><span class="lbl">Setup</span></div>
+      ${shown.map(sq => {
+        const pi = planInfo(sq.plan), b = sq.board || {}, k = kind(sq);
+        return `<button class="row" data-act="open" data-arg="${esc(sq.id)}">
+          <span class="cell"><b><span class="ag ${k}">${AG[k] || 'EMS'}</span>${esc(sq.name)}</b><small>${b.config && b.config.num ? 'County ' + esc(b.config.num) + ' · ' : ''}since ${esc(date(sq.createdAt))} · active ${esc(ago(sq.lastActiveAt))}</small></span>
+          <span class="cell"><span><span class="pill ${pi.cls}">${esc(pi.label)}</span></span><small>${esc(pi.note)}</small></span>
+          <span class="cell"><b>${plural(sq.members.active, 'member')}${sq.members.guests ? ' · ' + plural(sq.members.guests, 'guest') : ''}</b><small>${b.online && b.online.length ? `<span class="dot"></span>${b.online.length} online · ` : ''}${plural((b.devices || []).length, 'device')}${sq.members.guestAgencies.length ? ' · ' + esc(sq.members.guestAgencies.map(a => AG[a]).join(', ')) + ' guests' : ''}</small></span>
+          <span class="cell"><small>${nowText(sq)}</small></span>
+          <span class="cell"><small>${setupText(sq)}</small></span>
+        </button>`;
+      }).join('') || `<div class="empty">${sqs.length ? 'No agency matches.' : 'No agencies on this relay yet.'}</div>`}
+    </div>
+    <p class="note">Counts only: no patient, call or member details leave a squad's board. A squad's own admins manage their members and guests from Squad sharing in the app.</p>`;
+}
+function drawer() {
+  const sq = (S.squads || []).find(x => x.id === S.open), d = S.detail;
+  if (!sq) return '';
+  const pi = planInfo((d && d.plan) || sq.plan), b = (d && d.board) || sq.board || {}, c = b.config;
+  const people = d && d.people ? d.people.filter(p => p.role !== 'guest') : [], guests = d && d.people ? d.people.filter(p => p.role === 'guest') : [];
+  const inc = b.incident, ev = b.event;
+  return `<div class="scrim" data-act="close-bg"><aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(sq.name)}">
+    <div class="top"><div><h2><span class="ag ${kind(sq)}">${AG[kind(sq)]}</span>${esc(sq.name)}</h2><div class="sub">${esc(sq.id)}</div></div><span class="grow"></span><button class="btn sm" data-act="close">Close</button></div>
+    ${d && d.error ? `<div class="err">${esc(d.error)}</div>` : ''}
+    <section class="panel"><h3>Plan</h3>
+      <p><span class="pill ${pi.cls}">${esc(pi.label)}</span> <span class="note">${esc(pi.note)}</span></p>
+      <div class="plans">
+        <div class="field"><span class="lbl">Paid through</span><input type="date" id="f-paid" value="${esc(S.paid)}"></div>
+        <button class="btn sm primary" data-act="plan" data-arg="squad">Set paid through</button>
+        <button class="btn sm" data-act="plan" data-arg="comp">No end date</button>
+        <button class="btn sm" data-act="plan" data-arg="trial">Restart trial</button>
+        <button class="btn sm danger" data-act="plan" data-arg="off">Sharing off</button>
+      </div>
+      <p class="note">Each device always keeps working on its own; a plan only decides whether the agency's devices can share. A paid plan keeps sharing 14 days past its date.</p>
+    </section>
+    <section class="panel"><h3>Now</h3>
+      <dl class="kv">
+        <dt>MCI</dt><dd>${inc ? `${esc(inc.type || 'Incident')}${inc.place ? ' · ' + esc(inc.place) : ''} · ${plural(inc.patients, 'patient')} · ${plural(inc.transports, 'transport')}${inc.level ? ' · level ' + inc.level : ''}${inc.clear ? ' · scene clear' : ''}${inc.sample ? ' · sample' : ''}<br><span class="note">Started ${esc(dt(inc.startedAt))} · last change ${esc(ago(inc.lastAt || inc.startedAt))}${inc.agencies && inc.agencies.length ? ' · tablets: ' + esc([...new Set(inc.agencies.map(r => JOB[r] || r))].join(', ')) : ''}</span>` : '<span class="note">None</span>'}</dd>
+        <dt>Event</dt><dd>${ev ? `${esc(ev.name)}${ev.place ? ' · ' + esc(ev.place) : ''} · ${plural(ev.posts, 'post')} · ${plural(ev.people, 'member')} · ${plural(ev.patients, 'patient')}${ev.endedAt ? ' · ended ' + esc(dt(ev.endedAt)) : ''}${ev.sample ? ' · sample' : ''}` : '<span class="note">None</span>'}</dd>
+        <dt>Today</dt><dd>${b.day ? `${plural(b.day.calls, 'call')} · ${b.day.crew} checked in${b.day.sample ? ' · sample day' : ''}` : '<span class="note">No supervisor board yet</span>'}</dd>
+        <dt>Last activity</dt><dd>${esc(ago(sq.lastActiveAt))}</dd>
+      </dl>
+    </section>
+    <section class="panel"><h3>Setup</h3>
+      ${c ? `<dl class="kv">
+        <dt>Name in the app</dt><dd>${esc(c.name)}${c.num ? ' · county ' + esc(c.num) : ''}</dd>
+        <dt>Kind</dt><dd>${esc({ ems: 'EMS squad', fire: 'Fire department', police: 'Police department' }[c.type] || 'EMS squad')}</dd>
+        <dt>Units</dt><dd>${c.units}</dd><dt>Member roster</dt><dd>${c.members}</dd>
+        <dt>Cameras · feeds</dt><dd>${c.cameras} · ${c.feeds}</dd><dt>Favorite hospitals</dt><dd>${c.favorites}</dd>
+        <dt>Own phone numbers</dt><dd>${c.contacts}</dd><dt>Logo · PAR</dt><dd>${c.logo ? 'Logo set' : 'No logo'} · PAR ${c.par ? 'on' : 'off'}</dd>
+        <dt>Settings saved</dt><dd>${esc(dt(c.savedAt)) || '<span class="note">never</span>'}</dd></dl>` : '<p class="note">No settings saved from a tablet yet.</p>'}
+    </section>
+    <section class="panel"><h3>People · ${people.length}</h3>
+      ${d ? (people.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Joined</th></tr></thead><tbody>${people.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(p.role)}</td><td>${esc(p.status)}</td><td>${esc(date(p.joinedAt))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Nobody yet.</p>') : '<p class="note">Loading…</p>'}
+    </section>
+    <section class="panel"><h3>Guests · ${guests.length}</h3>
+      ${d ? (guests.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Agency</th><th>Department</th><th>Until</th><th>Status</th></tr></thead><tbody>${guests.map(p => `<tr><td>${esc(p.name)}</td><td>${esc(AG[p.agency] || p.agency)}</td><td>${esc(p.dept)}</td><td>${esc(dt(p.expiresAt))}</td><td>${p.status !== 'active' ? 'revoked' : t(p.expiresAt) > Date.now() ? 'active' : 'ended'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note">No fire or police guests yet.</p>') : '<p class="note">Loading…</p>'}
+    </section>
+    <section class="panel"><h3>Devices · ${(b.devices || []).length}</h3>
+      ${(b.devices || []).length ? `<div class="tw"><table><thead><tr><th>Device</th><th>Job</th><th>Last connected</th></tr></thead><tbody>${b.devices.map(x => `<tr><td>${b.online.some(o => o.name === x.name) ? '<span class="dot"></span>' : ''}${esc(x.name)}${x.guest ? ' <span class="note">guest</span>' : ''}</td><td>${esc(x.role)}</td><td>${esc(ago(x.at))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note">No device has opened the shared board yet.</p>'}
+    </section>
+    <section class="panel"><h3>Recent activity</h3>
+      ${d && d.audit ? (d.audit.length ? `<div class="tw"><table><thead><tr><th>When</th><th>What</th><th>Who</th></tr></thead><tbody>${d.audit.map(a => `<tr><td>${esc(dt(a.at))}</td><td>${esc(String(a.action || '').replace(/_/g, ' '))}${a.agency ? ' · ' + esc(AG[a.agency] || a.agency) : ''}${a.tier ? ' · ' + esc(a.tier) : ''}</td><td>${esc(a.name || a.subject || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="note">Nothing logged yet.</p>') : '<p class="note">Loading…</p>'}
+    </section>
+  </aside></div>`;
+}
+
+const app = document.getElementById('app'), drawerRoot = document.getElementById('drawer-root');
+function render() {
+  const focus = document.activeElement && document.activeElement.id, sel = focus && document.activeElement.selectionStart;
+  app.innerHTML = S.code && S.squads ? main() : signin();
+  if (focus) { const el = document.getElementById(focus); if (el) { el.focus(); try { if (sel != null) el.setSelectionRange(sel, sel); } catch (e) {} } }
+}
+function renderDrawer() { drawerRoot.innerHTML = S.open ? drawer() : ''; }
+
+function csv() {
+  const rows = [['Agency', 'Kind', 'County', 'Plan', 'Plan detail', 'Members', 'Admins', 'Guests', 'Devices', 'Online', 'Last active', 'MCI running', 'Event running', 'Calls today', 'Units', 'Roster', 'Created', 'ID']];
+  for (const sq of S.squads || []) {
+    const b = sq.board || {}, c = b.config || {}, pi = planInfo(sq.plan);
+    rows.push([sq.name, AG[kind(sq)], c.num || '', pi.label, pi.note, sq.members.active, sq.members.admins, sq.members.guests, (b.devices || []).length, (b.online || []).length, sq.lastActiveAt ? new Date(sq.lastActiveAt).toISOString() : '', mciLive(sq) ? 'yes' : '', eventLive(sq) ? 'yes' : '', b.day ? b.day.calls : '', c.units ?? '', c.members ?? '', sq.createdAt || '', sq.id]);
+  }
+  const text = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = `opsboard-agencies-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+
+const ACT = {
+  async signin() {
+    S.relay = base(document.getElementById('f-relay').value); S.code = document.getElementById('f-code').value.trim();
+    if (!S.relay || !S.code) { S.err = 'The relay address and the setup code are both needed.'; S.code = ''; return render(); }
+    S.squads = null; await load();
+    if (S.squads) { ss.set('owner:relay', S.relay); ss.set('owner:code', S.code); } else S.code = '';
+    render();
+  },
+  refresh() { load(); },
+  signout() { ss.set('owner:code', null); S.code = ''; S.squads = null; S.open = null; S.err = ''; renderDrawer(); render(); },
+  mode() { const m = document.documentElement.dataset.mode === 'day' ? 'night' : 'day'; document.documentElement.dataset.mode = m; ls.set('owner:mode', m); render(); renderDrawer(); },
+  filter(k) { S.filter = k; render(); },
+  open(id) { openSquad(id); },
+  close() { S.open = null; S.detail = null; renderDrawer(); },
+  'close-bg'(_, e) { if (e.target.classList.contains('scrim')) ACT.close(); },
+  csv() { csv(); },
+  async plan(tier, e) {
+    const btn = e.target.closest('button'); btn.disabled = true;
+    S.paid = (document.getElementById('f-paid') || {}).value || S.paid;
+    try {
+      const r = await call('/v1/owner/plan', { orgId: S.open, tier, paidThrough: S.paid });
+      const sq = (S.squads || []).find(x => x.id === S.open); if (sq) sq.plan = r.plan;
+      if (S.detail) S.detail.plan = r.plan;
+      toast(`${r.name}: ${planInfo(r.plan).label}`);
+      render(); renderDrawer();
+    } catch (err) { toast(err.message); btn.disabled = false; }
+  },
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const fn = ACT[el.dataset.act]; if (!fn) return;
+  if (el.dataset.act === 'close-bg' && e.target !== el) return;
+  fn(el.dataset.arg, e);
+});
+document.addEventListener('input', e => { if (e.target.id === 'f-q') { S.q = e.target.value; render(); } });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && S.open) ACT.close();
+  if (e.key === 'Enter' && (e.target.id === 'f-code' || e.target.id === 'f-relay')) ACT.signin();
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.squads) load(true); });
+setInterval(() => { if (document.visibilityState === 'visible' && S.squads && !S.busy) load(true); }, 60000);
+render();
+if (S.code) load();
+})();
+</script>
+</body>
+</html>
