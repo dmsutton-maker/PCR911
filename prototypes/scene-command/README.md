@@ -13,7 +13,7 @@ Each tablet picks a job, and each job has its own home screen. All of them share
 | **Triage** | Big counters, re-triage, the triage report |
 | **Transport** | Units ready to load, hospital grid of sent vs. can-take, transport log |
 
-How sharing works: every change is an event. Each tablet writes only its own events to the page's shared store and replays every tablet's events over the board's starting state, so two people tapping at once never overwrite each other, counts add up, and undo takes back one change. Without the store (signed out, or opened from a file) the boards run on that tablet alone.
+How sharing works: every change is an event. Each tablet writes only its own events to a shared store and replays every tablet's events over the board's starting state, so two people tapping at once never overwrite each other, counts add up, and undo takes back one change. On the web address the store is the squad's own relay (`server/worker.js`, one Durable Object per squad, reached over a WebSocket and signed in with an invite: Menu → Squad sharing). In the copy hosted in Claude it is that page's store. Without either, the boards run on that tablet alone.
 
 This is a clickable prototype for deciding what the real thing should be. It is not part of the PCR Narrative app yet, and it should only ever hold practice data.
 
@@ -52,7 +52,7 @@ node prototypes/scene-command/build.mjs
 
 ## Limits of this prototype
 
-- **Sharing runs through the published page's store**, so every tablet needs to open the page's link while signed in to an account that can edit it. Nothing is sent to CAD, EMTrack or anyone else. A real product would need its own sync service and accounts.
+- **Sharing needs the relay deployed** (see server/README.md) and each tablet signed in with an invite. Nothing is sent to CAD, EMTrack or anyone else.
 - **The map's live layer** is the NJ Office of GIS 2020 aerial imagery, loaded tile by tile. Where tiles can't load, because the page is sandboxed or offline, it falls back to the built-in map and the sample scene's aerial. Locate me needs a browser that grants location; the sandboxed preview does not.
 - **Distances are straight-line**, and the drive minutes are a rough estimate from them (1.3× the distance at 40 mph).
 - **Hospital capacity, beds and ED status are typed in** from what each hospital reports. There is no EMResource feed.

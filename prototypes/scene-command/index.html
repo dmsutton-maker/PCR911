@@ -2558,8 +2558,9 @@ function roleSheet() {
     body: `<div class="opt-grid wide">${Object.entries(ROLES).map(([k, r]) => opt('role', k, DEV.role === k, `${esc(r.name)}<small>${esc(r.note)}</small>`, 'tall')).join('')}</div>
       <div class="ph"><h2>Tablets on this board</h2><span class="meta">${esc(syncWords())}</span></div>
       ${peers.length ? `<div class="rows">${peers.map(pr => `<div class="row"><span class="pill ${pr.sameTab ? 'onscene' : ''}">${pr.sameTab ? 'This one' : 'Tablet'}</span><div class="t1">${esc((ROLES[pr.presence && pr.presence.role] || {}).name || 'Opening…')}</div><span class="note">${pr.updatedAt ? hhmm(pr.updatedAt) : ''}</span></div>`).join('')}</div>`
-        : `<div class="note">${!IN_CLAUDE ? 'This web address keeps a separate board on each tablet for now. Sharing one board between tablets works in the copy of this page hosted in Claude; for this address it needs a sync service of the squad\'s own, the next step toward the real app.' : Sync.state === 'local' ? 'This board is running on this tablet alone. Sharing needs the page opened from its link while signed in.' : 'No other tablets have this board open right now.'}</div>`}
-      ${IN_CLAUDE ? '<div class="note">To add a tablet, open this same link on it, signed in to an account that can edit this page. Each tablet picks its own job; they all share one incident, and every change shows up on the others within a few seconds.</div>' : '<div class="note">Each tablet still picks its own job, so you can try the Command, Triage, Transport and Supervisor screens.</div>'}
+        : `<div class="note">${!IN_CLAUDE && !RELAY ? 'This tablet keeps its own board. Sign it in to the squad to share one live incident and shift with the other tablets.' : Sync.state === 'local' ? 'This board is running on this tablet alone right now.' : 'No other tablets have this board open right now.'}</div>`}
+      ${IN_CLAUDE ? '<div class="note">To add a tablet, open this same link on it, signed in to an account that can edit this page. Each tablet picks its own job; they all share one incident, and every change shows up on the others within a few seconds.</div>'
+        : `<div class="note">${RELAY ? 'To add a tablet, make an invite link under Squad sharing and open it on the new tablet.' : ''} Each tablet picks its own job; they all share one incident and shift, and every change shows up on the others within a second or two.</div><button class="btn" data-act="sheet" data-arg="connect">Squad sharing</button>`}
       ${Sync.state === 'ready' && !streamOfView().shared ? '<button class="btn primary" data-act="share">Share this board now</button>' : ''}`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
@@ -2725,7 +2726,7 @@ function sheetHtml() {
     transport: transportSheet, par: parSheet, unit: unitSheet, 'unit-add': unitAddSheet, 'load-units': loadUnitsSheet, request: requestSheet,
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
-    role: roleSheet, agency: agencySheet,
+    role: roleSheet, agency: agencySheet, connect: connectSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -3026,6 +3027,7 @@ function menuSheet() {
       <div class="switch"><span>PAR checks<br><small class="note">A timed check that every crew on scene is accounted for. Applies to every tablet.</small></span><div class="chips">${opt('par-feature', 'off', !parOn(), 'Hide')}${opt('par-feature', 'on', parOn(), 'Use')}</div></div>
       ${parOn() ? `<div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>` : ''}
       <div class="opt-grid wide">
+        ${IN_CLAUDE ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `Signed in to ${esc(RELAY.org || 'the squad')}` : 'Share one board between tablets'}</small></button>`}
         <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="agency">My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
@@ -3035,7 +3037,7 @@ function menuSheet() {
         <button class="opt tall" data-act="sheet" data-arg="shift-new">Start a new shift<small>Fresh shift board for everyday calls</small></button>
         <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
       </div>
-      <div class="note"><b>Prototype.</b> ${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : 'On this web address each tablet keeps its own board, saved in this browser.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
+      <div class="note"><b>Prototype.</b> ${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
 }
@@ -3192,17 +3194,18 @@ const Sync = {
   db: null, room: null, state: 'local', peers: [], cfgWriting: null,
 
   async start() {
-    if (!window.claude || typeof window.claude.use !== 'function') return;
+    const use = IN_CLAUDE ? n => window.claude.use(n) : relayConn ? relayConn.use : null;
+    if (!use) return;
     this.state = 'connecting'; syncChip();
     let db = null;
-    try { db = await window.claude.use('db'); } catch (e) { db = null; }
+    try { db = await use('db'); } catch (e) { db = null; }
     if (!db) { this.state = 'local'; syncChip(); return; }
     this.db = db; this.state = 'ready';
     STREAMS.forEach(str => db.doc(str.pointer).onSnapshot(s => this.onPointer(str, s), e => this.stop(e)));
     db.doc('config/agency').onSnapshot(s => this.onConfig(s), () => {});
     syncChip();
     try {
-      const room = await window.claude.use('room');
+      const room = await use('room');
       if (room) {
         this.room = room;
         room.presence({ role: DEV.role, dev: DEV.id }).catch(() => {});
@@ -3318,6 +3321,8 @@ const Sync = {
 
 function syncChipHtml() {
   const str = streamOfView(), n = Sync.tablets().length;
+  if (!IN_CLAUDE && Sync.state === 'local') return `<button class="tag" id="sync-chip" data-act="sheet" data-arg="connect">${RELAY ? 'Sign in again to share' : 'Share with other tablets'}</button>`;
+  if (relayConn && Sync.state === 'ready' && !relayConn.isOpen()) return `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="connect">Reconnecting…${str.pending() ? ' · ' + str.pending() + ' waiting' : ''}</button>`;
   if (Sync.state === 'connecting' || str.sharing) return `<span class="tag" id="sync-chip">Connecting…</span>`;
   if (Sync.state === 'ready' && str.error) return `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="role">Sync paused · ${str.pending()} waiting</button>`;
   if (Sync.state === 'ready' && str.shared) return `<button class="tag live" id="sync-chip" data-act="sheet" data-arg="role">● Live${n ? ' · ' + plural(n, 'tablet') : ''}</button>`;
@@ -3758,6 +3763,225 @@ const SHIFT_ACTIONS = {
 };
 
 /* =====================================================================
+   Squad sharing for the web address. Outside Claude, the board shares
+   through the squad's own relay (server/worker.js): a WebSocket to a small
+   document store with the same shape as the one Claude provides, so the
+   sync code above runs unchanged on either.
+   ===================================================================== */
+const BAKED_RELAY_URL = "";
+const RELAY_KEY = 'sc3:relay';
+let RELAY = read(RELAY_KEY);   // { url, token, name, org, role } once this tablet has joined
+const relayBase = u => String(u || '').trim().replace(/\/+$/, '');
+
+function relayClient(url, token) {
+  const wsUrl = relayBase(url).replace(/^http/i, 'ws') + '/v1/board';
+  const peerId = 'p' + Math.random().toString(36).slice(2, 10);
+  const subs = new Map();          // path -> { kind, cbs:Set, data, docs:Map, loaded }
+  const pending = new Map();       // rid -> { resolve, reject, timer }
+  const peerCbs = new Set();
+  let ws = null, open = false, refused = null, backoff = 1000, rid = 0, presenceState = {}, peers = [];
+  let waiters = [];
+
+  const send = m => { if (ws && open) ws.send(JSON.stringify(m)); };
+  const clone = v => (v == null ? v : JSON.parse(JSON.stringify(v)));
+  const snapDoc = (path, data) => ({ id: path.split('/').pop(), exists: data != null, data: () => (data == null ? undefined : clone(data)), metadata: { fromCache: !open, hasPendingWrites: false } });
+  const snapCol = s => { const docs = [...s.docs.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([p, d]) => snapDoc(p, d)); return { docs, size: docs.length, empty: !docs.length, docChanges: () => [], metadata: { fromCache: !open, hasPendingWrites: false } }; };
+  const fire = (path, s, only) => { const snap = s.kind === 'doc' ? snapDoc(path, s.data) : snapCol(s); (only ? [only] : [...s.cbs]).forEach(cb => { try { cb.next(snap); } catch (e) { console.warn(e); } }); };
+  const shapePeers = () => peers.map(p => ({ peer: p.peer, kind: 'viewer', isMe: p.peer === peerId, sameTab: p.peer === peerId, guest: false, by: null, name: p.name, presence: { role: p.role, dev: p.dev }, updatedAt: p.at }));
+
+  function whenOpen(ms = 8000) {
+    if (refused) return Promise.reject({ code: refused, message: 'Not signed in to the squad' });
+    if (open) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const w = { resolve, reject };
+      waiters.push(w);
+      setTimeout(() => { waiters = waiters.filter(x => x !== w); reject({ code: 'unavailable', message: 'The relay is not reachable right now' }); }, ms);
+    });
+  }
+  async function request(msg) {
+    await whenOpen();
+    return new Promise((resolve, reject) => {
+      const id = ++rid;
+      const timer = setTimeout(() => { pending.delete(id); reject({ code: 'unavailable', message: 'The relay did not answer' }); }, 10000);
+      pending.set(id, { resolve, reject, timer });
+      send({ ...msg, rid: id });
+    });
+  }
+  function handle(m) {
+    if (m.type === 'doc') {
+      const s = subs.get(m.path);
+      if (s && s.kind === 'doc') { s.data = m.data; s.loaded = true; fire(m.path, s); }
+      const parent = m.path.split('/').slice(0, -1).join('/'), c = subs.get(parent);
+      if (c && c.kind === 'col' && m.data != null) { c.docs.set(m.path, m.data); fire(parent, c); }
+    } else if (m.type === 'col') {
+      const s = subs.get(m.path);
+      if (s) { s.docs = new Map(m.docs); s.loaded = true; fire(m.path, s); }
+    } else if (m.type === 'peers') {
+      peers = m.peers || [];
+      const ch = { peers: shapePeers(), joined: [], left: [], updated: [] };
+      peerCbs.forEach(cb => { try { cb(ch); } catch (e) { console.warn(e); } });
+    } else if (m.rid && pending.has(m.rid)) {
+      const p = pending.get(m.rid); pending.delete(m.rid); clearTimeout(p.timer);
+      if (m.type === 'err') p.reject({ code: m.code || 'invalid_argument', message: m.message }); else p.resolve(m);
+    }
+  }
+  function connect() {
+    try { ws = new WebSocket(wsUrl, ['pcr-board', token]); } catch (e) { refused = 'not_granted'; return; }
+    ws.onopen = () => {
+      open = true; backoff = 1000;
+      send({ type: 'hello', peer: peerId, ...presenceState });
+      for (const path of subs.keys()) send({ type: 'sub', path });
+      waiters.forEach(w => w.resolve()); waiters = [];
+      syncChip();
+    };
+    ws.onmessage = ev => { try { handle(JSON.parse(ev.data)); } catch (e) { console.warn(e); } };
+    ws.onclose = ev => {
+      open = false; ws = null;
+      pending.forEach(p => { clearTimeout(p.timer); p.reject({ code: 'unavailable', message: 'Connection lost' }); }); pending.clear();
+      if (ev.code === 4401 || ev.code === 4403) {
+        refused = ev.code === 4403 ? 'revoked' : 'not_granted';
+        relayRefusal = ev.reason || 'This tablet is not signed in to the squad.';
+        waiters.forEach(w => w.reject({ code: refused })); waiters = [];
+        subs.forEach(s => s.cbs.forEach(cb => cb.error && cb.error({ code: 'revoked', message: relayRefusal })));
+        return;
+      }
+      syncChip();
+      setTimeout(connect, backoff + Math.random() * 500);
+      backoff = Math.min(backoff * 2, 15000);
+    };
+  }
+  function subscribe(path, kind, next, error) {
+    let s = subs.get(path);
+    if (!s) { s = { kind, cbs: new Set(), data: undefined, docs: new Map(), loaded: false }; subs.set(path, s); send({ type: 'sub', path }); }
+    const cb = { next, error };
+    s.cbs.add(cb);
+    if (s.loaded) setTimeout(() => fire(path, s, cb));
+    return () => { s.cbs.delete(cb); if (!s.cbs.size) { subs.delete(path); send({ type: 'unsub', path }); } };
+  }
+
+  const db = {
+    doc: path => ({
+      path,
+      get: () => request({ type: 'get', path }).then(r => snapDoc(path, r.data)),
+      set: data => request({ type: 'set', path, data: clone(data) }).then(() => undefined),
+      onSnapshot: (next, error) => subscribe(path, 'doc', next, error),
+    }),
+    collection: path => ({ path, onSnapshot: (next, error) => subscribe(path, 'col', next, error) }),
+  };
+  const room = {
+    presence(patch) { presenceState = { ...presenceState, ...patch }; send({ type: 'presence', peer: peerId, ...presenceState }); return Promise.resolve(); },
+    onPeers(cb) { peerCbs.add(cb); setTimeout(() => cb({ peers: shapePeers(), joined: [], left: [], updated: [] })); return () => peerCbs.delete(cb); },
+    connected: () => open,
+  };
+  connect();
+  return { use: async name => (name === 'db' ? db : name === 'room' ? room : null), isOpen: () => open };
+}
+let relayRefusal = '';
+const relayConn = !IN_CLAUDE && RELAY && RELAY.token && RELAY.url ? relayClient(RELAY.url, RELAY.token) : null;
+
+async function relayCall(path, body, headers = {}) {
+  const url = relayBase(UI.form.rurl || (RELAY && RELAY.url) || BAKED_RELAY_URL);
+  if (!/^https?:\/\//i.test(url)) throw new Error('Enter the relay address, starting with https://');
+  let res;
+  try {
+    res = await fetch(url + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body || {}) });
+  } catch (e) { throw new Error("Couldn't reach the relay at that address. Check it, and that this device is online."); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data.error && data.error.message) || `The relay answered ${res.status}.`);
+  return { url, data };
+}
+const inviteLinkFor = (url, code) => `${location.origin}${location.pathname}#join=1&u=${encodeURIComponent(url)}&i=${encodeURIComponent(code)}`;
+function parseInvite(text) {
+  const t = String(text || '').trim(), hash = t.includes('#') ? t.slice(t.indexOf('#') + 1) : '';
+  if (!hash) return null;
+  const q = new URLSearchParams(hash);
+  if (q.get('join') !== '1') return null;
+  return { url: q.get('u') || '', code: q.get('i') || '' };
+}
+
+function connectSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { rmode: 'join', rurl: (RELAY && RELAY.url) || BAKED_RELAY_URL || '', _init: true });
+  if (RELAY && RELAY.token) {
+    const live = relayConn && relayConn.isOpen();
+    return {
+      title: 'Squad sharing',
+      body: `<div class="note">${relayRefusal ? `<span class="crit-t">${esc(relayRefusal)}</span> ` : ''}This tablet is ${live ? '<span class="ok-t">connected</span>' : 'set up but not connected right now'} to <b>${esc(RELAY.org || 'the squad')}</b> as <b>${esc(RELAY.name || '')}</b>${RELAY.role === 'admin' ? ' (admin)' : ''}. Every tablet signed in to the squad shares the same incident and shift.</div>
+        <div class="note">Relay: <span class="num">${esc(RELAY.url)}</span></div>
+        ${RELAY.role === 'admin' ? `<div class="ph"><h2>Add a tablet</h2></div>
+          <div class="note">Makes a new invite link. Open it on the other tablet, or type its code there. Making a new one stops earlier invite links from working; tablets already joined are not affected.</div>
+          ${f.invite ? `<div class="coord" style="word-break:break-all">${esc(f.invite.link)}<small>Invite code ${esc(f.invite.code)}</small></div>
+            <div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(f.invite.link)}">${icon('copy')} Copy link</button><button class="btn small" data-act="copy-text" data-arg="${esc(f.invite.code)}">Copy code</button></div>`
+            : `<button class="btn" data-act="relay-invite">Make an invite link</button>`}` : ''}`,
+      foot: `<button class="btn danger" data-act="relay-leave">Disconnect this tablet</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
+    };
+  }
+  const tabs = `<div class="chips">${opt('f-set', 'rmode=join', f.rmode === 'join', 'Join with an invite')}${opt('f-set', 'rmode=setup', f.rmode === 'setup', 'Set up the squad · first time')}</div>`;
+  const common = field('Relay address', input('r-url', 'rurl', f.rurl, 'https://pcr-relay.your-name.workers.dev', 'inputmode="url" autocapitalize="off"'));
+  const body = f.rmode === 'setup'
+    ? `${common}<div class="grid2">${field('Setup code', input('r-boot', 'rboot', f.rboot, 'The BOOTSTRAP_CODE from GitHub', 'autocapitalize="off"'))}${field('Agency', input('r-org', 'rorg', f.rorg || C.agency.name, 'Hatzalah Jersey Shore'))}</div>
+       ${field('Your name', input('r-name', 'rname2', f.rname2, 'Name, as the log should show it'))}
+       <div class="note">Creates the squad on your relay and makes this tablet its admin. Do this once; every other tablet joins with an invite.</div>`
+    : `${field('Invite link or code', input('r-invite', 'rinvite', f.rinvite, 'Paste the link, or type the code', 'autocapitalize="characters"'))}
+       ${common}
+       ${field('Name for this tablet', input('r-name', 'rname2', f.rname2, 'e.g. Triage iPad, or your name'))}`;
+  return {
+    title: 'Squad sharing',
+    body: `<div class="note">Sign this tablet in to the squad so it shares one live incident and shift with the others, through the squad's relay.</div>${tabs}${body}${f.rerr ? `<div class="note crit-t">${esc(f.rerr)}</div>` : ''}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="${f.rmode === 'setup' ? 'relay-setup' : 'relay-join'}">${f.rmode === 'setup' ? 'Create the squad' : 'Join'}</button>`,
+  };
+}
+function relaySaved(url, data, role) {
+  RELAY = { url, token: data.token, name: (data.member && data.member.name) || data.adminName || '', org: (data.org && data.org.name) || data.orgName || '', role: role || (data.member && data.member.role) || 'member' };
+  write(RELAY_KEY, RELAY);
+  showToast(`Signed in to ${RELAY.org || 'the squad'}. Connecting…`, false);
+  setTimeout(() => location.reload(), 700);
+}
+const RELAY_ACTIONS = {
+  async 'relay-join'() {
+    const f = UI.form;
+    const fromLink = parseInvite(f.rinvite);
+    const code = (fromLink ? fromLink.code : (f.rinvite || '')).trim().toUpperCase();
+    if (fromLink && fromLink.url) f.rurl = fromLink.url;
+    const name = (f.rname2 || '').trim();
+    if (!code) { f.rerr = 'Paste the invite link or type its code.'; return render(); }
+    if (!name) { f.rerr = 'Give this tablet a name, so the log can say who did what.'; return render(); }
+    try { const { url, data } = await relayCall('/v1/join', { inviteCode: code, name }); relaySaved(url, data); }
+    catch (e) { f.rerr = e.message; render(); }
+  },
+  async 'relay-setup'() {
+    const f = UI.form, name = (f.rname2 || '').trim(), orgName = (f.rorg || C.agency.name || '').trim();
+    if (!f.rboot || !name || !orgName) { f.rerr = 'The setup code, the agency and your name are all needed.'; return render(); }
+    try { const { url, data } = await relayCall('/v1/orgs', { orgName, adminName: name }, { 'x-bootstrap-code': f.rboot.trim() }); relaySaved(url, { ...data, adminName: name }, 'admin'); }
+    catch (e) { f.rerr = e.message; render(); }
+  },
+  async 'relay-invite'() {
+    try {
+      const { url, data } = await relayCall('/v1/invites', { role: 'member' }, { authorization: 'Bearer ' + RELAY.token });
+      UI.form.invite = { code: data.inviteCode, link: inviteLinkFor(url, data.inviteCode) };
+      render();
+    } catch (e) { showToast(e.message, false); }
+  },
+  'relay-leave'() {
+    try { localStorage.removeItem(RELAY_KEY); } catch (e) { /* storage blocked */ }
+    RELAY = null;
+    showToast('This tablet keeps its own board again.', false);
+    setTimeout(() => location.reload(), 700);
+  },
+};
+
+/* Opening an invite link fills in the join form. The fragment never reaches the web server. */
+function takeInviteFromAddress() {
+  const inv = parseInvite(location.href);
+  if (!inv || IN_CLAUDE) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* not allowed here */ }
+  if (RELAY && RELAY.token) { showToast(`This tablet is already signed in to ${RELAY.org || 'the squad'}.`, false); return; }
+  UI.sheet = 'connect';
+  UI.form = { _init: true, rmode: 'join', rurl: inv.url, rinvite: inv.code };
+  render();
+}
+
+/* =====================================================================
    Actions
    ===================================================================== */
 function openSheet(name) { UI.sheet = name; UI.form = {}; render(); }
@@ -4091,7 +4315,7 @@ const A = {
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
 
-Object.assign(A, SHIFT_ACTIONS);
+Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS);
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -4167,5 +4391,6 @@ loadUi();
 render();
 setInterval(tick, 1000);
 Sync.start();
+takeInviteFromAddress();
 })();
 </script>

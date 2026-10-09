@@ -23,3 +23,14 @@ DAILY_LIMIT = "300"
 # [[kv_namespaces]]
 # binding = "ORG_DATA"
 # id = "paste-the-namespace-id-here"
+
+# Shared scene and shift boards for the scene command board: one live document
+# store per squad. Durable Objects on SQLite storage are on the free plan, and
+# the deploy creates this one; there is nothing to set up in the dashboard.
+[[durable_objects.bindings]]
+name = "BOARD"
+class_name = "Board"
+
+[[migrations]]
+tag = "board-v1"
+new_sqlite_classes = ["Board"]

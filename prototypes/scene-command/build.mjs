@@ -20,6 +20,8 @@ const replacements = {
   '/*@LEAFLET_CSS*/': read('vendor/leaflet-1.9.4.css'),
   '/*@GEO*/null': read('data/monmouth-geo.json').trim(),
   '/*@SCENE*/null': read('data/sample-scene.json').trim(),
+  // The squad relay's address, so tablets joining by invite code alone know where to go. Not a secret.
+  "/*@RELAY_URL*/''": JSON.stringify((process.env.PCR_RELAY_URL || '').trim()),
 };
 
 let html = read('src/board.html');

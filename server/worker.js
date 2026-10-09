@@ -27,7 +27,15 @@
  *   aud:<orgId>:<ts>:<rand>  audit entries, newest sorting last
  *
  * Setup is in server/README.md.
+ *
+ * It also hosts the scene command board's shared boards (prototypes/scene-command):
+ * one Durable Object per squad, holding a small document store that tablets
+ * read and write over a WebSocket at /v1/board. That is incident and shift
+ * data the squad chose to share between its own tablets, kept apart from the
+ * KV namespace above.
  */
+
+import { DurableObject } from 'cloudflare:workers';
 
 const PROVIDERS = {
   gemini: {
@@ -147,8 +155,8 @@ function bearer(request) {
  * someone's pocket does not stop mid-shift, but it is anonymous by
  * construction and the audit log says so.
  */
-async function authenticate(request, env) {
-  const token = bearer(request);
+async function authenticate(request, env, tokenOverride) {
+  const token = tokenOverride || bearer(request);
   const store = kv(env);
 
   if (token && store) {
@@ -530,6 +538,172 @@ async function generate(auth, request, env) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Shared boards
+ * ------------------------------------------------------------------ */
+
+const BOARD_PROTOCOL = 'pcr-board';
+const BOARD_PATH = /^[A-Za-z0-9_.~:@+-]{1,200}(\/[A-Za-z0-9_.~:@+-]{1,200}){0,9}$/;
+const BOARD_MAX_DOC = 256 * 1024;
+const BOARD_MAX_SUBS = 24;
+
+/**
+ * Refusals on a WebSocket have to be a WebSocket: a browser that gets a plain
+ * 401 back from an upgrade sees only "connection failed", with no status and
+ * no reason. So the socket is accepted and closed at once with a code the
+ * page can act on.
+ */
+function refuseSocket(code, reason) {
+  const [client, server] = Object.values(new WebSocketPair());
+  server.accept();
+  server.close(code, reason);
+  return new Response(null, { status: 101, webSocket: client, headers: { 'sec-websocket-protocol': BOARD_PROTOCOL } });
+}
+
+async function openBoard(request, env) {
+  if ((request.headers.get('upgrade') || '').toLowerCase() !== 'websocket') {
+    return fail(426, 'The board connects over a WebSocket.', request, env);
+  }
+  if (!env.BOARD) return refuseSocket(4503, 'This relay was deployed without board storage. Redeploy it.');
+
+  const origin = request.headers.get('origin') || '';
+  const allowed = parseList(env.ALLOWED_ORIGINS);
+  if (allowed.length && origin && !allowed.includes(origin)) return refuseSocket(4403, 'This page is not allowed to use this relay.');
+
+  const offered = (request.headers.get('sec-websocket-protocol') || '').split(',').map((p) => p.trim());
+  const token = offered.find((p) => p && p !== BOARD_PROTOCOL) || '';
+  const auth = await authenticate(request, env, token);
+  if (auth.kind === 'revoked') return refuseSocket(4403, 'Your access to this organization has been withdrawn.');
+  if (auth.kind !== 'member') return refuseSocket(4401, 'This tablet is not signed in to the squad.');
+
+  const stub = env.BOARD.get(env.BOARD.idFromName(auth.orgId));
+  const headers = new Headers(request.headers);
+  headers.set('x-member-id', auth.member.id);
+  headers.set('x-member-name', auth.member.name || '');
+  return stub.fetch(new Request(request, { headers }));
+}
+
+/**
+ * One squad's boards. A tiny document store with live subscriptions: a page
+ * can set a document at a path, read one, and subscribe to a document or to
+ * the documents directly under a collection path. It has the same shape as the
+ * store the board uses when it is hosted in Claude, so the board's sync code
+ * is the same either way.
+ *
+ * It uses the WebSocket hibernation API, so an idle squad with tablets
+ * connected costs nothing while nobody is tapping.
+ */
+export class Board extends DurableObject {
+  async fetch(request) {
+    // Reached only through openBoard, after the caller was authenticated.
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({
+      member: request.headers.get('x-member-id') || '',
+      name: request.headers.get('x-member-name') || '',
+      peer: '', dev: '', role: '', at: Date.now(), subs: [],
+    });
+    return new Response(null, { status: 101, webSocket: client, headers: { 'sec-websocket-protocol': BOARD_PROTOCOL } });
+  }
+
+  send(ws, msg) {
+    try { ws.send(JSON.stringify(msg)); } catch { /* socket already gone */ }
+  }
+
+  peers(except) {
+    return this.ctx.getWebSockets()
+      .filter((ws) => ws !== except)
+      .map((ws) => ws.deserializeAttachment() || {})
+      .filter((a) => a.peer)
+      .map((a) => ({ peer: a.peer, dev: a.dev, role: a.role, name: a.name, at: a.at }));
+  }
+
+  broadcastPeers(except) {
+    const peers = this.peers(except);
+    for (const ws of this.ctx.getWebSockets()) if (ws !== except) this.send(ws, { type: 'peers', peers });
+  }
+
+  async read(path) {
+    const segments = path.split('/').length;
+    if (segments % 2 === 0) return { type: 'doc', path, data: (await this.ctx.storage.get('d:' + path)) ?? null };
+    const found = await this.ctx.storage.list({ prefix: 'd:' + path + '/' });
+    const docs = [];
+    for (const [key, data] of found) {
+      const p = key.slice(2);
+      if (p.split('/').length === segments + 1) docs.push([p, data]);
+    }
+    return { type: 'col', path, docs };
+  }
+
+  async webSocketMessage(ws, raw) {
+    let m;
+    try { m = JSON.parse(typeof raw === 'string' ? raw : new TextDecoder().decode(raw)); } catch { return; }
+    if (!m || typeof m !== 'object') return;
+    const a = ws.deserializeAttachment() || { subs: [] };
+    const bad = (why) => this.send(ws, { type: 'err', rid: m.rid, code: 'invalid_argument', message: why });
+    const pathOk = typeof m.path === 'string' && BOARD_PATH.test(m.path) && !m.path.split('/').some((x) => x === '.' || x === '..');
+
+    switch (m.type) {
+      case 'hello':
+      case 'presence': {
+        a.peer = String(m.peer || a.peer || '').slice(0, 40);
+        if (m.dev !== undefined) a.dev = String(m.dev).slice(0, 40);
+        if (m.role !== undefined) a.role = String(m.role).slice(0, 20);
+        a.at = Date.now();
+        ws.serializeAttachment(a);
+        if (m.type === 'hello') this.send(ws, { type: 'welcome', name: a.name });
+        this.broadcastPeers();
+        return;
+      }
+      case 'sub': {
+        if (!pathOk) return bad('That path is not valid.');
+        if (!a.subs.includes(m.path)) {
+          if (a.subs.length >= BOARD_MAX_SUBS) return bad('Too many subscriptions.');
+          a.subs.push(m.path);
+          ws.serializeAttachment(a);
+        }
+        this.send(ws, await this.read(m.path));
+        return;
+      }
+      case 'unsub': {
+        a.subs = a.subs.filter((p) => p !== m.path);
+        ws.serializeAttachment(a);
+        return;
+      }
+      case 'get': {
+        if (!pathOk || m.path.split('/').length % 2) return bad('A document path is needed.');
+        const r = await this.read(m.path);
+        this.send(ws, { type: 'got', rid: m.rid, path: m.path, data: r.data });
+        return;
+      }
+      case 'set': {
+        if (!pathOk || m.path.split('/').length % 2) return bad('A document path is needed.');
+        if (!m.data || typeof m.data !== 'object' || Array.isArray(m.data)) return bad('A document is an object.');
+        if (JSON.stringify(m.data).length > BOARD_MAX_DOC) return bad('That document is over 256 KB.');
+        await this.ctx.storage.put('d:' + m.path, m.data);
+        this.send(ws, { type: 'ok', rid: m.rid });
+        const parent = m.path.split('/').slice(0, -1).join('/');
+        for (const other of this.ctx.getWebSockets()) {
+          const o = other.deserializeAttachment() || {};
+          if ((o.subs || []).some((p) => p === m.path || p === parent)) this.send(other, { type: 'doc', path: m.path, data: m.data });
+        }
+        return;
+      }
+      default:
+        return bad('Unknown message.');
+    }
+  }
+
+  async webSocketClose(ws, code) {
+    try { ws.close(code === 1005 ? 1000 : code, 'Closing'); } catch { /* already closed */ }
+    this.broadcastPeers(ws);
+  }
+
+  async webSocketError(ws) {
+    this.broadcastPeers(ws);
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * Handler
  * ------------------------------------------------------------------ */
 
@@ -554,7 +728,7 @@ export default {
           // Lets the app tell an org-capable relay from an older one and offer
           // the right screens, rather than failing on an endpoint that is not
           // there yet.
-          features: kv(env) ? ['orgs'] : [],
+          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : [])],
         },
         200,
         request,
@@ -566,6 +740,11 @@ export default {
     // invite code. Both are checked inside.
     if (path === '/v1/orgs' && request.method === 'POST') return createOrg(request, env);
     if (path === '/v1/join' && request.method === 'POST') return join(request, env);
+
+    // The board authenticates inside, from the WebSocket subprotocol, and is
+    // not counted against the daily AI request limit: a tablet reconnecting
+    // after a dropped signal should not eat into anyone's narratives.
+    if (path === '/v1/board') return openBoard(request, env);
 
     const auth = await authenticate(request, env);
 

@@ -69,6 +69,8 @@ jobs:
         # A self-contained page at /PCR911/scene-command/, built from
         # prototypes/scene-command. It needs nothing installed beyond Node.
         run: node prototypes/scene-command/build.mjs --site dist/scene-command
+        env:
+          PCR_RELAY_URL: ${{ secrets.PCR_RELAY_URL }}
 
       - name: Prepare for GitHub Pages
         run: |

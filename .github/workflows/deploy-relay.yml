@@ -115,6 +115,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: server
+          # The board's Durable Object needs a current wrangler; this is the
+          # version the relay was tested with.
+          wranglerVersion: '4.149.0'
           # Uploads these as Worker secrets, so they are set on the Worker
           # rather than baked into the script or visible in the dashboard's
           # plaintext variables.
