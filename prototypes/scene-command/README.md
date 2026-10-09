@@ -1,6 +1,6 @@
 # Scene Command Board (prototype)
 
-A touch-first EMS command app for iPads in landscape, set up for Squad 78 in Monmouth County, NJ. It has two boards that any number of tablets share live: a **shift board** for the supervisor on everyday calls, and a **scene board** for an MCI. Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
+A touch-first EMS command app for iPads in landscape, set up for Hatzalah Jersey Shore (county number 78) in Monmouth County, NJ. It has two boards that any number of tablets share live: a **shift board** for the supervisor on everyday calls, and a **scene board** for an MCI. Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
 
 ## Tablets and jobs
 
@@ -8,7 +8,7 @@ Each tablet picks a job, and each job has its own home screen. All of them share
 
 | Job | Home screen |
 |---|---|
-| **Supervisor** | Shift board: our units in or out of service with who is riding, active calls stepped from dispatch to back in service, crew on duty, today's numbers. Alerts when no crew is en route after 5 minutes or a unit has been at the hospital over 30. Any call can become an MCI. |
+| **Supervisor** | Shift board: our units in or out of service with who is riding, active calls stepped from dispatch to back in service with the members responding on their own (first on scene starts the clock), ALS and other requests, crew on duty, today's numbers. Alerts when no crew is en route after 5 minutes or a unit has been at the hospital over 30. Any call can become an MCI. |
 | **Command** | The full scene board below |
 | **Triage** | Big counters, re-triage, the triage report |
 | **Transport** | Units ready to load, hospital grid of sent vs. can-take, transport log |

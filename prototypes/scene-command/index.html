@@ -1216,6 +1216,16 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .calert.crit { background: var(--crit); color: var(--on-solid); }
 .calert.warn { border: 1.5px solid var(--warn); color: var(--warn); }
 .shift .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.resp { display: flex; flex-wrap: wrap; gap: 6px; }
+.rchip { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 10px; border-radius: 9px; border: 1.5px solid var(--accent); background: var(--surface); text-align: left; min-height: 48px; justify-content: center; }
+.rchip b { font: 700 15px/1.1 var(--display); letter-spacing: 0.02em; }
+.rchip small { font-size: 12px; color: var(--muted); }
+.rchip .rst { font: 600 12px/1.2 var(--display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); }
+.rchip.st-onscene { border-color: var(--ok); }
+.rchip.st-onscene .rst { color: var(--ok); }
+.rchip.add { border-style: dashed; border-color: var(--line); flex-direction: row; align-items: center; gap: 6px; color: var(--muted); }
+.rchip.add svg { width: 18px; height: 18px; }
+.pill.pbtn { cursor: pointer; background: transparent; min-height: 32px; }
 .stat.warnstat { outline: 2px solid var(--warn); outline-offset: -2px; }
 
 /* ---------- responsive ---------- */
@@ -1664,7 +1674,7 @@ const newIncidentId = () => 'inc-' + Date.now().toString(36) + '-' + Math.random
 function defaultConfig() {
   return {
     v: 1,
-    agency: { name: 'Squad 78' },
+    agency: { name: 'Hatzalah Jersey Shore', num: '78' },
     features: { par: false },   // PAR checks are optional; off until an agency turns them on
     roster: [],
     members: [],
@@ -1837,6 +1847,11 @@ function sampleState() {
   function L(t, kind, text) { return { t, kind, text }; }
 }
 
+/* Boards first set up before the squad was named carry the placeholder name. */
+function migrateConfig(c) {
+  if (c.agency && c.agency.name === 'Squad 78') c.agency = { ...c.agency, name: 'Hatzalah Jersey Shore', num: c.agency.num || '78' };
+  return c;
+}
 function sampleConfig() {
   const c = defaultConfig();
   c.members = [
@@ -1845,6 +1860,7 @@ function sampleConfig() {
     { num: '4152', name: 'T. Byrne', cert: 'EMR' }, { num: '4158', name: 'A. Russo', cert: 'EMT' },
     { num: '4161', name: 'P. Walsh', cert: 'EMT' }, { num: '4170', name: 'S. Okafor', cert: 'Driver' },
     { num: '4175', name: 'D. Patel', cert: 'Paramedic' }, { num: '4180', name: 'L. Gomez', cert: 'EMT' },
+    { num: '4190', name: 'Y. Klein', cert: 'EMT' }, { num: '4195', name: 'S. Haddad', cert: 'Paramedic' },
   ];
   return c;
 }
@@ -2552,16 +2568,16 @@ function roleSheet() {
 const OWN_KINDS = ['BLS', 'RV', 'ALS', 'SUP', 'MCI', 'BUS'];
 function agencySheet() {
   const f = UI.form;
-  if (!f._init) { Object.assign(f, { aname: C.agency.name, roster: C.roster.map(r => ({ ...r })), akind: 'BLS', unum: '', _init: true }); }
+  if (!f._init) { Object.assign(f, { aname: C.agency.name, anum: C.agency.num || '', roster: C.roster.map(r => ({ ...r })), akind: 'BLS', unum: '', _init: true }); }
   const missing = f.roster.filter(r => !S.units.some(u => u.name === r.name)).length;
   return {
     title: 'My agency',
-    body: `${field('Squad', input('ag-name', 'aname', f.aname, 'e.g. Squad 78'))}
+    body: `<div class="grid2">${field('Agency', input('ag-name', 'aname', f.aname, 'e.g. Hatzalah Jersey Shore'))}${field('County number', input('ag-num', 'anum', f.anum, 'e.g. 78', 'inputmode="numeric"'))}</div>
       <div class="field"><span class="lbl">Our units · loaded as Available in every new incident</span>
         ${f.roster.length ? `<div class="rows">${f.roster.map((r, i) => `<div class="row">${kindTag(r.kind)}<div><div class="t1">${esc(r.name)}</div><div class="t2">${esc(kindOf(r.kind).name)}</div></div><button class="btn small danger" data-act="ag-del" data-arg="${i}" aria-label="Remove ${esc(r.name)}">${icon('x')}</button></div>`).join('')}</div>` : '<div class="empty">No units yet. Add your ambulances, response vehicles and paramedic units below.</div>'}
       </div>
       <div class="grid2">
-        ${field('Unit number', input('ag-unit', 'unum', f.unum, 'Type it, then Add', 'autocapitalize="characters" enterkeyhint="done"'))}
+        ${field('Unit number', input('ag-unit', 'unum', f.unum, f.anum ? `e.g. ${f.anum}-56` : 'Type it, then Add', 'autocapitalize="characters" enterkeyhint="done"'))}
         <div class="field"><span class="lbl">&nbsp;</span><button class="btn" data-act="ag-add">${icon('plus')} Add unit</button></div>
       </div>
       ${field('Type', `<div class="opt-grid">${OWN_KINDS.map(k => opt('f-set', 'akind=' + k, f.akind === k, `${kindTag(k)} ${esc(kindOf(k).name)}`)).join('')}</div>`)}
@@ -2710,7 +2726,7 @@ function sheetHtml() {
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
     role: roleSheet, agency: agencySheet,
-    'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
+    'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
   return `<div class="sheet-wrap" data-act="backdrop">
@@ -3122,6 +3138,24 @@ const R = {
 /* Reducers for the everyday shift board. */
 const callIn = (st, id) => st.calls.find(c => c.id === id);
 const RS = {
+  respAdd(st, p) {
+    const c = callIn(st, p.id); if (!c) return;
+    c.resp = c.resp || [];
+    if (c.resp.some(r => r.pid === p.r.pid)) return;
+    c.resp.push({ ...p.r, st: 'enroute', t: p.at, enroute: p.at });
+    if (!c.times.enroute) c.times.enroute = p.at;
+    if (c.status === 'disp') c.status = 'enroute';
+  },
+  respStep(st, p) {
+    const c = callIn(st, p.id), r = c && (c.resp || []).find(x => x.pid === p.pid); if (!r) return;
+    r.st = p.st; r[p.st] = p.at;
+    if (p.st === 'onscene') {                      // the first member to arrive puts the call on scene
+      if (!c.times.onscene) c.times.onscene = p.at;
+      if (c.status === 'disp' || c.status === 'enroute') { c.status = 'onscene'; if (!c.times.enroute) c.times.enroute = p.at; }
+    }
+  },
+  callReq(st, p) { const c = callIn(st, p.id); if (!c) return; c.reqs = c.reqs || []; c.reqs.push({ rid: p.rid, what: p.what, st: 'requested', t: p.at }); },
+  callReqStep(st, p) { const c = callIn(st, p.id), q = c && (c.reqs || []).find(x => x.rid === p.rid); if (q) { q.st = p.st; q[p.st] = p.at; } },
   unitStatus(st, p) { const u = unitIn(st, p.id); if (u) { u.status = p.st; u.since = p.at; u.note = p.note || ''; } },
   unitAdd(st, p) { p.units.forEach(u => { if (!st.units.some(x => x.name === u.name)) st.units.push({ ...u }); }); },
   callAdd(st, p) { st.calls.push({ ...p.call }); },
@@ -3269,7 +3303,7 @@ const Sync = {
 
   onConfig(snap) {
     if (!snap.exists) return;
-    C = { ...defaultConfig(), ...snap.data() };
+    C = migrateConfig({ ...defaultConfig(), ...snap.data() });
     write(K.cfg, C);
     if (!UI.sheet) render();
   },
@@ -3306,6 +3340,8 @@ const CALL_TYPES = ['Sick person', 'Fall', 'Breathing problem', 'Chest pain', 'S
 const STEPS = ['disp', 'enroute', 'onscene', 'transport', 'hospital', 'clear'];
 const STEP_SHORT = { disp: 'Disp', enroute: 'En rt', onscene: 'Scene', transport: 'Trans', hospital: 'Hosp' };
 const STEP_NAMES = { disp: 'Dispatched', enroute: 'En route', onscene: 'On scene', transport: 'Transporting', hospital: 'At hospital', clear: 'Clear' };
+const CALL_SOURCES = ['Our hotline', 'County Communications', 'Mutual aid request'];
+const CALL_REQS = ['ALS', 'Mutual aid ambulance', 'Police', 'Fire', 'Supervisor'];
 const OUTCOMES = ['Transported', 'Refusal (RMA)', 'Lift assist / no transport', 'No patient found', 'Cancelled', 'Mutual aid covered'];
 const OOS_REASONS = ['Mechanical', 'Restocking', 'Cleaning', 'No crew', 'Fuel', 'Other'];
 const NO_ENROUTE_WARN = 5 * 60000;   // dispatched with nobody en route
@@ -3352,6 +3388,15 @@ function sampleShift() {
     call(58, 'Sick person', '5 Cedar Ln', '78-56', { enroute: 3, onscene: 6, transport: 12, hospital: 24 }, '', { hosp: 'jsumc' }),
     call(6, 'Fall', '301 Park Ave', '', {}, ''),
   ];
+  const cp = call(9, 'Chest pain', '18 Norwood Ave', '78-57', { enroute: 1, onscene: 3 }, '');
+  cp.town = 'Deal';
+  cp.resp = [
+    { pid: 'm4195', name: 'S. Haddad', cert: 'Paramedic', via: 'own vehicle', st: 'onscene', t: cp.times.disp + 60000, enroute: cp.times.disp + 60000, onscene: cp.times.disp + 180000 },
+    { pid: 'm4190', name: 'Y. Klein', cert: 'EMT', via: 'own vehicle', st: 'onscene', t: cp.times.disp + 90000, enroute: cp.times.disp + 90000, onscene: cp.times.disp + 300000 },
+    { pid: 'm4133', name: 'J. Ortiz', cert: 'EMT', via: '78-57', st: 'enroute', t: cp.times.disp + 120000, enroute: cp.times.disp + 120000 },
+  ];
+  cp.reqs = [];
+  st.calls.push(cp);
   st.log = [
     { t: ago(570), kind: 'note', text: `Shift started · ${C.agency.name}` },
     { t: ago(300), kind: 'units', text: '78-58 out of service: stretcher repair' },
@@ -3467,14 +3512,44 @@ function callCard(c) {
     : next[0] === 'sheet-hosp' ? `<button class="btn primary" data-act="sheet" data-arg="call-hosp:${c.id}">${next[1]}</button>`
     : `<button class="btn primary" data-act="${next[0]}" data-arg="${c.id}">${next[1]}</button>`;
   return `<div class="call ${a ? 'al-' + a.cls : ''}">
-    <div class="ph"><div><div class="ct">${esc(c.type)}</div><div class="ca">${esc(c.address)}${c.town ? ' · ' + esc(c.town) : ''}</div></div>${c.unit ? `<span class="uid">${esc(c.unit)}</span>` : '<span class="pill requested">No unit</span>'}</div>
+    <div class="ph"><div><div class="ct">${esc(c.type)}</div><div class="ca">${esc(c.address)}${c.town ? ' · ' + esc(c.town) : ''}${c.src && c.src !== 'Our hotline' ? ` · <span class="warn-t">${esc(c.src)}</span>` : ''}</div></div>${c.unit ? `<span class="uid">${esc(c.unit)}</span>` : '<span class="pill requested">No unit</span>'}</div>
     <div class="csteps">${STEPS.slice(0, 5).map((s, j) => `<span class="cs ${j < i ? 'done' : j === i ? 'now' : ''}" title="${STEP_NAMES[s]}"><b>${STEP_SHORT[s]}</b><small>${c.times[s] ? hhmm(c.times[s]) : ''}</small></span>`).join('')}</div>
+    ${respLine(c)}
     <div class="cline">${STEP_NAMES[c.status]} for <span class="num" data-since="${c.times[c.status]}">${dur(now() - c.times[c.status])}</span>${h ? ` · to ${esc(h.short)}` : ''} · <span class="note">dispatched ${hhmm(c.times.disp)}</span></div>
     ${a ? `<div class="calert ${a.cls}">${esc(a.text)} · <span class="num" data-since="${a.since}">${dur(now() - a.since)}</span></div>` : ''}
-    <div class="toolbar">${nextBtn}<button class="btn" data-act="sheet" data-arg="call:${c.id}">More</button></div>
+    <div class="toolbar">${nextBtn}${needsAls(c) ? `<button class="btn" data-act="call-req" data-arg="${c.id}=ALS">Request ALS</button>` : ''}<button class="btn" data-act="sheet" data-arg="call:${c.id}">More</button></div>
   </div>`;
 }
 
+const ALS_CERTS = ['Paramedic'];
+const alsOnCall = c => (c.resp || []).some(r => ALS_CERTS.includes(r.cert) && r.st !== 'clear');
+const needsAls = c => c.status !== 'clear' && !alsOnCall(c) && !(c.reqs || []).some(q => q.what === 'ALS');
+function respLine(c) {
+  const rs = (c.resp || []).filter(r => r.st !== 'clear');
+  const reqs = c.reqs || [];
+  return `<div class="resp">
+      ${rs.map(r => `<button class="rchip st-${r.st}" data-act="resp-step" data-arg="${c.id}=${esc(r.pid)}" aria-label="${esc(r.name)}, ${r.st === 'onscene' ? 'on scene' : 'en route'}. Tap to move on.">
+        <b>${esc(r.name)}</b><small>${esc(r.cert)}${r.via ? ' · ' + esc(r.via) : ''}</small>
+        <span class="rst">${r.st === 'onscene' ? 'On scene' : 'En route'} <span class="num" data-since="${r[r.st] || r.t}">${dur(now() - (r[r.st] || r.t))}</span></span>
+      </button>`).join('')}
+      <button class="rchip add" data-act="sheet" data-arg="call-resp:${c.id}">${icon('plus')}<b>Responder</b></button>
+    </div>
+    ${alsOnCall(c) || reqs.length ? `<div class="chips">${alsOnCall(c) ? '<span class="pill onscene">ALS on scene · ours</span>' : ''}${reqs.map(q => `<button class="pill pbtn ${q.st === 'onscene' ? 'onscene' : 'requested'}" data-act="req-step" data-arg="${c.id}=${q.rid}">${esc(q.what)} · ${q.st === 'onscene' ? 'on scene ' + hhmm(q.onscene) : 'requested ' + hhmm(q.t)}</button>`).join('')}</div>` : ''}`;
+}
+function callRespSheet(id) {
+  const c = SH.calls.find(x => x.id === id), f = UI.form;
+  if (!c) return { title: 'Responder', body: '<div class="empty">This call is gone.</div>' };
+  const on = new Set((c.resp || []).map(r => r.pid));
+  const duty = SH.crew.filter(p => !p.out && !on.has('m' + p.num));
+  const others = C.members.filter(m => !on.has('m' + m.num) && !duty.some(d => d.num === m.num));
+  return {
+    title: `Who's responding · ${c.address}`,
+    body: `${field('On duty', duty.length ? `<div class="opt-grid">${duty.map(p => opt('resp-add', `${id}=${p.num}`, false, `${esc(p.name)}<small>${esc(p.cert)}${p.unit ? ' · ' + esc(p.unit) : ''}</small>`, 'tall')).join('')}</div>` : '<div class="empty">Nobody else on duty.</div>')}
+      ${field('Other members · responding on their own', others.length ? `<div class="opt-grid">${others.map(m => opt('resp-add', `${id}=${m.num}`, false, `${esc(m.name)}<small>${esc(m.cert)} · own vehicle</small>`, 'tall')).join('')}</div>` : '<div class="empty">Everyone on the roster is already on this call.</div>')}
+      <div class="grid2">${field('Someone not on the roster', input('resp-name', 'rname', f.rname, 'Name'))}${field('Certification', `<div class="chips">${['EMT', 'Paramedic', 'EMR', 'Driver'].map(x => opt('f-set', 'rcert=' + x, (f.rcert || 'EMT') === x, x, 'small')).join('')}</div>`)}</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="resp-add-new" data-arg="${id}">Add this person</button>`,
+  };
+}
 function todayPanel() {
   const s = shiftStats();
   return `<section class="panel" aria-label="Today">
@@ -3487,7 +3562,7 @@ function todayPanel() {
     </div>
     <dl class="kv">
       <dt>Turnout</dt><dd>${fmtMin(s.turnout)} <span class="note">dispatch to en route, average</span></dd>
-      <dt>Response</dt><dd>${fmtMin(s.response)} <span class="note">dispatch to on scene, average</span></dd>
+      <dt>Response</dt><dd>${fmtMin(s.response)} <span class="note">dispatch to first on scene, average</span></dd>
       <dt>At hospital</dt><dd>${fmtMin(s.wall)} <span class="note">arrival to back in service, average</span></dd>
     </dl>
   </section>`;
@@ -3504,16 +3579,17 @@ function closedPanel(closed) {
 function ownFreeUnits() { return SH.units.filter(u => u.status === 'in' && !busyCall(u) && TRANSPORT_KINDS.concat(['RV', 'SUP']).includes(u.kind)); }
 function callNewSheet() {
   const f = UI.form;
-  if (!f._init) Object.assign(f, { ctype: 'Sick person', ctown: SH.calls.length ? SH.calls[SH.calls.length - 1].town : '', _init: true });
+  if (!f._init) Object.assign(f, { ctype: 'Sick person', csrc: 'Our hotline', ctown: SH.calls.length ? SH.calls[SH.calls.length - 1].town : '', _init: true });
   return {
     title: 'New call',
-    body: `${field('Type', `<div class="opt-grid">${CALL_TYPES.map(t => opt('f-set', 'ctype=' + t, f.ctype === t, esc(t))).join('')}</div>`)}
+    body: `${field('Came in from', `<div class="chips">${CALL_SOURCES.map(x => opt('f-set', 'csrc=' + x, f.csrc === x, esc(x))).join('')}</div>`)}
+      ${field('Type', `<div class="opt-grid">${CALL_TYPES.map(t => opt('f-set', 'ctype=' + t, f.ctype === t, esc(t))).join('')}</div>`)}
       <div class="grid2">
         ${field('Address', input('call-addr', 'caddr', f.caddr, 'Street address or cross streets'))}
         ${field('Town', input('call-town', 'ctown', f.ctown, 'Monmouth County town', 'list="muni-list2"'))}
       </div>
       <datalist id="muni-list2">${MUNICIPALITIES.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
-      ${field('Unit · leave empty while you wait for a crew', `<div class="opt-grid">${ownFreeUnits().map(u => opt('f-set', 'cunit=' + u.name, f.cunit === u.name, `${kindTag(u.kind)} ${esc(u.name)}<small>${unitCrew(u.name).length} crew</small>`, 'tall')).join('') || '<div class="empty">No units free right now.</div>'}</div>`)}
+      ${field('Ambulance or unit · leave empty while members respond', `<div class="opt-grid">${ownFreeUnits().map(u => opt('f-set', 'cunit=' + u.name, f.cunit === u.name, `${kindTag(u.kind)} ${esc(u.name)}<small>${unitCrew(u.name).length} crew</small>`, 'tall')).join('') || '<div class="empty">No units free right now.</div>'}</div>`)}
       ${field('Call number · optional', input('call-num', 'cnum2', f.cnum2, 'From the page or CAD', 'inputmode="numeric"'))}`,
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="call-save">Log call</button>`,
   };
@@ -3527,6 +3603,7 @@ function callSheet(id) {
     body: `<div class="note">${esc(c.town || '')}${c.num ? ' · call ' + esc(c.num) : ''} · dispatched ${hhmm(c.times.disp)}</div>
       <dl class="kv">${STEPS.filter(s => c.times[s]).map(s => `<dt>${STEP_NAMES[s]}</dt><dd class="num">${hhmm(c.times[s])} <span class="note">+${dur(c.times[s] - c.times.disp)}</span></dd>`).join('')}${c.outcome ? `<dt>Outcome</dt><dd>${esc(c.outcome)}${c.mutualAid ? ' · ' + esc(c.mutualAid) : ''}</dd>` : ''}</dl>
       ${open ? `${field('Unit', `<div class="opt-grid">${SH.units.filter(u => u.status === 'in' && (!busyCall(u) || u.name === c.unit)).map(u => opt('call-unit', `${c.id}=${u.name}`, c.unit === u.name, `${kindTag(u.kind)} ${esc(u.name)}`)).join('')}</div>`)}
+      ${field('Request', `<div class="chips">${CALL_REQS.map(q => opt('call-req', `${c.id}=${q}`, (c.reqs || []).some(x => x.what === q), esc(q))).join('')}</div>`)}
       ${field('Finish the call', `<div class="opt-grid wide">${OUTCOMES.map(o => opt('call-close', `${c.id}=${o}`, false, esc(o), o === 'Mutual aid covered' ? 'tall' : '')).join('')}</div>`)}
       ${field('Covered by · for mutual aid', input('call-ma', 'cma', f.cma, 'e.g. Sheriff MedStar, Squad 35', 'list="ma-list"'))}
       <datalist id="ma-list"><option value="Sheriff MedStar"><option value="Mutual aid squad"><option value="HMH paramedics"><option value="RWJBH paramedics"></datalist>` : ''}`,
@@ -3582,12 +3659,40 @@ function shiftNewSheet() {
 }
 
 const SHIFT_ACTIONS = {
+  'resp-add'(arg) {
+    const [id, num] = arg.split('='), c = SH.calls.find(x => x.id === id); if (!c) return;
+    const duty = SH.crew.find(p => !p.out && p.num === num), m = duty || C.members.find(x => x.num === num); if (!m) return;
+    const via = duty && duty.unit ? duty.unit : 'own vehicle';
+    UI.sheet = null; UI.form = {};
+    sdispatch('respAdd', { id, r: { pid: 'm' + num, name: m.name, cert: m.cert, via }, at: now() }, `${m.name} (${m.cert}) responding to ${c.address}`, 'people');
+  },
+  'resp-add-new'(id) {
+    const c = SH.calls.find(x => x.id === id), name = (UI.form.rname || '').trim(), cert = UI.form.rcert || 'EMT'; if (!c) return;
+    if (!name) { showToast('Type their name, or pick a member', false); document.getElementById('resp-name')?.focus(); return; }
+    UI.sheet = null; UI.form = {};
+    sdispatch('respAdd', { id, r: { pid: 'n:' + name.toLowerCase(), name, cert, via: 'own vehicle' }, at: now() }, `${name} (${cert}) responding to ${c.address}`, 'people');
+  },
+  'resp-step'(arg) {
+    const i = arg.indexOf('='), id = arg.slice(0, i), pid = arg.slice(i + 1), c = SH.calls.find(x => x.id === id);
+    const r = c && (c.resp || []).find(x => x.pid === pid); if (!r) return;
+    const nx = r.st === 'enroute' ? 'onscene' : 'clear';
+    sdispatch('respStep', { id, pid, st: nx, at: now() }, `${r.name} ${nx === 'onscene' ? 'on scene' : 'clear'}: ${c.address}`, 'people');
+  },
+  'call-req'(arg) {
+    const i = arg.indexOf('='), id = arg.slice(0, i), what = arg.slice(i + 1), c = SH.calls.find(x => x.id === id); if (!c) return;
+    if ((c.reqs || []).some(q => q.what === what && q.st === 'requested')) { showToast(`${what} is already requested`, false); return; }
+    sdispatch('callReq', { id, rid: uid(), what, at: now() }, `${what} requested for ${c.address}`, 'request');
+  },
+  'req-step'(arg) {
+    const [id, rid] = arg.split('='), c = SH.calls.find(x => x.id === id), q = c && (c.reqs || []).find(x => x.rid === rid); if (!q || q.st === 'onscene') return;
+    sdispatch('callReqStep', { id, rid, st: 'onscene', at: now() }, `${q.what} on scene: ${c.address}`, 'request');
+  },
   'call-save'() {
     const f = UI.form, address = (f.caddr || '').trim();
     if (!address) { showToast('Enter the address first', false); document.getElementById('call-addr')?.focus(); return; }
-    const c = { id: uid(), num: (f.cnum2 || '').trim(), type: f.ctype, address, town: (f.ctown || '').trim(), unit: f.cunit || '', times: { disp: now() }, status: 'disp', outcome: '', hosp: '', mutualAid: '' };
+    const c = { id: uid(), num: (f.cnum2 || '').trim(), src: f.csrc || 'Our hotline', type: f.ctype, address, town: (f.ctown || '').trim(), unit: f.cunit || '', times: { disp: now() }, status: 'disp', outcome: '', hosp: '', mutualAid: '', resp: [], reqs: [] };
     UI.sheet = null; UI.form = {};
-    sdispatch('callAdd', { call: c }, `Call: ${c.type}, ${c.address}${c.unit ? ' → ' + c.unit : ' · waiting for a crew'}`, 'note');
+    sdispatch('callAdd', { call: c }, `Call${c.src !== 'Our hotline' ? ' from ' + c.src : ''}: ${c.type}, ${c.address}${c.unit ? ' → ' + c.unit : ''}`, 'note');
   },
   'call-step'(id) {
     const c = SH.calls.find(x => x.id === id); if (!c) return;
@@ -3868,7 +3973,7 @@ const A = {
   'ag-del'(i) { UI.form.roster.splice(Number(i), 1); render(); },
   'agency-save'(addNow) {
     const f = UI.form;
-    C.agency = { ...C.agency, name: (f.aname || '').trim() || 'My squad' };
+    C.agency = { ...C.agency, name: (f.aname || '').trim() || 'My agency', num: (f.anum || '').trim() };
     C.roster = f.roster.slice();
     saveConfig();
     UI.sheet = null; UI.form = {};
@@ -4055,7 +4160,7 @@ window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); })
    ===================================================================== */
 DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: 'command', mode: 'night', me: null };
 saveDev();
-C = { ...defaultConfig(), ...(read(K.cfg) || sampleConfig()) };
+C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || sampleConfig()) });
 INC.load(sampleState);
 SHIFT.load(sampleShift);
 loadUi();
