@@ -790,6 +790,8 @@ button.tag { min-height: 32px; }
 .tag.mci { background: var(--crit); border-color: var(--crit); color: var(--on-solid); }
 .tag.suggest { border-color: var(--warn); color: var(--warn); }
 .tag.sample { border-style: dashed; }
+.tag.live { border-color: var(--ok); color: var(--ok); }
+.tag.role { border-color: var(--accent); color: var(--accent); }
 
 .clocks { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
 .clock, .par, .iconbtn {
@@ -853,7 +855,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: rou
 /* ---------- board ---------- */
 .board {
   display: grid;
-  grid-template-columns: minmax(290px, 1fr) minmax(310px, 1.1fr) minmax(330px, 1.2fr);
+  grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr) minmax(330px, 1.15fr);
   gap: 12px; height: 100%; min-height: 0;
 }
 .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
@@ -869,7 +871,7 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: rou
 .bar span { display: block; height: 100%; }
 
 .tri {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px;
   padding: 10px 10px 10px 14px; border-radius: var(--r);
   border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface));
 }
@@ -887,7 +889,9 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: rou
 .swatch { font: 700 13px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 8px; border-radius: 5px; background: var(--c); color: var(--ink); }
 .tri-B .swatch { background: var(--black); color: var(--black-ink); border: 1.5px solid var(--black-edge); }
 :root[data-mode="day"] .tri-B .swatch { border-color: #FFFFFF; }
-.tri-name { font: 700 19px/1 var(--display); letter-spacing: 0.04em; text-transform: uppercase; }
+.tri-name { font: 700 19px/1.05 var(--display); letter-spacing: 0.04em; text-transform: uppercase; overflow-wrap: anywhere; }
+.board .tri-btns button { width: 54px; height: 68px; }
+.board .tri-head { flex-wrap: wrap; row-gap: 4px; }
 .tri-count { font: 700 56px/0.95 var(--display); font-variant-numeric: tabular-nums; margin-top: 2px; }
 .tri-sub { font-size: 14px; color: var(--muted); }
 .tri-sub b { color: var(--fg); }
@@ -1096,7 +1100,8 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: rou
 .log .entry { display: grid; grid-template-columns: 64px 92px minmax(0, 1fr); gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); align-items: baseline; }
 .log .entry:last-child { border-bottom: 0; }
 .log .lt { font: 700 15px/1 var(--mono); }
-.log .lk { font: 700 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.log .lk { font: 700 12px/1.3 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.log .lk small { display: block; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; }
 .composer { display: flex; gap: 8px; }
 .composer input { flex: 1; min-width: 0; }
 
@@ -1154,8 +1159,33 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .toast button { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-ink); font: 700 17px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; }
 .toast span { min-width: 0; }
 
+/* ---------- role screens ---------- */
+.triview { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr); gap: 12px; align-items: start; }
+.tri-big .tri { padding: 14px 14px 14px 18px; }
+.tri-big .tri-name { font-size: 22px; }
+.tri-big .tri-count { font-size: 84px; }
+.tri-big .tri-btns button { width: 92px; height: 104px; font-size: 46px; }
+.opt.retri { justify-content: center; gap: 6px; }
+.opt.retri .dot { flex-shrink: 0; }
+.desk { display: grid; grid-template-columns: minmax(270px, 1fr) minmax(380px, 1.4fr) minmax(270px, 1fr); gap: 12px; height: 100%; min-height: 0; }
+.desk .col { overflow: auto; }
+.hgrid { display: flex; flex-direction: column; }
+.hrow { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 62px) 54px; gap: 6px; align-items: center; min-height: 58px; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; width: 100%; }
+.hrow:last-child { border-bottom: 0; }
+.hrow.head { min-height: 0; padding-block: 4px 8px; font: 600 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.hrow .hn { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hrow .hn b { font-weight: 600; }
+.hrow .hn small { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hrow .hc { border: 2px solid var(--c); border-radius: 8px; padding: 6px 4px; text-align: center; font: 600 14px/1 var(--mono); color: var(--muted); }
+.hrow .hc b { color: var(--fg); font-size: 17px; }
+.hrow .hc.full { background: color-mix(in srgb, var(--crit) 22%, var(--surface)); }
+.hrow .ht { font: 600 13px/1 var(--mono); text-align: center; }
+
 /* ---------- responsive ---------- */
 @media (max-width: 1100px) {
+  .desk { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: auto; }
+  .desk .col { overflow: visible; }
+  .desk .col:last-child { grid-column: 1 / -1; }
   .board { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: auto; }
   .board .col { overflow: visible; }
   .board .col.c3 { order: 1; }
@@ -1165,6 +1195,7 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 }
 @media (max-width: 900px) {
   .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .triview { grid-template-columns: minmax(0, 1fr); }
   .branch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
@@ -1173,7 +1204,9 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
   .rail button { flex: 1 0 56px; min-height: 56px; font-size: 11px; gap: 3px; }
   .rail button svg { width: 22px; height: 22px; }
   .rail .spacer { display: none; }
-  .board, .board .col.c2 { grid-template-columns: minmax(0, 1fr); }
+  .board, .board .col.c2, .desk { grid-template-columns: minmax(0, 1fr); }
+  .tri-big .tri-count { font-size: 60px; }
+  .tri-big .tri-btns button { width: 64px; height: 76px; font-size: 34px; }
   .mapcard.mini { height: 240px; }
   .inc h1 { font-size: 23px; }
   .clocks { width: 100%; }
@@ -1373,9 +1406,10 @@ const INCIDENT_TYPES = ['Motor vehicle crash','Bus crash','Fire / smoke','Hazmat
 const HAZARDS = ['Traffic','Fuel spill','Fire / smoke','Downed wires','Hazmat','Unstable vehicle','Violence','Crowd','Water','Weather','Darkness'];
 
 const UNIT_KINDS = [
-  { k: 'BLS',   g: 'ems',  name: 'BLS ambulance' },
-  { k: 'ALS',   g: 'ems',  name: 'ALS / medic' },
-  { k: 'SUP',   g: 'ems',  name: 'EMS supervisor' },
+  { k: 'BLS',   g: 'ems',  name: 'Ambulance (BLS)' },
+  { k: 'RV',    g: 'ems',  name: 'Response vehicle' },
+  { k: 'ALS',   g: 'ems',  name: 'Paramedic unit (ALS)' },
+  { k: 'SUP',   g: 'ems',  name: 'Supervisor / officer' },
   { k: 'MCI',   g: 'ems',  name: 'MCI unit' },
   { k: 'BUS',   g: 'ems',  name: 'Bus' },
   { k: 'AIR',   g: 'ems',  name: 'Air medical' },
@@ -1494,8 +1528,8 @@ const townLL = name => { const n = (name || '').trim().toLowerCase(); const t = 
 /* =====================================================================
    Helpers
    ===================================================================== */
-const KEY = 'scene-command-v2';
-const CONFIG_KEY = 'scene-command-config-v1';
+const parOn = () => !!(C && C.features && C.features.par);
+const K = { dev: 'sc3:device', cfg: 'sc3:config', inc: 'sc3:incident', ev: id => 'sc3:events:' + id, ui: 'sc3:ui' };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Math.random().toString(36).slice(2, 9);
 const now = () => Date.now();
@@ -1553,21 +1587,37 @@ const ICON = {
   expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20.5c.9-4 3.6-6 7-6s6.1 2 7 6"/>',
+  tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0l-8-8z"/><circle cx="8" cy="8" r="1.6"/>',
 };
 const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
 
 /* =====================================================================
    State
    ===================================================================== */
-let S;    // the incident, persisted on this device
-let C;    // agency configuration that outlives incidents: rosters, extra phone numbers
-let UI = { view: 'board', sheet: null, form: {}, logFilter: 'all', unitGroup: 'all', hospFilter: [], pinMode: null, mapLayer: 'sat', live: 'unknown' };
-let undoSnap = null;
+let S;    // the incident as it stands now: the starting state with every event replayed over it
+let C;    // agency configuration that outlives incidents: squad, unit roster, members, extra numbers
+let DEV;  // this tablet only: its id, its job (role), day/night, last GPS fix
+let UI = { view: '', sheet: null, form: {}, logFilter: 'all', unitGroup: 'all', hospFilter: [], pinMode: null, mapLayer: 'sat', live: 'unknown' };
 let toastTimer = null;
+
+const ROLES = {
+  command:   { name: 'Command',   home: 'board',     note: 'The whole board: triage, units, transport, hospitals, ICS, radio' },
+  triage:    { name: 'Triage',    home: 'triage',    note: 'Big counters, re-triage, the triage report' },
+  transport: { name: 'Transport', home: 'transport', note: 'Loading units, hospital capacity, the transport log' },
+};
+const RAILS = {
+  command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log'],
+  triage:    ['triage', 'board', 'units', 'map', 'phone', 'log'],
+  transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
+};
+const homeView = () => (ROLES[DEV.role] || ROLES.command).home;
+const newIncidentId = () => 'inc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
 
 function defaultConfig() {
   return {
     v: 1,
+    agency: { name: 'Squad 78' },
+    features: { par: false },   // PAR checks are optional; off until an agency turns them on
     roster: [],
     members: [],
     contacts: [],
@@ -1577,7 +1627,8 @@ function defaultConfig() {
 function blankState(opts = {}) {
   const t = now();
   const st = {
-    v: 2,
+    v: 3,
+    id: newIncidentId(),
     sample: false,
     incident: {
       type: opts.type || 'Motor vehicle crash',
@@ -1595,12 +1646,11 @@ function blankState(opts = {}) {
       dispatchAt: t,
       ll: null, stagingLL: null, lzLL: null,
     },
-    me: null,
     triage: { R: 0, Y: 0, G: 0, X: 0, B: 0, W: 0 },
     method: (S && S.method) || 'START',
     white: !!(S && S.white),
     transports: [],
-    units: (C.roster || []).map(r => ({ id: uid(), name: r.name, kind: r.kind, agency: r.agency, crew: r.crew ?? 2, status: 'available', task: '', t })),
+    units: (C.roster || []).map(r => ({ id: uid(), name: r.name, kind: r.kind, agency: C.agency.name, crew: r.crew ?? 2, status: 'available', task: '', t })),
     people: [],
     requests: [],
     hospitals: {},
@@ -1608,7 +1658,6 @@ function blankState(opts = {}) {
     bench: { command: t },
     par: { interval: (S && S.par && S.par.interval) || 20, last: t },
     log: [{ t, kind: 'bench', text: 'Command established' }],
-    mode: (S && S.mode) || 'night',
   };
   return st;
 }
@@ -1639,9 +1688,9 @@ function sampleState() {
 
   /* Unit numbers follow the county's town–unit pattern (56–63 ambulances, 50 the officer). Squads are made up. */
   st.units = [
-    U('41-50',      'SUP',  'Your squad', 1, 'onscene', 'Command', at(3, 5)),
-    U('41-56',      'BLS',  'Your squad', 2, 'onscene', 'Triage', at(3, 5)),
-    U('41-57',      'BLS',  'Your squad', 2, 'transporting', 'To JSUMC', at(12, 40)),
+    U('78-50',      'SUP',  C.agency.name, 1, 'onscene', 'Command', at(3, 5)),
+    U('78-56',      'BLS',  C.agency.name, 2, 'onscene', 'Triage', at(3, 5)),
+    U('78-57',      'BLS',  C.agency.name, 2, 'transporting', 'To JSUMC', at(12, 40)),
     U('MICU 7',     'ALS',  'HMH paramedics', 2, 'transporting', 'To JSUMC', at(14, 10)),
     U('MICU 12',    'ALS',  'RWJBH paramedics', 2, 'onscene', 'Treatment · Red', at(9, 30)),
     U('35-56',      'BLS',  'Squad 35', 2, 'onscene', 'Treatment · Yellow', at(8, 0)),
@@ -1664,16 +1713,16 @@ function sampleState() {
   const uidOf = name => st.units.find(u => u.name === name).id;
 
   st.people = [
-    M('4101', 'Lt. R. Ramos', 'Officer', '41-50', 'Command', at(3, 5)),
-    M('4127', 'K. Shah', 'EMT', '41-56', 'Transport', at(3, 5)),
-    M('4133', 'J. Ortiz', 'EMT', '41-56', 'Triage', at(3, 5)),
-    M('4140', 'M. Chen', 'EMT', '41-57', '', at(3, 30)),
+    M('4101', 'Lt. R. Ramos', 'Officer', '78-50', 'Command', at(3, 5)),
+    M('4127', 'K. Shah', 'EMT', '78-56', 'Transport', at(3, 5)),
+    M('4133', 'J. Ortiz', 'EMT', '78-56', 'Triage', at(3, 5)),
+    M('4140', 'M. Chen', 'EMT', '78-57', '', at(3, 30)),
     M('4152', 'T. Byrne', 'EMR', '', 'Treatment · Green', at(7, 10)),
     M('4158', 'A. Russo', 'EMT', '', 'Loading', at(8, 40)),
   ];
 
   st.transports = [
-    { id: uid(), cat: 'R', n: 1, tags: '402117', age: 'Adult', unit: uidOf('41-57'),   hosp: 'jsumc', t: at(15, 20) },
+    { id: uid(), cat: 'R', n: 1, tags: '402117', age: 'Adult', unit: uidOf('78-57'),   hosp: 'jsumc', t: at(15, 20) },
     { id: uid(), cat: 'R', n: 1, tags: '402121', age: 'Child', unit: uidOf('MICU 7'),  hosp: 'jsumc', t: at(17, 45) },
     { id: uid(), cat: 'Y', n: 1, tags: '402130', age: 'Adult', unit: uidOf('37-56'),   hosp: 'mmc',   t: at(20, 5) },
   ];
@@ -1695,14 +1744,14 @@ function sampleState() {
   };
 
   st.ics = {
-    'uc-ems': { who: 'Lt. R. Ramos · 41-50', t: at(3, 10) },
+    'uc-ems': { who: 'Lt. R. Ramos · 78-50', t: at(3, 10) },
     'uc-fire': { who: 'Chief 41', t: at(4, 30) },
     'uc-pd': { who: 'Sgt. D. Lee · PD 12', t: at(6, 0) },
-    'triage': { who: 'J. Ortiz · 41-56', t: at(3, 30) },
+    'triage': { who: 'J. Ortiz · 78-56', t: at(3, 30) },
     'treat': { who: 'MICU 12', t: at(9, 40) },
     'tx-yel': { who: '35-56 crew', t: at(10, 0) },
     'tx-grn': { who: 'T. Byrne', t: at(11, 0) },
-    'transport': { who: 'K. Shah · 41-56', t: at(12, 0) },
+    'transport': { who: 'K. Shah · 78-56', t: at(12, 0) },
     'staging': { who: '23-57 crew', t: at(16, 0) },
   };
 
@@ -1715,7 +1764,7 @@ function sampleState() {
   st.log = [
     L(at(0, 0), 'note', 'Dispatched: bus vs. box truck, Rt 35 & Deal Rd, Ocean Twp'),
     L(at(2, 50), 'units', 'PD 12 on scene'),
-    L(at(3, 5), 'units', '41-50, 41-56 on scene'),
+    L(at(3, 5), 'units', '78-50, 78-56 on scene'),
     L(at(3, 10), 'bench', 'Command established: Deal Road Command, Lt. R. Ramos'),
     L(at(3, 40), 'bench', 'Size-up given to County Communications'),
     L(at(4, 30), 'bench', 'MCI declared, 1st alarm. County EMS Coordinator notified'),
@@ -1724,12 +1773,11 @@ function sampleState() {
     L(at(6, 5), 'bench', 'Staging established: shopping center lot, SW corner'),
     L(at(8, 30), 'request', 'Requested County Hazmat Task Force: diesel leak from the box truck'),
     L(at(9, 30), 'bench', 'Hospitals notified through County Communications'),
-    L(at(10, 0), 'par', 'PAR complete: 8 of 8 units accounted for'),
     L(at(11, 0), 'bench', 'Treatment area set up, north side of the lot'),
     L(at(12, 10), 'note', 'Bayshore reports critical care divert'),
     L(at(13, 0), 'request', 'Air medical placed on standby'),
     L(at(14, 20), 'bench', 'Primary triage complete: 19 patients'),
-    L(at(15, 20), 'transport', '41-57 departed: 1 Immediate → JSUMC (tag 402117)'),
+    L(at(15, 20), 'transport', '78-57 departed: 1 Immediate → JSUMC (tag 402117)'),
     L(at(17, 45), 'transport', 'MICU 7 departed: 1 Immediate (child) → JSUMC (tag 402121)'),
     L(at(18, 30), 'request', 'Requested Medical Ambulance Bus for 8 Green patients'),
     L(at(20, 5), 'transport', '37-56 departed: 1 Delayed → Monmouth Medical (tag 402130)'),
@@ -1743,10 +1791,6 @@ function sampleState() {
 
 function sampleConfig() {
   const c = defaultConfig();
-  c.roster = [
-    { name: '41-50', kind: 'SUP', agency: 'Your squad' }, { name: '41-56', kind: 'BLS', agency: 'Your squad' },
-    { name: '41-57', kind: 'BLS', agency: 'Your squad' }, { name: '41-58', kind: 'BLS', agency: 'Your squad' },
-  ];
   c.members = [
     { num: '4101', name: 'Lt. R. Ramos', cert: 'Officer' }, { num: '4127', name: 'K. Shah', cert: 'EMT' },
     { num: '4133', name: 'J. Ortiz', cert: 'EMT' }, { num: '4140', name: 'M. Chen', cert: 'EMT' },
@@ -1758,10 +1802,10 @@ function sampleConfig() {
 
 function read(key) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function write(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* in-memory only */ } }
-const save = () => write(KEY, S);
-const saveConfig = () => write(CONFIG_KEY, C);
-function loadUi() { const v = read(KEY + ':ui'); if (v) { if (v.view) UI.view = v.view; if (v.mapLayer) UI.mapLayer = v.mapLayer; } }
-function saveUi() { write(KEY + ':ui', { view: UI.view, mapLayer: UI.mapLayer }); }
+const saveDev = () => write(K.dev, DEV);
+function saveConfig() { write(K.cfg, C); Sync.pushConfig(); }
+function loadUi() { const v = read(K.ui) || {}; UI.view = v.view || homeView(); if (v.mapLayer) UI.mapLayer = v.mapLayer; }
+function saveUi() { write(K.ui, { view: UI.view, mapLayer: UI.mapLayer }); }
 
 /* =====================================================================
    Derived numbers
@@ -1812,7 +1856,7 @@ const toastRoot = document.getElementById('toast-root');
 function render() {
   const scrolls = {};
   document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = [el.scrollTop, el.scrollLeft]; });
-  document.documentElement.dataset.mode = S.mode;
+  document.documentElement.dataset.mode = DEV.mode;
   parkMap();
 
   app.innerHTML = header() + rail() + `<main class="main" data-scroll="main-${UI.view}">${view()}</main>`;
@@ -1843,21 +1887,22 @@ function header() {
   ].filter(Boolean).join(' · ');
   return `<header class="head">
     <div class="inc">
-      <div class="inc-top">${mci}${suggest}${sample}</div>
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${mci}${suggest}${sample}</div>
       <h1><button class="titlebtn" data-act="sheet" data-arg="incident">${esc(title)}</button></h1>
       <div class="inc-sub">${sub || 'Tap the title to fill in incident details'}</div>
     </div>
     <div class="clocks">
       <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
       <div class="clock"><span class="lbl">Since dispatch</span><span class="v" data-clock="elapsed">--:--</span></div>
-      <button class="par" id="par-btn" data-act="sheet" data-arg="par"><span class="lbl" data-clock="par-lbl">PAR due</span><span class="v" data-clock="par">--:--</span></button>
-      <button class="iconbtn" data-act="mode" aria-label="Switch to ${S.mode === 'day' ? 'night' : 'day'} mode">${icon(S.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${S.mode === 'day' ? 'Night' : 'Day'}</span></button>
+      ${parOn() ? `<button class="par" id="par-btn" data-act="sheet" data-arg="par"><span class="lbl" data-clock="par-lbl">PAR due</span><span class="v" data-clock="par">--:--</span></button>` : ''}
+      <button class="iconbtn" data-act="mode" aria-label="Switch to ${DEV.mode === 'day' ? 'night' : 'day'} mode">${icon(DEV.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${DEV.mode === 'day' ? 'Night' : 'Day'}</span></button>
     </div>
   </header>`;
 }
 
 const VIEWS = [
   { id: 'board',     label: 'Board',     icon: 'board' },
+  { id: 'triage',    label: 'Triage',    icon: 'tag' },
   { id: 'map',       label: 'Map',       icon: 'map' },
   { id: 'transport', label: 'Transport', icon: 'amb' },
   { id: 'units',     label: 'Units',     icon: 'units' },
@@ -1874,7 +1919,7 @@ function rail() {
     return '';
   };
   return `<nav class="rail" aria-label="Views">
-    ${VIEWS.map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
+    ${(RAILS[DEV.role] || RAILS.command).map(id => VIEWS.find(v => v.id === id)).map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
     <span class="spacer"></span>
     <button data-act="sheet" data-arg="menu">${icon('menu')}Menu</button>
   </nav>`;
@@ -1883,6 +1928,7 @@ function rail() {
 function view() {
   switch (UI.view) {
     case 'map': return mapView();
+    case 'triage': return triageView();
     case 'transport': return transportView();
     case 'units': return unitsView();
     case 'hospitals': return hospitalsView();
@@ -2080,7 +2126,7 @@ function mapView() {
       <section class="panel">
         <div class="ph"><h2>Pins</h2><span class="meta">Choose one, then tap the map</span></div>
         <div class="opt-grid">${pins.map(p => opt('pin-mode', p.k, UI.pinMode === p.k, `${esc(p.name)}<small>${p.ll ? esc(fmtLL(p.ll)) : 'Not set'}</small>`, 'tall')).join('')}</div>
-        ${S.me ? `<button class="btn block" data-act="use-me">${icon('locate')} Use my location as the scene</button>` : ''}
+        ${DEV.me ? `<button class="btn block" data-act="use-me">${icon('locate')} Use my location as the scene</button>` : ''}
         ${I.ll ? `<div class="coord">${esc(fmtLL(I.ll))}<small>Scene, decimal degrees</small></div>
           <div class="coord">${esc(fmtDDM(I.ll))}<small>Degrees and decimal minutes, for air medical</small></div>
           <div class="toolbar">
@@ -2112,25 +2158,6 @@ const filteredHospitals = () => HOSPITALS.filter(h => UI.hospFilter.every(k => (
 
 /* ---------- Transport view ---------- */
 const readyUnits = () => S.units.filter(u => TRANSPORT_KINDS.includes(u.kind) && (u.status === 'onscene' || u.status === 'staged'));
-function transportView() {
-  const list = S.transports.slice().reverse();
-  return `<div class="view">
-    <div class="toolbar"><h2 class="view-title grow">Transport</h2><button class="btn primary" data-act="sheet" data-arg="transport" ${remainingTx() ? '' : 'disabled'}>${icon('amb')} Log a transport</button></div>
-    <div class="grid2">
-      <section class="panel">
-        <div class="ph"><h2>On scene, awaiting transport</h2><span class="meta">${remainingTx()} patients</span></div>
-        <div class="stats">${TX_CATS.map(k => `<div class="stat ${k}"><span class="lbl">${cat(k).name}</span><span class="v num">${remaining(k)}</span></div>`).join('')}</div>
-        ${(S.triage.B || 0) + (S.triage.X || 0) ? `<div class="note">${plural((S.triage.B || 0) + (S.triage.X || 0), 'patient')} triaged ${S.method === 'SALT' ? 'Gray or Black' : 'Black'}, not counted for transport.</div>` : ''}
-        <div class="ph"><h2>Ready to load</h2><span class="meta">Ambulances on scene or staged</span></div>
-        <div class="rows">${readyUnits().length ? readyUnits().map(u => `<button class="row" data-act="tx-with" data-arg="${u.id}" ${remainingTx() ? '' : 'disabled'}>${kindTag(u.kind)}<div><div class="t1">${esc(u.name)}</div><div class="t2">${statusName(u.status)}${u.task ? ' · ' + esc(u.task) : ''}</div></div><span class="r note">Load →</span></button>`).join('') : '<div class="empty">No transport units available. Request more from Units.</div>'}</div>
-      </section>
-      <section class="panel">
-        <div class="ph"><h2>Transport log</h2><span class="meta">${plural(totalSent(), 'patient')} · ${plural(S.transports.length, 'departure')}</span></div>
-        <div class="rows">${list.length ? list.map(txRow).join('') : '<div class="empty">Departures you log appear here with tag number, unit, destination and time.</div>'}</div>
-      </section>
-    </div>
-  </div>`;
-}
 
 /* ---------- Units view ---------- */
 function unitsView() {
@@ -2350,6 +2377,7 @@ const LOG_KINDS = [
   { k: 'all', name: 'All' }, { k: 'triage', name: 'Triage' }, { k: 'transport', name: 'Transport' }, { k: 'units', name: 'Units' },
   { k: 'people', name: 'People' }, { k: 'request', name: 'Requests' }, { k: 'bench', name: 'Benchmarks' }, { k: 'par', name: 'PAR' }, { k: 'note', name: 'Notes' },
 ];
+const logKinds = () => LOG_KINDS.filter(k => k.k !== 'par' || parOn());
 function logView() {
   const list = S.log.filter(e => UI.logFilter === 'all' || e.kind === UI.logFilter).slice().reverse();
   const quick = ['Extrication complete', 'Fire knocked down', 'Road reopened', 'Medical examiner notified', 'Rehab set up', 'Weather changing'];
@@ -2362,11 +2390,131 @@ function logView() {
       </form>
       <div class="chips">${quick.map(q => `<button class="opt small" data-act="quick-note" data-arg="${esc(q)}">${esc(q)}</button>`).join('')}</div>
     </section>
-    <div class="chips">${LOG_KINDS.map(k => opt('log-filter', k.k, UI.logFilter === k.k, k.name, 'small')).join('')}</div>
+    <div class="chips">${logKinds().map(k => opt('log-filter', k.k, UI.logFilter === k.k, k.name, 'small')).join('')}</div>
     <section class="panel">
-      <div class="log">${list.length ? list.map(e => `<div class="entry"><span class="lt">${hhmm(e.t)}</span><span class="lk">${esc(e.kind)}</span><span class="lx">${esc(e.text)}</span></div>`).join('') : '<div class="empty">Nothing logged in this category yet</div>'}</div>
+      <div class="log">${list.length ? list.map(e => `<div class="entry"><span class="lt">${hhmm(e.t)}</span><span class="lk">${esc(e.kind)}${e.role ? `<small>${esc((ROLES[e.role] || {}).name || e.role)}</small>` : ''}</span><span class="lx">${esc(e.text)}</span></div>`).join('') : '<div class="empty">Nothing logged in this category yet</div>'}</div>
     </section>
   </div>`;
+}
+
+/* ---------- Triage tablet ---------- */
+function triageView() {
+  const n = totalPts(), est = S.incident.est || 0;
+  const denom = Math.max(n, est, 1);
+  const seg = catsList().filter(c => c.k !== 'W').map(c => `<span style="width:${((S.triage[c.k] || 0) / denom) * 100}%;background:var(--${COLOR_VAR[c.k]})"></span>`).join('');
+  const last = S.method === 'SALT' ? 'X' : 'B';
+  const moves = [['Y', 'R'], ['G', 'Y'], ['G', 'R'], ['R', 'Y'], ['Y', 'G'], ['R', last], ['Y', last]];
+  const recent = S.log.filter(l => l.kind === 'triage').slice(-8).reverse();
+  return `<div class="triview">
+    <section class="panel tri-big" aria-label="Triage counts">
+      <div class="tri-sum">
+        <div class="tri-total num">${n}<small>${n === 1 ? 'patient' : 'patients'} · ${esc(S.method || 'START')}</small></div>
+        <div class="est">Estimated <button data-act="est" data-arg="-1" aria-label="Lower estimate">−</button><span class="num">${est}</span><button data-act="est" data-arg="1" aria-label="Raise estimate">+</button></div>
+      </div>
+      <div class="bar" role="img" aria-label="${n} of an estimated ${est} triaged">${seg}</div>
+      ${catsList().map(triRow).join('')}
+    </section>
+    <div class="col">
+      <section class="panel">
+        <div class="ph"><h2>Triage report</h2>${S.bench.triage ? `<span class="meta">Complete ${hhmm(S.bench.triage)}</span>` : ''}</div>
+        <p class="script">${esc(triageReport())}.</p>
+        ${tagRuleMet() ? '<div class="note warn-t">NJ tag rule met: tag every patient.</div>' : ''}
+        <button class="btn primary block" data-act="triage-done">${S.bench.triage ? 'Send an updated count to Command' : 'Primary triage complete'}</button>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Re-triage</h2><span class="meta">Moves one patient between categories</span></div>
+        <div class="opt-grid">${moves.map(([a, b]) => `<button class="opt retri" data-act="retriage" data-arg="${a}>${b}"><span class="dot ${a} c-${a}"></span>${esc(cat(a).color)} → <span class="dot ${b} c-${b}"></span>${esc(cat(b).color)}</button>`).join('')}</div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Recent changes</h2><span class="meta">From every tablet</span></div>
+        <div class="rows">${recent.length ? recent.map(l => `<div class="row"><span class="num">${hhmm(l.t)}</span><div><div class="t1">${esc(l.text)}</div>${l.role ? `<div class="t2">${esc((ROLES[l.role] || {}).name || l.role)} tablet</div>` : ''}</div><span></span></div>`).join('') : '<div class="empty">Counts you change appear here, from every tablet.</div>'}</div>
+      </section>
+    </div>
+  </div>`;
+}
+
+/* ---------- Transport tablet ---------- */
+function transportView() {
+  const ready = readyUnits(), enroute = S.units.filter(u => TRANSPORT_KINDS.includes(u.kind) && u.status === 'enroute');
+  const list = S.transports.slice().reverse();
+  const hs = byDistance(HOSPITALS).slice(0, 10);
+  return `<div class="desk">
+    <div class="col" data-scroll="d1">
+      <section class="panel">
+        <div class="ph"><h2>Awaiting transport</h2><span class="meta">${remainingTx()} on scene</span></div>
+        <div class="stats">${TX_CATS.map(k => `<div class="stat ${k}"><span class="lbl">${cat(k).name}</span><span class="v num">${remaining(k)}</span></div>`).join('')}</div>
+        <button class="btn primary block" data-act="sheet" data-arg="transport" ${remainingTx() ? '' : 'disabled'}>${icon('amb')} Log a transport</button>
+        ${(S.triage.B || 0) + (S.triage.X || 0) ? `<div class="note">${plural((S.triage.B || 0) + (S.triage.X || 0), 'patient')} triaged ${S.method === 'SALT' ? 'Gray or Black' : 'Black'}, not counted for transport.</div>` : ''}
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Ready to load</h2><span class="meta">Tap a unit to send it</span></div>
+        <div class="rows">${ready.length ? ready.map(u => `<button class="row" data-act="tx-with" data-arg="${u.id}" ${remainingTx() ? '' : 'disabled'}>${kindTag(u.kind)}<div><div class="t1">${esc(u.name)}</div><div class="t2">${statusName(u.status)}${u.task ? ' · ' + esc(u.task) : ''}</div></div><span class="r note">Load →</span></button>`).join('') : '<div class="empty">No ambulances on scene or staged.</div>'}</div>
+        ${enroute.length ? `<div class="note">En route: ${enroute.map(u => esc(u.name)).join(', ')}</div>` : ''}
+      </section>
+    </div>
+    <div class="col" data-scroll="d2">
+      <section class="panel">
+        <div class="ph"><h2>Hospitals · sent / can take</h2><span class="meta">Nearest first · tap to update</span></div>
+        <div class="hgrid">
+          <div class="hrow head"><span>Hospital</span><span>Red</span><span>Yel</span><span>Grn</span><span>Told</span></div>
+          ${hs.map(h => {
+            const cap = hospCap(h.id), st = hospState(h.id), mi = hospMiles(h);
+            return `<button class="hrow" data-act="sheet" data-arg="hosp:${h.id}">
+              <span class="hn"><b>${esc(h.short)}</b><small>${mi != null ? `${mi.toFixed(1)} mi · ` : ''}${h.trauma ? 'Trauma · ' : ''}${isDivert(st.ed) ? `<span class="crit-t">${esc(st.ed)}</span>` : esc(h.town)}</small></span>
+              ${TX_CATS.map(k => { const s = hospSent(h.id, k), c = cap ? cap[k] : null; return `<span class="hc c-${k} ${c != null && s >= c ? 'full' : ''}"><b>${s}</b>${c != null ? `/${c}` : ''}</span>`; }).join('')}
+              <span class="ht">${st.notifiedAt ? `<span class="ok-t">${hhmm(st.notifiedAt)}</span>` : '<span class="note">—</span>'}</span>
+            </button>`;
+          }).join('')}
+        </div>
+      </section>
+    </div>
+    <div class="col" data-scroll="d3">
+      <section class="panel">
+        <div class="ph"><h2>Transport log</h2><span class="meta">${plural(totalSent(), 'patient')}</span></div>
+        <div class="rows">${list.length ? list.map(txRow).join('') : '<div class="empty">Departures appear here with tag number, unit, destination and time.</div>'}</div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function syncWords() {
+  if (Sync.state === 'live') { const n = Sync.tablets().length; return n ? `live with ${plural(n, 'tablet')}` : 'live'; }
+  if (Sync.state === 'unshared') return 'ready to share';
+  return 'this tablet only';
+}
+function roleSheet() {
+  const peers = Sync.tablets();
+  return {
+    title: "This tablet's job",
+    body: `<div class="opt-grid wide">${Object.entries(ROLES).map(([k, r]) => opt('role', k, DEV.role === k, `${esc(r.name)}<small>${esc(r.note)}</small>`, 'tall')).join('')}</div>
+      <div class="ph"><h2>Tablets on this board</h2><span class="meta">${esc(syncWords())}</span></div>
+      ${peers.length ? `<div class="rows">${peers.map(pr => `<div class="row"><span class="pill ${pr.sameTab ? 'onscene' : ''}">${pr.sameTab ? 'This one' : 'Tablet'}</span><div class="t1">${esc((ROLES[pr.presence && pr.presence.role] || {}).name || 'Opening…')}</div><span class="note">${pr.updatedAt ? hhmm(pr.updatedAt) : ''}</span></div>`).join('')}</div>`
+        : `<div class="note">${Sync.state === 'local' ? 'This board is running on this tablet alone. Sharing needs the page opened from its link while signed in.' : 'No other tablets have this board open right now.'}</div>`}
+      <div class="note">To add a tablet, open this same link on it, signed in to an account that can edit this page. Each tablet picks its own job; they all share one incident, and every change shows up on the others within a few seconds.</div>
+      ${Sync.state === 'unshared' ? '<button class="btn primary" data-act="share">Share this board now</button>' : ''}`,
+    foot: `<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+
+const OWN_KINDS = ['BLS', 'RV', 'ALS', 'SUP', 'MCI', 'BUS'];
+function agencySheet() {
+  const f = UI.form;
+  if (!f._init) { Object.assign(f, { aname: C.agency.name, roster: C.roster.map(r => ({ ...r })), akind: 'BLS', unum: '', _init: true }); }
+  const missing = f.roster.filter(r => !S.units.some(u => u.name === r.name)).length;
+  return {
+    title: 'My agency',
+    body: `${field('Squad', input('ag-name', 'aname', f.aname, 'e.g. Squad 78'))}
+      <div class="field"><span class="lbl">Our units · loaded as Available in every new incident</span>
+        ${f.roster.length ? `<div class="rows">${f.roster.map((r, i) => `<div class="row">${kindTag(r.kind)}<div><div class="t1">${esc(r.name)}</div><div class="t2">${esc(kindOf(r.kind).name)}</div></div><button class="btn small danger" data-act="ag-del" data-arg="${i}" aria-label="Remove ${esc(r.name)}">${icon('x')}</button></div>`).join('')}</div>` : '<div class="empty">No units yet. Add your ambulances, response vehicles and paramedic units below.</div>'}
+      </div>
+      <div class="grid2">
+        ${field('Unit number', input('ag-unit', 'unum', f.unum, 'Type it, then Add', 'autocapitalize="characters" enterkeyhint="done"'))}
+        <div class="field"><span class="lbl">&nbsp;</span><button class="btn" data-act="ag-add">${icon('plus')} Add unit</button></div>
+      </div>
+      ${field('Type', `<div class="opt-grid">${OWN_KINDS.map(k => opt('f-set', 'akind=' + k, f.akind === k, `${kindTag(k)} ${esc(kindOf(k).name)}`)).join('')}</div>`)}
+      <div class="note">Saved to every tablet that shares this board. Mutual aid units go in with Load mutual aid on the Units screen.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button>${missing ? `<button class="btn" data-act="agency-save" data-arg="add">Save and add ${missing} to this incident</button>` : ''}<button class="btn primary" data-act="agency-save">Save</button>`,
+  };
 }
 
 /* =====================================================================
@@ -2422,7 +2570,7 @@ function ensureMap() {
     const k = UI.pinMode, ll = [+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)];
     UI.pinMode = null;
     const field = k === 'scene' ? 'll' : k === 'staging' ? 'stagingLL' : 'lzLL';
-    commit(`${k === 'scene' ? 'Scene' : k === 'staging' ? 'Staging' : 'LZ'} pinned at ${fmtLL(ll)}`, 'note', () => { S.incident[field] = ll; });
+    dispatch('pin', { field, ll }, `${k === 'scene' ? 'Scene' : k === 'staging' ? 'Staging' : 'LZ'} pinned at ${fmtLL(ll)}`, 'note');
   });
   styleMap();
   syncLayer();
@@ -2459,7 +2607,7 @@ function syncMarkers() {
   if (!MAP) return;
   const I = S.incident;
   ML.pins.clearLayers();
-  if (S.me) L.marker(S.me.ll, { icon: pinIcon('me', '', 22), keyboard: false, title: 'You' }).addTo(ML.pins);
+  if (DEV.me) L.marker(DEV.me.ll, { icon: pinIcon('me', '', 22), keyboard: false, title: 'You' }).addTo(ML.pins);
   if (I.lzLL) L.marker(I.lzLL, { icon: pinIcon('lz', 'LZ', 34), title: 'Landing zone' }).addTo(ML.pins);
   if (I.stagingLL) L.marker(I.stagingLL, { icon: pinIcon('staging', 'S', 34), title: 'Staging' }).addTo(ML.pins);
   if (I.ll) L.marker(I.ll, { icon: pinIcon('scene', 'SCENE', 40), title: 'Scene', zIndexOffset: 1000 }).addTo(ML.pins);
@@ -2508,6 +2656,7 @@ function sheetHtml() {
     transport: transportSheet, par: parSheet, unit: unitSheet, 'unit-add': unitAddSheet, 'load-units': loadUnitsSheet, request: requestSheet,
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
+    role: roleSheet, agency: agencySheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
   return `<div class="sheet-wrap" data-act="backdrop">
@@ -2597,7 +2746,7 @@ function unitAddSheet() {
         ${field('Unit number', input('unit-name', 'name', f.name, 'e.g. 41-58', 'autocapitalize="characters"'))}
         ${field('Agency', input('unit-agency', 'agency', f.agency, 'e.g. Wall Twp', 'list="agency-list"'))}
       </div>
-      <datalist id="agency-list"><option value="Your squad"><option value="Mutual aid"><option value="ALS provider"><option value="County"><option value="NJ EMS Task Force"><option value="Fire"><option value="Police"></datalist>
+      <datalist id="agency-list"><option value="${esc(C.agency.name)}"><option value="Mutual aid"><option value="ALS provider"><option value="County"><option value="NJ EMS Task Force"><option value="Fire"><option value="Police"></datalist>
       ${field('Crew', stepper('crew', f.crew ?? 2, 0, 12))}
       ${field('Status', `<div class="opt-grid">${STATUSES.filter(s => s.k !== 'released').map(s => opt('f-set', 'status=' + s.k, f.status === s.k, s.name)).join('')}</div>`)}`,
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="unit-save">Add unit</button>`,
@@ -2612,7 +2761,8 @@ function parseUnits(text) {
     const explicit = kinds.find(k => new RegExp(`(^|[\\s,;|])${k}($|[\\s,;|])`).test(all));
     if (explicit) return explicit;
     if (/^(M|MEDIC|MICU)[-\s]?\d/.test(id.toUpperCase()) || /^59-/.test(id) || /MEDIC|PARAMEDIC|MICU/.test(all)) return 'ALS';
-    if (/^\d{2}-5[0-4]$/.test(id)) return 'SUP';   // county pattern: 50 captain/chief, 51-54 officers
+    if (/^\d{2}-5[0-4]$/.test(id)) return 'SUP';
+    if (/^\d{2}-55$/.test(id) || /^(RV|FR)[-\s]?\d/.test(id.toUpperCase()) || /RESPONSE|FLY ?CAR/.test(all)) return 'RV';   // county pattern: 50 captain/chief, 51-54 officers
     if (/^(E|ENG|ENGINE)[-\s]?\d/.test(id.toUpperCase())) return 'ENG';
     if (/^(L|T|TRK|TRUCK|LADDER|TOWER)[-\s]?\d/.test(id.toUpperCase())) return 'TRK';
     if (/^(R|RES|RESCUE)[-\s]?\d/.test(id.toUpperCase())) return 'RES';
@@ -2728,7 +2878,7 @@ function newIncidentSheet() {
   if (!f._init) Object.assign(f, { type: 'Motor vehicle crash', hazards: [], lz: 'Not requested', est: 0, ic: S.incident.ic || '', _init: true });
   return {
     title: 'Start a new incident',
-    body: `<div class="note">This clears the board on this device and starts the clock now.${C.roster.length ? ` Your roster of ${plural(C.roster.length, 'unit')} loads as Available.` : ''}</div>
+    body: `<div class="note">This replaces the board on every tablet sharing it and starts the clock now.${C.roster.length ? ` ${esc(C.agency.name)}'s ${plural(C.roster.length, 'unit')} load as Available.` : ''}</div>
       ${incidentFields(f)}
       ${field('Estimated patients', stepper('est', f.est || 0, 0, 500))}`,
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="inc-new">Establish command</button>`,
@@ -2801,37 +2951,270 @@ function contactSheet() {
 function menuSheet() {
   return {
     title: 'Menu',
-    body: `<div class="switch"><span>Display</span><div class="chips">${opt('mode-set', 'night', S.mode !== 'day', 'Night')}${opt('mode-set', 'day', S.mode === 'day', 'Day · sunlight')}</div></div>
+    body: `<div class="switch"><span>Display on this tablet</span><div class="chips">${opt('mode-set', 'night', DEV.mode !== 'day', 'Night')}${opt('mode-set', 'day', DEV.mode === 'day', 'Day · sunlight')}</div></div>
       <div class="switch"><span>Triage method</span><div class="chips">${opt('method', 'START', S.method !== 'SALT', 'START')}${opt('method', 'SALT', S.method === 'SALT', 'SALT')}${opt('white-toggle', '', !!S.white, 'Count White · uninjured')}</div></div>
-      <div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>
+      <div class="switch"><span>PAR checks<br><small class="note">A timed check that every crew on scene is accounted for. Applies to every tablet.</small></span><div class="chips">${opt('par-feature', 'off', !parOn(), 'Hide')}${opt('par-feature', 'on', parOn(), 'Use')}</div></div>
+      ${parOn() ? `<div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>` : ''}
       <div class="opt-grid wide">
+        <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="agency">My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
         <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
-        <button class="opt tall" data-act="sheet" data-arg="load-units">Unit roster<small>${C.roster.length ? plural(C.roster.length, 'unit') + ' saved' : 'Paste your units and mutual aid'}</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>
         <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
       </div>
-      <div class="note"><b>Prototype.</b> Data stays on this device only. Nothing is sent to CAD, EMTrack, or anyone else, and two tablets do not share a board yet. Use practice data.</div>`,
+      <div class="note"><b>Prototype.</b> Tablets that open this same page share one board through it. Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
 }
 
 /* =====================================================================
+   Shared incident. Every change is an event; each tablet keeps its own
+   list of events and every tablet replays all of them over the incident's
+   starting state. Two tablets tapping at once can't overwrite each other,
+   counts add up, and undo takes back one event.
+   ===================================================================== */
+let BASE = null;              // the incident as it was when command was established
+const EVENTS = new Map();     // every event from every tablet, by id
+let seq = 0;
+
+const byTime = (a, b) => a.t - b.t || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+const undoneIds = () => new Set([...EVENTS.values()].filter(e => e.type === 'undo').map(e => e.p.target));
+function replay() {
+  const st = JSON.parse(JSON.stringify(BASE));
+  const undone = undoneIds();
+  for (const e of [...EVENTS.values()].sort(byTime)) {
+    if (undone.has(e.id)) continue;
+    if (e.type !== 'undo' && R[e.type]) { try { R[e.type](st, e.p); } catch (err) { console.warn('Skipped an event that no longer applies', e.type, err); } }
+    if (e.text) st.log.push({ t: e.t, kind: e.kind, text: e.text, role: e.role });
+  }
+  return st;
+}
+function rebuild() { S = replay(); }
+function saveLocal() { write(K.inc, BASE); write(K.ev(BASE.id), [...EVENTS.values()]); }
+
+function dispatch(type, p, text, kind = 'note', { toast = true } = {}) {
+  const e = { id: `${DEV.id}.${Date.now().toString(36)}.${(seq++).toString(36)}`, dev: DEV.id, role: DEV.role, t: now(), type, p, text: text || '', kind };
+  EVENTS.set(e.id, e);
+  rebuild(); saveLocal(); render();
+  if (toast && text) showToast(text, e.id);
+  Sync.push();
+  return e;
+}
+
+const unitIn = (st, id) => st.units.find(u => u.id === id);
+/* Reducers: how each event changes the incident. They must depend only on the event, never on the clock. */
+const R = {
+  tri(st, p) { st.triage[p.k] = Math.max(0, (st.triage[p.k] || 0) + p.d); },
+  retriage(st, p) { if ((st.triage[p.from] || 0) > 0) { st.triage[p.from]--; st.triage[p.to] = (st.triage[p.to] || 0) + 1; } },
+  est(st, p) { st.incident.est = p.v; },
+  bench(st, p) { if (p.on) st.bench[p.id] = p.at; else delete st.bench[p.id]; },
+  mci(st, p) { st.incident.mciLevel = p.L; if (p.L >= 2 && !st.bench.mci) st.bench.mci = p.at; },
+  method(st, p) { st.method = p.m; if (p.m !== 'SALT' && st.triage.X) { st.triage.B = (st.triage.B || 0) + st.triage.X; st.triage.X = 0; } },
+  white(st, p) { st.white = p.on; },
+  pin(st, p) { st.incident[p.field] = p.ll; },
+  staging(st, p) { st.incident.staging = p.staging; st.incident.stagingLL = p.ll; if (!st.bench.staging) st.bench.staging = p.at; },
+  tx(st, p) {
+    st.transports.push({ id: p.id, cat: p.cat, n: p.n, tags: p.tags, age: p.age, unit: p.unit, hosp: p.hosp, t: p.at });
+    const u = unitIn(st, p.unit);
+    if (u) { u.status = 'transporting'; u.task = 'To ' + ((hosp(p.hosp) || {}).short || 'hospital'); u.t = p.at; }
+  },
+  par(st, p) { st.par.last = p.at; },
+  parInterval(st, p) { st.par.interval = p.m; },
+  unitStatus(st, p) { const u = unitIn(st, p.id); if (!u) return; u.status = p.st; u.t = p.at; if (p.clearTask) u.task = ''; },
+  unitTask(st, p) { const u = unitIn(st, p.id); if (!u) return; u.task = p.task; if (p.task && u.status !== 'onscene') { u.status = 'onscene'; u.t = p.at; } },
+  unitCrew(st, p) { const u = unitIn(st, p.id); if (u) u.crew = p.crew; },
+  unitRemove(st, p) { st.units = st.units.filter(x => x.id !== p.id); },
+  unitAdd(st, p) { p.units.forEach(u => { if (!st.units.some(x => x.name === u.name)) st.units.push({ ...u }); }); },
+  personAdd(st, p) { if (!st.people.some(x => x.id === p.person.id)) st.people.push({ ...p.person }); },
+  personEdit(st, p) { const x = st.people.find(q => q.id === p.id); if (x) Object.assign(x, p.fields); },
+  personOut(st, p) { const x = st.people.find(q => q.id === p.id); if (x) x.out = p.at; },
+  reqAdd(st, p) { st.requests.push({ ...p.req }); },
+  reqStatus(st, p) { const r = st.requests.find(x => x.id === p.id); if (r) r.status = p.st; },
+  icsSet(st, p) { st.ics[p.pos] = { who: p.who, t: p.at }; },
+  icsClear(st, p) { delete st.ics[p.pos]; },
+  hospNotify(st, p) { st.hospitals[p.id] = { ...(st.hospitals[p.id] || {}), notifiedAt: p.at }; },
+  hospReport(st, p) { st.hospitals[p.id] = { ...(st.hospitals[p.id] || {}), cap: p.cap, beds: p.beds, ed: p.ed, capAt: p.at }; },
+  incEdit(st, p) { Object.assign(st.incident, p.fields); },
+  note() {},
+};
+
+/* =====================================================================
+   Sync between tablets, through this page's shared store.
+
+   live/current                         which incident every tablet follows
+   incidents/<id>                       its starting state
+   incidents/<id>/devices/<tablet>~<n>  that tablet's events, written only by it
+   config/agency                        squad, unit roster, members, extra numbers
+
+   Without the store (signed out, or the page opened somewhere else) the
+   board runs on this tablet alone, exactly as before.
+   ===================================================================== */
+const STOP_CODES = ['revoked', 'not_granted', 'capability_disabled', 'capability_removed'];
+const CHUNK = 300;   // events per document, well under the store's 256 KiB per document
+const Sync = {
+  db: null, room: null, state: 'local', incId: null, devUnsub: null,
+  writing: false, dirty: false, written: {}, error: '', peers: [], booted: false, cfgWriting: null,
+
+  async start() {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    this.state = 'connecting'; syncChip();
+    let db = null;
+    try { db = await window.claude.use('db'); } catch (e) { db = null; }
+    if (!db) { this.state = 'local'; syncChip(); return; }
+    this.db = db;
+    db.doc('live/current').onSnapshot(s => this.onPointer(s), e => this.stop(e));
+    db.doc('config/agency').onSnapshot(s => this.onConfig(s), () => {});
+    try {
+      const room = await window.claude.use('room');
+      if (room) {
+        this.room = room;
+        room.presence({ role: DEV.role, dev: DEV.id }).catch(() => {});
+        room.onPeers(ch => { this.peers = ch.peers; syncChip(); }, () => { this.room = null; this.peers = []; syncChip(); });
+      }
+    } catch (e) { this.room = null; }
+  },
+
+  onPointer(snap) {
+    const d = snap.exists ? snap.data() : null;
+    if (!d || !d.incident) {
+      if (this.state !== 'live') { this.state = 'unshared'; syncChip(); }
+      this.booted = true;
+      return;
+    }
+    if (d.incident === this.incId) return;
+    this.follow(d.incident, this.booted);
+    this.booted = true;
+  },
+
+  async follow(id, announce) {
+    this.incId = id;
+    if (this.devUnsub) { this.devUnsub(); this.devUnsub = null; }
+    if (!BASE || BASE.id !== id) {
+      let snap;
+      try { snap = await this.db.doc('incidents/' + id).get(); } catch (e) { return this.fail(e); }
+      if (!snap.exists || this.incId !== id) return;
+      BASE = snap.data().base;
+      EVENTS.clear();
+      (read(K.ev(id)) || []).forEach(e => EVENTS.set(e.id, e));
+      UI.sheet = null; UI.form = {}; mapKind = null;
+      rebuild(); saveLocal(); render();
+      showToast(announce ? 'Another tablet started a new incident. This board now follows it.' : 'Joined the live incident.', false);
+    }
+    this.written = {};
+    this.devUnsub = this.db.collection(`incidents/${id}/devices`).onSnapshot(qs => {
+      let changed = false;
+      qs.docs.forEach(d => {
+        const b = d.data();
+        ((b && b.events) || []).forEach(e => { if (!EVENTS.has(e.id)) { EVENTS.set(e.id, e); changed = true; } });
+      });
+      if (changed) { rebuild(); saveLocal(); render(); }
+    }, e => this.stop(e));
+    this.state = 'live'; syncChip();
+    this.flush();
+  },
+
+  /* Make this tablet's incident the one every tablet follows. */
+  async announce() {
+    if (!this.db) return;
+    const id = BASE.id;
+    this.state = 'sharing'; syncChip();
+    try {
+      await this.db.doc('incidents/' + id).set({ base: BASE, createdAt: now(), by: DEV.id });
+      this.incId = id;
+      await this.db.doc('live/current').set({ incident: id, at: now(), by: DEV.id });
+      this.follow(id, false);
+    } catch (e) { this.fail(e); }
+  },
+
+  push() {
+    if (!this.db) return;
+    if (this.state === 'unshared') return this.announce();
+    if (this.state === 'live') return this.flush();
+  },
+
+  mine() { return [...EVENTS.values()].filter(e => e.dev === DEV.id).sort(byTime); },
+  pending() {
+    const mine = this.mine();
+    let n = 0;
+    for (let i = 0; i * CHUNK < mine.length; i++) n += Math.min(CHUNK, mine.length - i * CHUNK) - (this.written[`${this.incId}:${i}`] || 0);
+    return n;
+  },
+
+  /* One write at a time to each document; a burst of taps becomes one write. */
+  async flush() {
+    if (!this.db || this.state !== 'live' || !this.incId) return;
+    if (this.writing) { this.dirty = true; return; }
+    this.writing = true;
+    try {
+      do {
+        this.dirty = false;
+        const inc = this.incId, mine = this.mine();
+        for (let i = 0; i * CHUNK < mine.length; i++) {
+          const part = mine.slice(i * CHUNK, (i + 1) * CHUNK), key = `${inc}:${i}`;
+          if (this.written[key] === part.length) continue;
+          await this.db.doc(`incidents/${inc}/devices/${DEV.id}~${i}`).set({ dev: DEV.id, role: DEV.role, events: part, at: now() });
+          this.written[key] = part.length;
+        }
+      } while (this.dirty);
+      this.error = '';
+    } catch (e) { this.fail(e); }
+    this.writing = false;
+    syncChip();
+  },
+
+  fail(e) {
+    const code = (e && e.code) || 'unavailable';
+    if (STOP_CODES.includes(code)) return this.stop(e);
+    this.error = code;
+    if (code === 'quota_exceeded') showToast('The shared board is full. Start a new incident to keep sharing.', false);
+    clearTimeout(this.retry);
+    this.retry = setTimeout(() => (this.state === 'unshared' || this.state === 'sharing' ? this.announce() : this.flush()), 4000 + Math.random() * 4000);
+    syncChip();
+  },
+  stop() { this.state = 'local'; this.db = null; this.peers = []; syncChip(); },
+
+  onConfig(snap) {
+    if (!snap.exists) return;
+    C = { ...defaultConfig(), ...snap.data() };
+    write(K.cfg, C);
+    if (!UI.sheet) render();
+  },
+  pushConfig() {
+    if (!this.db) return;
+    const go = () => this.db.doc('config/agency').set(JSON.parse(JSON.stringify(C))).catch(() => {});
+    this.cfgWriting = (this.cfgWriting || Promise.resolve()).then(go);
+  },
+  setRole() { if (this.room) this.room.presence({ role: DEV.role, dev: DEV.id }).catch(() => {}); },
+  tablets() { return this.peers.filter(p => p.kind !== 'agent'); },
+};
+
+function syncChipHtml() {
+  const s = Sync.state, n = Sync.tablets().length, waiting = Sync.db ? Sync.pending() : 0;
+  if (s === 'live' && Sync.error) return `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="role">Sync paused · ${waiting} waiting</button>`;
+  if (s === 'live') return `<button class="tag live" id="sync-chip" data-act="sheet" data-arg="role">● Live${n ? ' · ' + plural(n, 'tablet') : ''}</button>`;
+  if (s === 'unshared') return `<button class="tag" id="sync-chip" data-act="share">Share this board</button>`;
+  if (s === 'sharing' || s === 'connecting') return `<span class="tag" id="sync-chip">Connecting…</span>`;
+  return `<button class="tag" id="sync-chip" data-act="sheet" data-arg="role">This tablet only</button>`;
+}
+function syncChip() { const el = document.getElementById('sync-chip'); if (el) el.outerHTML = syncChipHtml(); }
+
+function startIncident(base, msg) {
+  BASE = base; EVENTS.clear(); rebuild(); saveLocal();
+  UI.sheet = null; UI.form = {}; UI.view = homeView(); mapKind = null;
+  render(); showToast(msg, false);
+  if (Sync.db) Sync.announce();
+}
+
+/* =====================================================================
    Actions
    ===================================================================== */
-function commit(msg, kind, fn, { toast = true } = {}) {
-  undoSnap = JSON.stringify(S);
-  fn();
-  if (msg) S.log.push({ t: now(), kind, text: msg });
-  save();
-  render();
-  if (toast && msg) showToast(msg, true);
-}
 function openSheet(name) { UI.sheet = name; UI.form = {}; render(); }
 function closeSheet() { UI.sheet = null; UI.form = {}; render(); }
-function showToast(msg, canUndo) {
+function showToast(msg, undoId) {
   clearTimeout(toastTimer);
-  toastRoot.innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${canUndo ? '<button data-act="undo">Undo</button>' : ''}</div>`;
+  toastRoot.innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${undoId ? `<button data-act="undo" data-arg="${esc(undoId)}">Undo</button>` : ''}</div>`;
   toastTimer = setTimeout(() => { toastRoot.innerHTML = ''; }, 5000);
 }
 function copyText(text, el) {
@@ -2848,15 +3231,28 @@ function formPath(name) {
   for (let i = 0; i < path.length - 1; i++) obj = obj[path[i]] = obj[path[i]] || {};
   return [obj, path[path.length - 1]];
 }
+const triageReport = () => `${totalPts()} patients: ${listCounts(k => S.triage[k] || 0)}`;
 
 const A = {
   view(id) { UI.view = id; UI.pinMode = null; saveUi(); render(); app.querySelector('.main')?.scrollTo?.(0, 0); },
   sheet(name) { openSheet(name); },
   close() { closeSheet(); },
   backdrop(_, el, e) { if (e.target === el) closeSheet(); },
-  mode() { S.mode = S.mode === 'day' ? 'night' : 'day'; save(); render(); styleMap(); },
-  'mode-set'(m) { S.mode = m; save(); render(); styleMap(); },
-  undo() { if (!undoSnap) return; S = JSON.parse(undoSnap); undoSnap = null; save(); render(); showToast('Undone', false); },
+  mode() { DEV.mode = DEV.mode === 'day' ? 'night' : 'day'; saveDev(); render(); styleMap(); },
+  'mode-set'(m) { DEV.mode = m; saveDev(); render(); styleMap(); },
+  undo(id) {
+    const target = EVENTS.get(id);
+    if (!target || undoneIds().has(id)) return;
+    dispatch('undo', { target: id }, `Undid: ${target.text}`, target.kind, { toast: false });
+    showToast('Undone', false);
+  },
+  share() { if (Sync.db) Sync.announce(); },
+  role(r) {
+    if (DEV.role === r) return;
+    DEV.role = r; saveDev(); Sync.setRole();
+    UI.sheet = null; UI.form = {}; UI.view = homeView(); saveUi(); render();
+    showToast(`This tablet is now ${ROLES[r].name}.`, false);
+  },
 
   tri(arg) {
     const k = arg[0], d = arg[1] === '+' ? 1 : -1, c = cat(k);
@@ -2865,23 +3261,33 @@ const A = {
       showToast(have ? `Can't go below the ${sentCat(k)} already transported` : `No ${c.name} to remove`, false);
       return;
     }
-    commit(`Triage ${d > 0 ? '+1' : '−1'} ${c.color} (${c.name}): now ${have + d}`, 'triage', () => { S.triage[k] = have + d; });
+    dispatch('tri', { k, d }, `Triage ${d > 0 ? '+1' : '−1'} ${c.color} (${c.name}): now ${have + d}`, 'triage');
   },
-  est(d) { S.incident.est = Math.max(0, (S.incident.est || 0) + Number(d)); save(); render(); },
+  retriage(arg) {
+    const [from, to] = arg.split('>'), a = cat(from), b = cat(to);
+    const left = TX_CATS.includes(from) ? remaining(from) : (S.triage[from] || 0);
+    if (left < 1) { showToast(`No ${a.name} patients on scene to move`, false); return; }
+    dispatch('retriage', { from, to }, `Re-triage: 1 ${a.color} → ${b.color} (${b.name})`, 'triage');
+  },
+  'triage-done'() {
+    if (S.bench.triage) dispatch('note', {}, `Triage update: ${triageReport()}`, 'triage');
+    else dispatch('bench', { id: 'triage', on: true, at: now() }, `Primary triage complete: ${triageReport()}`, 'bench');
+  },
+  est(d) { dispatch('est', { v: Math.max(0, (S.incident.est || 0) + Number(d)) }, '', 'triage', { toast: false }); },
   bench(id) {
     const b = BENCHMARKS.find(x => x.id === id);
-    if (S.bench[id]) commit(`Benchmark cleared: ${b.label}`, 'bench', () => { delete S.bench[id]; });
-    else commit(b.label, 'bench', () => { S.bench[id] = now(); });
+    if (S.bench[id]) dispatch('bench', { id, on: false }, `Benchmark cleared: ${b.label}`, 'bench');
+    else dispatch('bench', { id, on: true, at: now() }, b.label, 'bench');
   },
   'mci-set'(lvl) {
     const L = Number(lvl);
     if (L === S.incident.mciLevel) return;
-    commit(L ? `Declared ${levelOf(L).say}` : 'MCI stood down', 'bench', () => { S.incident.mciLevel = L; if (L >= 2 && !S.bench.mci) S.bench.mci = now(); });
+    dispatch('mci', { L, at: now() }, L ? `Declared ${levelOf(L).say}` : 'MCI stood down', 'bench');
   },
 
   'f-set'(arg) {
     const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
-    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed'];
+    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind'];
     UI.form[k] = UI.form[k] === v && !sticky.includes(k) ? '' : v;
     if (k === 'cat') UI.form.n = 1;
     render();
@@ -2910,19 +3316,19 @@ const A = {
     if (!navigator.geolocation) { showToast("This device can't share its location. Tap the map to place the pin.", false); return; }
     showToast('Finding your location…', false);
     navigator.geolocation.getCurrentPosition(pos => {
-      S.me = { ll: [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)], acc: Math.round(pos.coords.accuracy), t: now() };
-      save();
+      DEV.me = { ll: [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)], acc: Math.round(pos.coords.accuracy), t: now() };
+      saveDev();
       if (UI.view !== 'map') UI.view = 'map';
       render();
-      if (MAP) MAP.setView(S.me.ll, 17);
-      showToast(`Located within ${S.me.acc} m. Tap "Use my location as the scene" to pin it.`, false);
+      if (MAP) MAP.setView(DEV.me.ll, 17);
+      showToast(`Located within ${DEV.me.acc} m. Tap "Use my location as the scene" to pin it.`, false);
     }, () => {
       showToast("Location isn't available here. Choose Scene on the Map and tap where you are.", false);
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
   },
-  'use-cstage'(i) { const c = COUNTY_STAGING[Number(i)]; commit(`Staging set: ${c.name}`, 'bench', () => { S.incident.staging = `${c.name}, ${c.note}`; S.incident.stagingLL = c.ll; if (!S.bench.staging) S.bench.staging = now(); }); },
+  'use-cstage'(i) { const c = COUNTY_STAGING[Number(i)]; dispatch('staging', { staging: `${c.name}, ${c.note}`, ll: c.ll, at: now() }, `Staging set: ${c.name}`, 'bench'); },
   'map-goto'(ll) { if (MAP) MAP.setView(ll.split(',').map(Number), 15); },
-  'use-me'() { if (!S.me) return; commit(`Scene pinned at my location, ${fmtLL(S.me.ll)} (±${S.me.acc} m)`, 'note', () => { S.incident.ll = S.me.ll; }); },
+  'use-me'() { if (!DEV.me) return; dispatch('pin', { field: 'll', ll: DEV.me.ll }, `Scene pinned at my location, ${fmtLL(DEV.me.ll)} (±${DEV.me.acc} m)`, 'note'); },
   'hosp-filter'(k) { const a = UI.hospFilter; const i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else a.push(k); render(); },
   'copy-text'(text, el) { copyText(text, el); },
 
@@ -2931,12 +3337,9 @@ const A = {
   'tx-save'() {
     const f = UI.form, u = unitById(f.unit), h = hosp(f.hosp), n = Math.min(f.n || 1, remaining(f.cat));
     if (!u || !h || !f.cat || n < 1) return;
-    UI.sheet = null;
-    commit(`${u.name} departed: ${n} ${cat(f.cat).name}${f.age && f.age !== 'Adult' ? ' (' + f.age.toLowerCase() + ')' : ''} → ${h.short}${f.tags ? ` (tag ${f.tags})` : ''}`, 'transport', () => {
-      S.transports.push({ id: uid(), cat: f.cat, n, tags: (f.tags || '').trim(), age: f.age || '', unit: u.id, hosp: h.id, t: now() });
-      u.status = 'transporting'; u.task = 'To ' + h.short; u.t = now();
-    });
-    UI.form = {};
+    UI.sheet = null; UI.form = {};
+    dispatch('tx', { id: uid(), cat: f.cat, n, tags: (f.tags || '').trim(), age: f.age || '', unit: u.id, hosp: h.id, at: now() },
+      `${u.name} departed: ${n} ${cat(f.cat).name}${f.age && f.age !== 'Adult' ? ' (' + f.age.toLowerCase() + ')' : ''} → ${h.short}${f.tags ? ` (tag ${f.tags})` : ''}`, 'transport');
   },
 
   /* PAR */
@@ -2946,48 +3349,51 @@ const A = {
     const units = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
     const ok = units.filter(u => UI.form.par && UI.form.par[u.id]);
     const missing = units.filter(u => !(UI.form.par && UI.form.par[u.id])).map(u => u.name);
-    UI.sheet = null;
-    commit(`PAR complete: ${ok.length} of ${units.length} units accounted for${missing.length ? '. NOT accounted: ' + missing.join(', ') : ''}`, 'par', () => { S.par.last = now(); });
-    UI.form = {};
+    UI.sheet = null; UI.form = {};
+    dispatch('par', { at: now() }, `PAR complete: ${ok.length} of ${units.length} units accounted for${missing.length ? '. NOT accounted: ' + missing.join(', ') : ''}`, 'par');
   },
-  'par-int'(m) { S.par.interval = Number(m); save(); render(); },
-  method(m) { if (S.method === m) return; commit(`Triage method: ${m}`, 'triage', () => { S.method = m; if (m !== 'SALT' && S.triage.X) { S.triage.B = (S.triage.B || 0) + S.triage.X; S.triage.X = 0; } }); },
-  'white-toggle'() { S.white = !S.white; save(); render(); },
+  'par-feature'(v) {
+    C.features = { ...(C.features || {}), par: v === 'on' };
+    if (v === 'on') dispatch('par', { at: now() }, '', 'par', { toast: false });   // the clock starts when PAR is turned on
+    saveConfig(); render();
+    showToast(v === 'on' ? `PAR checks on: every ${S.par.interval} minutes` : 'PAR checks hidden', false);
+  },
+  'par-int'(m) { dispatch('parInterval', { m: Number(m) }, '', 'par', { toast: false }); },
+  method(m) { if (S.method !== m) dispatch('method', { m }, `Triage method: ${m}`, 'triage'); },
+  'white-toggle'() { dispatch('white', { on: !S.white }, '', 'triage', { toast: false }); },
 
   /* units */
   'unit-group'(g) { UI.unitGroup = g; render(); },
   'unit-quick'(arg) {
     const [id, st] = arg.split('='), u = unitById(id);
-    if (!u) return;
-    commit(`${u.name}: ${statusName(st)}`, 'units', () => { u.status = st; u.t = now(); if (st !== 'onscene') u.task = ''; });
+    if (u) dispatch('unitStatus', { id, st, at: now(), clearTask: st !== 'onscene' }, `${u.name}: ${statusName(st)}`, 'units');
   },
   'unit-status'(arg) {
     const [id, st] = arg.split('='), u = unitById(id);
     if (!u || u.status === st) return;
-    commit(`${u.name}: ${statusName(st)}`, 'units', () => { u.status = st; u.t = now(); if (['released', 'staged', 'available', 'enroute'].includes(st)) u.task = ''; });
+    dispatch('unitStatus', { id, st, at: now(), clearTask: ['released', 'staged', 'available', 'enroute'].includes(st) }, `${u.name}: ${statusName(st)}`, 'units');
   },
   'unit-task'(arg) {
     const i = arg.indexOf('='), id = arg.slice(0, i), task = arg.slice(i + 1), u = unitById(id);
     if (!u || u.task === task) return;
-    commit(task ? `${u.name} assigned: ${task}` : `${u.name}: assignment cleared`, 'units', () => { u.task = task; if (task && u.status !== 'onscene') { u.status = 'onscene'; u.t = now(); } });
+    dispatch('unitTask', { id, task, at: now() }, task ? `${u.name} assigned: ${task}` : `${u.name}: assignment cleared`, 'units');
   },
   'unit-crew'(arg) {
     const [id, d] = arg.split(':'), u = unitById(id); if (!u) return;
-    u.crew = Math.max(0, Math.min(20, (u.crew || 0) + Number(d))); save(); render();
+    dispatch('unitCrew', { id, crew: Math.max(0, Math.min(20, (u.crew || 0) + Number(d))) }, '', 'units', { toast: false });
   },
   'unit-remove'(id) {
     const u = unitById(id); if (!u) return;
     UI.sheet = null;
-    commit(`${u.name} removed from the board`, 'units', () => { S.units = S.units.filter(x => x.id !== id); });
+    dispatch('unitRemove', { id }, `${u.name} removed from the board`, 'units');
   },
   'unit-save'() {
     const f = UI.form, name = (f.name || '').trim().toUpperCase();
     if (!name) { showToast('Give the unit a number first', false); document.getElementById('unit-name')?.focus(); return; }
-    UI.sheet = null;
-    commit(`${name} (${kindOf(f.kind).name}) added: ${statusName(f.status)}`, 'units', () => {
-      S.units.push({ id: uid(), name, kind: f.kind, agency: (f.agency || '').trim() || 'Mutual aid', crew: f.crew ?? 2, status: f.status, task: '', t: now() });
-    });
-    UI.form = {};
+    if (S.units.some(u => u.name === name)) { showToast(`${name} is already on the board`, false); return; }
+    UI.sheet = null; UI.form = {};
+    dispatch('unitAdd', { units: [{ id: uid(), name, kind: f.kind, agency: (f.agency || '').trim() || 'Mutual aid', crew: f.crew ?? 2, status: f.status, task: '', t: now() }] },
+      `${name} (${kindOf(f.kind).name}) added: ${statusName(f.status)}`, 'units');
   },
   'units-load'() {
     const f = UI.form, parsed = parseUnits(f.text || '');
@@ -2996,14 +3402,35 @@ const A = {
     const fresh = parsed.filter(p => !have.has(p.name));
     if (f.saveRoster) {
       const names = new Set(C.roster.map(r => r.name));
-      C.roster = C.roster.concat(parsed.filter(p => !names.has(p.name)));
+      C.roster = C.roster.concat(parsed.filter(p => !names.has(p.name)).map(p => ({ name: p.name, kind: p.kind })));
       saveConfig();
     }
-    UI.sheet = null;
-    commit(`Loaded ${plural(fresh.length, 'unit')} as ${statusName(f.into)}${parsed.length > fresh.length ? ` (${parsed.length - fresh.length} already on the board)` : ''}`, 'units', () => {
-      fresh.forEach(p => S.units.push({ id: uid(), ...p, crew: 2, status: f.into, task: '', t: now() }));
-    });
-    UI.form = {};
+    UI.sheet = null; UI.form = {};
+    dispatch('unitAdd', { units: fresh.map(p => ({ id: uid(), ...p, crew: 2, status: f.into, task: '', t: now() })) },
+      `Loaded ${plural(fresh.length, 'unit')} as ${statusName(f.into)}${parsed.length > fresh.length ? ` (${parsed.length - fresh.length} already on the board)` : ''}`, 'units');
+  },
+
+  /* agency */
+  'ag-add'() {
+    const f = UI.form, name = (f.unum || '').trim().toUpperCase();
+    if (!name) { showToast('Type the unit number first', false); document.getElementById('ag-unit')?.focus(); return; }
+    if (f.roster.some(r => r.name === name)) { showToast(`${name} is already in the list`, false); return; }
+    f.roster.push({ name, kind: f.akind || 'BLS' }); f.unum = '';
+    render();
+    document.getElementById('ag-unit')?.focus();
+  },
+  'ag-del'(i) { UI.form.roster.splice(Number(i), 1); render(); },
+  'agency-save'(addNow) {
+    const f = UI.form;
+    C.agency = { ...C.agency, name: (f.aname || '').trim() || 'My squad' };
+    C.roster = f.roster.slice();
+    saveConfig();
+    UI.sheet = null; UI.form = {};
+    const missing = C.roster.filter(r => !S.units.some(u => u.name === r.name));
+    if (addNow === 'add' && missing.length) {
+      dispatch('unitAdd', { units: missing.map(r => ({ id: uid(), name: r.name, kind: r.kind, agency: C.agency.name, crew: 2, status: 'available', task: '', t: now() })) },
+        `${C.agency.name}: ${plural(missing.length, 'unit')} added as Available`, 'units');
+    } else { render(); showToast(`${C.agency.name} saved: ${plural(C.roster.length, 'unit')}`, false); }
   },
 
   /* people */
@@ -3016,23 +3443,20 @@ const A = {
     const f = UI.form, num = (f.num || '').trim(), name = (f.name || '').trim();
     if (!num && !name) { showToast('Enter a member number or a name', false); return; }
     const where = [f.unit, f.task].filter(Boolean).join(' · ');
-    UI.sheet = null;
+    if (!id && S.people.some(p => !p.out && p.num && p.num === num)) { showToast(`#${num} is already checked in`, false); return; }
+    UI.sheet = null; UI.form = {};
     if (id) {
-      commit(`${name || '#' + num}: ${where || 'unassigned'}`, 'people', () => { Object.assign(S.people.find(p => p.id === id), { num, name, cert: f.cert, unit: f.unit || '', task: f.task || '' }); });
+      dispatch('personEdit', { id, fields: { num, name, cert: f.cert, unit: f.unit || '', task: f.task || '' } }, `${name || '#' + num}: ${where || 'unassigned'}`, 'people');
     } else {
-      if (S.people.some(p => !p.out && p.num && p.num === num)) { showToast(`#${num} is already checked in`, false); return; }
-      commit(`Checked in #${num || '?'} ${name} (${f.cert})${where ? ' → ' + where : ''}`, 'people', () => {
-        S.people.push({ id: uid(), num, name, cert: f.cert, unit: f.unit || '', task: f.task || '', t: now() });
-      });
       if (num && name && !C.members.some(m => m.num === num)) { C.members.push({ num, name, cert: f.cert }); saveConfig(); }
+      dispatch('personAdd', { person: { id: uid(), num, name, cert: f.cert, unit: f.unit || '', task: f.task || '', t: now() } },
+        `Checked in #${num || '?'} ${name} (${f.cert})${where ? ' → ' + where : ''}`, 'people');
     }
-    UI.form = {};
   },
   'person-out'(id) {
     const p = S.people.find(x => x.id === id); if (!p) return;
-    UI.sheet = null;
-    commit(`Checked out #${p.num} ${p.name}`, 'people', () => { p.out = now(); });
-    UI.form = {};
+    UI.sheet = null; UI.form = {};
+    dispatch('personOut', { id, at: now() }, `Checked out #${p.num} ${p.name}`, 'people');
   },
   'members-save'() {
     const lines = (UI.form.mtext || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
@@ -3044,45 +3468,39 @@ const A = {
   /* requests */
   'req-save'() {
     const f = UI.form; if (!f.what) return;
-    UI.sheet = null;
-    commit(`Requested ${(f.qty || 1) > 1 ? f.qty + ' × ' : ''}${f.what}${f.note2 ? ' (' + f.note2 + ')' : ''}`, 'request', () => {
-      S.requests.push({ id: uid(), what: f.what, qty: f.qty || 1, status: 'requested', t: now(), note: (f.note2 || '').trim() });
-    });
-    UI.form = {};
+    UI.sheet = null; UI.form = {};
+    dispatch('reqAdd', { req: { id: uid(), what: f.what, qty: f.qty || 1, status: 'requested', t: now(), note: (f.note2 || '').trim() } },
+      `Requested ${(f.qty || 1) > 1 ? f.qty + ' × ' : ''}${f.what}${f.note2 ? ' (' + f.note2 + ')' : ''}`, 'request');
   },
   'req-next'(id) {
     const r = S.requests.find(x => x.id === id); if (!r) return;
     const i = REQ_FLOW.indexOf(r.status); if (i < 0 || i === REQ_FLOW.length - 1) return;
     const nx = REQ_FLOW[i + 1];
-    commit(`${r.what}: ${reqStatusName(nx)}`, 'request', () => { r.status = nx; });
+    dispatch('reqStatus', { id, st: nx }, `${r.what}: ${reqStatusName(nx)}`, 'request');
   },
 
   /* ICS */
   'ics-save'(id) {
     const who = (UI.form.who || '').trim(), p = ICS_POSITIONS.find(x => x.id === id);
     if (!who) { showToast('Enter a name or pick someone', false); return; }
-    UI.sheet = null;
-    commit(`${p.label}: ${who}`, 'units', () => { S.ics[id] = { who, t: now() }; });
-    UI.form = {};
+    UI.sheet = null; UI.form = {};
+    dispatch('icsSet', { pos: id, who, at: now() }, `${p.label}: ${who}`, 'units');
   },
   'ics-clear'(id) {
     const p = ICS_POSITIONS.find(x => x.id === id);
-    UI.sheet = null;
-    commit(`${p.label} vacated`, 'units', () => { delete S.ics[id]; });
-    UI.form = {};
+    UI.sheet = null; UI.form = {};
+    dispatch('icsClear', { pos: id }, `${p.label} vacated`, 'units');
   },
 
   /* hospitals */
-  'hosp-notify'(id) { const h = hosp(id); commit(`${h.short} notified`, 'note', () => { S.hospitals[id] = { ...hospState(id), notifiedAt: now() }; }); },
+  'hosp-notify'(id) { const h = hosp(id); dispatch('hospNotify', { id, at: now() }, `${h.short} notified`, 'note'); },
   'hosp-save'(id) {
     const h = hosp(id), c = UI.form.cap, beds = {};
     Object.entries(UI.form.beds || {}).forEach(([k, v]) => { if (v) beds[k] = v; });
-    const ed = UI.form.ed || hospState(id).ed;
-    UI.sheet = null;
-    commit(`${h.short} reports${ed ? ' ED ' + ed + ',' : ''} Red ${c.R}, Yellow ${c.Y}, Green ${c.G}${Object.keys(beds).length ? '; beds ' + Object.entries(beds).map(([k, v]) => `${BED_TYPES.find(b => b.k === k).name} ${v}`).join(', ') : ''}`, 'note', () => {
-      S.hospitals[id] = { ...hospState(id), cap: { ...c }, beds, ed, capAt: now() };
-    });
-    UI.form = {};
+    const ed = UI.form.ed || hospState(id).ed || '';
+    UI.sheet = null; UI.form = {};
+    dispatch('hospReport', { id, cap: { ...c }, beds, ed, at: now() },
+      `${h.short} reports${ed ? ' ' + ed + ',' : ''} Red ${c.R}, Yellow ${c.Y}, Green ${c.G}${Object.keys(beds).length ? '; beds ' + Object.entries(beds).map(([k, v]) => `${BED_TYPES.find(b => b.k === k).name} ${v}`).join(', ') : ''}`, 'note');
   },
 
   /* phone */
@@ -3096,29 +3514,21 @@ const A = {
 
   /* incident */
   'inc-save'() {
-    const f = UI.form;
-    UI.sheet = null;
-    commit('Incident details updated', 'note', () => {
-      for (const k of ['type', 'location', 'municipality', 'commandName', 'ic', 'staging', 'access', 'hazards', 'lz', 'lzLocation']) S.incident[k] = typeof f[k] === 'string' ? f[k].trim() : f[k];
-    });
-    UI.form = {}; mapKind = null; placeMap();
+    const f = UI.form, fields = {};
+    for (const k of ['type', 'location', 'municipality', 'commandName', 'ic', 'staging', 'access', 'hazards', 'lz', 'lzLocation']) fields[k] = typeof f[k] === 'string' ? f[k].trim() : f[k];
+    UI.sheet = null; UI.form = {}; mapKind = null;
+    dispatch('incEdit', { fields }, 'Incident details updated', 'note');
   },
   'inc-new'() {
     const f = UI.form;
-    undoSnap = JSON.stringify(S);
-    S = blankState({ ...f, location: (f.location || '').trim(), commandName: (f.commandName || '').trim(), ic: (f.ic || '').trim() });
-    S.log[0].text = `Command established${S.incident.commandName ? ': ' + S.incident.commandName : ''}${S.incident.ic ? ', ' + S.incident.ic : ''}`;
-    UI.sheet = null; UI.form = {}; UI.view = 'board'; mapKind = null;
-    save(); render(); showToast('New incident started. Clock running.', true);
+    const base = blankState({ ...f, location: (f.location || '').trim(), commandName: (f.commandName || '').trim(), ic: (f.ic || '').trim() });
+    base.log[0].text = `Command established${base.incident.commandName ? ': ' + base.incident.commandName : ''}${base.incident.ic ? ', ' + base.incident.ic : ''}`;
+    startIncident(base, 'New incident started. Clock running.');
   },
-  'load-sample'() {
-    undoSnap = JSON.stringify(S);
-    S = sampleState(); UI.sheet = null; UI.form = {}; mapKind = null;
-    save(); render(); showToast('Sample incident loaded', true);
-  },
+  'load-sample'() { startIncident(sampleState(), 'Sample incident loaded'); },
 
   'log-filter'(k) { UI.logFilter = k; render(); },
-  'quick-note'(text) { commit(text, 'note', () => {}); },
+  'quick-note'(text) { dispatch('note', {}, text, 'note'); },
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
 
@@ -3142,17 +3552,20 @@ document.addEventListener('input', e => {
     if (exact) { UI.form.name = exact.name; UI.form.cert = exact.cert; const n = document.getElementById('p-name'); if (n) n.value = exact.name; }
   }
 });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && UI.sheet) closeSheet();
+  if (e.key === 'Enter' && e.target && e.target.id === 'ag-unit') { e.preventDefault(); A['ag-add'](); }
+});
 document.addEventListener('submit', e => {
   e.preventDefault();
   if (e.target.dataset.form === 'note') {
     const text = (UI.form.note || '').trim();
     if (!text) return;
     UI.form.note = '';
-    commit(text, 'note', () => {});
+    dispatch('note', {}, text, 'note');
     document.getElementById('note-input')?.focus();
   }
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && UI.sheet) closeSheet(); });
 
 /* =====================================================================
    Clocks
@@ -3174,17 +3587,23 @@ let lock = null;
 async function wake() {
   try { if (!lock && navigator.wakeLock && document.visibilityState === 'visible') { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (e) { /* not granted */ }
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); Sync.flush(); } });
+window.addEventListener('online', () => Sync.flush());
 window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); });
 
 /* =====================================================================
    Boot
    ===================================================================== */
-C = read(CONFIG_KEY) || sampleConfig();
-const saved = read(KEY);
-S = saved && saved.v === 2 ? saved : sampleState();
+DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: 'command', mode: 'night', me: null };
+saveDev();
+C = { ...defaultConfig(), ...(read(K.cfg) || sampleConfig()) };
+BASE = read(K.inc);
+if (!BASE || !BASE.id) BASE = sampleState();
+(read(K.ev(BASE.id)) || []).forEach(e => EVENTS.set(e.id, e));
+rebuild();
 loadUi();
 render();
 setInterval(tick, 1000);
+Sync.start();
 })();
 </script>
