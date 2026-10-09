@@ -686,6 +686,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --crit: #E8695C;
   --scrim: rgb(2 8 14 / 0.62);
   --on-solid: #04121E;
+  --ag-fire: #E8603A;   /* unified command: each agency's color */
+  --ag-pd: #4C86F0;
 
   --red: #D7373F;     --red-ink: #FFFFFF;
   --yellow: #F2C230;  --yellow-ink: #1D1600;
@@ -725,6 +727,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   --crit: #B3261E;
   --scrim: rgb(6 19 31 / 0.5);
   --on-solid: #FFFFFF;
+  --ag-fire: #B8401C;
+  --ag-pd: #1F56C4;
   --red: #C62828;     --red-ink: #FFFFFF;
   --yellow: #F2C230;  --yellow-ink: #1D1600;
   --green: #1E9E55;   --green-ink: #FFFFFF;
@@ -792,6 +796,20 @@ button.tag { min-height: 32px; }
 .tag.sample { border-style: dashed; }
 .tag.live { border-color: var(--ok); color: var(--ok); }
 .tag.role { border-color: var(--accent); color: var(--accent); }
+.tag.role.r-fire { border-color: var(--ag-fire); color: var(--ag-fire); }
+.tag.role.r-police { border-color: var(--ag-pd); color: var(--ag-pd); }
+.agtag { display: inline-block; min-width: 54px; text-align: center; font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 6px; border-radius: 5px; color: #fff; background: var(--accent); }
+.agtag.fire { background: var(--ag-fire); } .agtag.police { background: var(--ag-pd); } .agtag.ems { background: var(--accent); color: var(--accent-ink); }
+.ucrows { display: flex; flex-direction: column; gap: 6px; }
+.ucrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 48px; padding: 6px 10px; border-radius: var(--r); border: 1.5px solid var(--line); background: transparent; text-align: left; }
+.ucrow.me { border-color: var(--fg); }
+.ucwho { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ucb .row { grid-template-columns: auto minmax(0, 1fr) auto; }
+.stat.k-R { box-shadow: inset 4px 0 0 var(--red); } .stat.k-Y { box-shadow: inset 4px 0 0 var(--yellow); } .stat.k-G { box-shadow: inset 4px 0 0 var(--green); }
+.pk.pt { background: var(--ag-pd); color: #fff; }
+.pk.pt.k-closure, .pin.pt.k-closure { background: var(--crit); color: #fff; }
+.pk.pt.k-reunif, .pin.pt.k-reunif { background: var(--green); color: var(--green-ink); }
+.pk.pt.k-media, .pin.pt.k-media { background: var(--raised); color: var(--fg); }
 
 .clocks { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
 .clock, .par, .iconbtn {
@@ -1376,6 +1394,7 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .row .schip { flex-direction: row; font-size: 12px; padding: 3px 7px; }
 .evcard .evpost { display: flex; gap: 12px; align-items: center; font-size: 18px; }
 .evcard h2 svg { width: 18px; height: 18px; vertical-align: -3px; }
+.pin.pt { border-radius: 7px; width: 30px; height: 30px; font-size: 11px; background: var(--ag-pd); color: #fff; border: 2.5px solid #fff; }
 .pin.post { border-radius: 9px; width: 32px; height: 32px; font-size: 14px; background: var(--accent); color: var(--accent-ink); border: 2.5px solid #fff; }
 .pin.post.k-aid { background: var(--crit); color: #fff; } .pin.post.k-cmd { background: #fff; color: #0B1B2B; border-color: #0B1B2B; }
 .pin.post.k-unit { background: var(--green); color: var(--green-ink); } .pin.post.k-rehab { background: var(--yellow); color: var(--yellow-ink); }
@@ -1773,7 +1792,7 @@ const STATUSES = [
   { k: 'released',     name: 'Released' },
 ];
 
-const TASKS = ['Command','Triage','Treatment · Red','Treatment · Yellow','Treatment · Green','Transport','Loading','Extrication','Fire suppression','Hazmat','Staging','Rehab','LZ','Safety','Traffic'];
+const TASKS = ['Command','Triage','Treatment · Red','Treatment · Yellow','Treatment · Green','Transport','Loading','Extrication','Fire suppression','Search','Ventilation','Water supply','RIT','Hazmat','Staging','Rehab','LZ','Safety','Traffic','Perimeter'];
 const CERTS = ['EMR', 'EMT', 'Paramedic', 'RN', 'Driver', 'Officer', 'Firefighter'];
 
 /* County assets are named as in the Monmouth County EMS communications plan (2023); NJ EMS Task Force assets
@@ -1851,6 +1870,42 @@ const BENCHMARKS = [
   { id: 'allpts',    label: 'All patients transported' },
   { id: 'clear',     label: 'Scene clear · units released' },
 ];
+/* Unified command: fire and police keep their own benchmarks on the same incident. Extrication is shared with EMS. */
+const FIRE_BENCH = [
+  { id: 'f-cmd',       label: 'Fire command established' },
+  { id: 'f-size',      label: 'Size-up given' },
+  { id: 'f-water',     label: 'Water supply established' },
+  { id: 'f-primary',   label: 'Primary search all clear' },
+  { id: 'extrication', label: 'Extrication complete' },
+  { id: 'f-control',   label: 'Fire under control' },
+  { id: 'f-haz',       label: 'Hazards controlled · utilities secured' },
+  { id: 'f-lz',        label: 'LZ secured for air medical' },
+  { id: 'f-secondary', label: 'Secondary search all clear' },
+  { id: 'f-overhaul',  label: 'Overhaul complete' },
+];
+const PD_BENCH = [
+  { id: 'p-cmd',    label: 'Police command established' },
+  { id: 'p-secure', label: 'Scene secured · safe for EMS' },
+  { id: 'p-tcp',    label: 'Traffic control in place' },
+  { id: 'p-perim',  label: 'Perimeter established' },
+  { id: 'p-routes', label: 'Ingress and egress routes set' },
+  { id: 'p-reunif', label: 'Family reunification site set up' },
+  { id: 'p-me',     label: 'Medical examiner notified' },
+  { id: 'p-reopen', label: 'Roads reopened' },
+];
+const ALL_BENCH = [...BENCHMARKS, ...FIRE_BENCH.filter(b => !BENCHMARKS.some(x => x.id === b.id)), ...PD_BENCH];
+/* Police points on the map: traffic control, closures, the perimeter, routes in and out, reunification. */
+const POINT_KINDS = [
+  { k: 'tcp',     name: 'Traffic control point', tag: 'T' },
+  { k: 'closure', name: 'Road closure',          tag: 'X' },
+  { k: 'perim',   name: 'Perimeter',             tag: 'P' },
+  { k: 'in',      name: 'Ingress',               tag: 'IN' },
+  { k: 'out',     name: 'Egress',                tag: 'OUT' },
+  { k: 'reunif',  name: 'Family reunification',  tag: 'FR' },
+  { k: 'media',   name: 'Media area',            tag: 'M' },
+];
+const pointKind = k => POINT_KINDS.find(x => x.k === k) || POINT_KINDS[0];
+const FIRE_TASKS = ['Command', 'Fire suppression', 'Extrication', 'Search', 'Ventilation', 'Water supply', 'RIT', 'Hazmat', 'Safety', 'Rehab', 'LZ', 'Staging'];
 
 /* Towns come from the Census file so names and boundaries agree. */
 const titleCase = s => s.replace(/\b([a-z])/g, (m, c) => c.toUpperCase());
@@ -1930,6 +1985,8 @@ const ICON = {
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20.5c.9-4 3.6-6 7-6s6.1 2 7 6"/>',
   clip: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
   flag: '<path d="M5 21V3.5"/><path d="M5 4h12l-2.5 4.5L17 13H5"/>',
+  flame: '<path d="M12 21c-3.6 0-6-2.4-6-5.6 0-3.1 2.2-4.8 3.4-7.4.4 1.6 1.3 2.6 2.3 3.1C11.4 7.6 12.6 5 15 3c-.3 2.8.9 4.6 2.1 6.3 1 1.4 1.9 2.8 1.9 4.9C19 18.2 16 21 12 21z"/>',
+  shield: '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6L12 3z"/><path d="M9 12l2 2 4-4"/>',
   home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h4.5v-5.5h3V20H18V9.5"/>',
   doc: '<path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14 3v4.5h5M9 12.5h7M9 16h7"/>',
   tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0l-8-8z"/><circle cx="8" cy="8" r="1.6"/>',
@@ -1949,9 +2006,11 @@ let toastTimer = null;
 
 const ROLES = {
   supervisor: { name: 'Supervisor', home: 'shift',   note: 'Everyday calls: units in service, active calls, crew on duty, today\'s numbers' },
-  command:   { name: 'Command',   home: 'board',     note: 'The whole MCI board: triage, units, transport, hospitals, ICS, radio' },
+  command:   { name: 'EMS Command', home: 'board',   note: 'The whole MCI board: triage, units, transport, hospitals, ICS, radio' },
   triage:    { name: 'Triage',    home: 'triage',    note: 'Big counters, re-triage, the triage report' },
   transport: { name: 'Transport', home: 'transport', note: 'Loading units, hospital capacity, the transport log' },
+  fire:      { name: 'Fire',      home: 'fire',      note: 'Fire command at the MCI: apparatus and assignments, PAR, fire benchmarks, hazards' },
+  police:    { name: 'Police',    home: 'police',    note: 'Police command at the MCI: traffic points and closures on the map, police units, benchmarks' },
   event:     { name: 'Event',     home: 'event',     note: 'A planned event: posts on the map, members at their posts, patients' },
   member:    { name: 'Member',    home: 'member',    note: 'For a phone: active calls, I\'m responding, on scene, directions' },
 };
@@ -1960,15 +2019,17 @@ const RAILS = {
   command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log'],
   triage:    ['triage', 'board', 'units', 'map', 'phone', 'log'],
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
+  fire:      ['fire', 'map', 'units', 'ics', 'radio', 'phone', 'log'],
+  police:    ['police', 'map', 'ics', 'phone', 'radio', 'log'],
   supervisor: ['shift', 'hospitals', 'map', 'phone', 'radio', 'log'],
   event:     ['event', 'map', 'hospitals', 'phone', 'radio', 'log'],
   member:    ['member', 'shift', 'phone'],
 };
-const MCI_ROLES = ['command', 'triage', 'transport'];
+const MCI_ROLES = ['command', 'triage', 'transport', 'fire', 'police'];
 /* Which workspace the screen is in: the Home screen, the Supervisor board, an MCI, an event, or a member's phone.
    The workspace's own views say so; the shared ones (map, hospitals, phone, radio, log) follow the tablet's job. */
-const VIEW_WS = { shift: 'sup', event: 'event', member: 'member', board: 'mci', triage: 'mci', transport: 'mci', units: 'mci', ics: 'mci' };
-const ROLE_WS = { supervisor: 'sup', event: 'event', member: 'member', command: 'mci', triage: 'mci', transport: 'mci' };
+const VIEW_WS = { shift: 'sup', event: 'event', member: 'member', board: 'mci', triage: 'mci', transport: 'mci', units: 'mci', ics: 'mci', fire: 'mci', police: 'mci' };
+const ROLE_WS = { supervisor: 'sup', event: 'event', member: 'member', command: 'mci', triage: 'mci', transport: 'mci', fire: 'mci', police: 'mci' };
 const wsNow = () => (UI.view === 'home' ? 'home' : VIEW_WS[UI.view] || ROLE_WS[DEV.role] || 'mci');
 const mciLive = () => !S.fresh && !S.sample && !S.bench.clear;
 /* A tablet left alone this long opens on the Home screen, to pick what it's working on. Phones stay on My calls. */
@@ -1993,6 +2054,7 @@ function defaultConfig() {
 }
 
 function freshIncident() { const st = blankState(); st.incident.type = ''; st.fresh = true; return st; }
+const points = () => S.points || [];
 function blankState(opts = {}) {
   const t = now();
   const st = {
@@ -2022,6 +2084,7 @@ function blankState(opts = {}) {
     units: (C.roster || []).map(r => ({ id: uid(), name: r.name, kind: r.kind, agency: C.agency.name, crew: r.crew ?? 2, status: 'available', task: '', t })),
     people: [],
     requests: [],
+    points: [],
     hospitals: {},
     ics: {},
     bench: { command: t },
@@ -2077,7 +2140,16 @@ function sampleState() {
     U('Rescue 41',  'RES',  'Fire', 4, 'onscene', 'Extrication', at(6, 10)),
     U('Chief 41',   'CHF',  'Fire', 1, 'onscene', 'Command', at(4, 30)),
     U('Hazmat 1',   'HAZ',  'County hazmat', 4, 'enroute', '', at(9, 0)),
+    U('Engine 38-1','ENG',  'Fire', 4, 'onscene', 'Hazmat', at(7, 40)),
     U('PD 12',      'PD',   'Police', 1, 'onscene', 'Traffic', at(2, 50)),
+    U('PD 14',      'PD',   'Police', 1, 'onscene', 'Traffic', at(5, 20)),
+  ];
+  const near = (dLat, dLng) => [+(P.scene[0] + dLat).toFixed(5), +(P.scene[1] + dLng).toFixed(5)];
+  st.points = [
+    { id: 'pt1', kind: 'tcp', name: 'Rt 35 northbound, north of the scene', ll: near(0.0026, 0.0002), unit: 'PD 12', notes: 'Diverting to Deal Rd' },
+    { id: 'pt2', kind: 'closure', name: 'Rt 35 southbound closed at Deal Rd', ll: near(-0.0007, -0.0002), unit: 'PD 14', notes: '' },
+    { id: 'pt3', kind: 'in', name: 'Ambulances in: Deal Rd westbound to staging', ll: near(-0.0012, -0.0004), unit: '', notes: '' },
+    { id: 'pt4', kind: 'reunif', name: 'Family reunification (proposed)', ll: null, unit: '', notes: 'Waiting on OEM for a site' },
   ];
   const uidOf = name => st.units.find(u => u.name === name).id;
 
@@ -2127,6 +2199,7 @@ function sampleState() {
   st.bench = {
     command: at(3, 10), sizeup: at(3, 40), mci: at(4, 30), staging: at(6, 5),
     hospitals: at(9, 30), treatment: at(11, 0), triage: at(14, 20),
+    'f-cmd': at(4, 30), 'f-size': at(5, 0), 'f-primary': at(9, 50), 'p-cmd': at(6, 0), 'p-secure': at(5, 30), 'p-tcp': at(7, 30),
   };
   st.par = { interval: 20, last: at(10, 0) };
 
@@ -2282,7 +2355,7 @@ function header() {
   ].filter(Boolean).join(' · ');
   return `<header class="head">
     <div class="inc">
-      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${mci}${suggest}${sample}</div>
+      <div class="inc-top"><button class="tag role r-${esc(DEV.role)}" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${mci}${suggest}${sample}</div>
       <h1><button class="titlebtn" data-act="sheet" data-arg="incident">${esc(title)}</button></h1>
       <div class="inc-sub">${sub || (S.fresh ? 'No incident yet · tap the title to start one' : 'Tap the title to fill in incident details')}</div>
     </div>
@@ -2300,6 +2373,8 @@ const VIEWS = [
   { id: 'triage',    label: 'Triage',    icon: 'tag' },
   { id: 'shift',     label: 'Supervisor', icon: 'clip' },
   { id: 'event',     label: 'Event',     icon: 'flag' },
+  { id: 'fire',      label: 'Fire',      icon: 'flame' },
+  { id: 'police',    label: 'Police',    icon: 'shield' },
   { id: 'member',    label: 'My calls',  icon: 'person' },
   { id: 'map',       label: 'Map',       icon: 'map' },
   { id: 'transport', label: 'Transport', icon: 'amb' },
@@ -2329,6 +2404,8 @@ function view() {
     case 'home': return homeScreen();
     case 'map': return mapView();
     case 'triage': return triageView();
+    case 'fire': return fireView();
+    case 'police': return policeView();
     case 'shift': return shiftView();
     case 'member': return memberView();
     case 'event': return eventView();
@@ -2485,7 +2562,96 @@ function benchPanel() {
         return `<button class="${cls}" data-act="bench" data-arg="${b.id}" aria-pressed="${t ? 'true' : 'false'}"><span class="tick">${icon('check')}</span><span class="b-label">${b.label}</span>${right}</button>`;
       }).join('')}
     </div>
+    ${otherBench()}
   </section>`;
+}
+/* On the EMS board: what fire and police have stamped on their own tablets, newest first. */
+function otherBench() {
+  const list = [...FIRE_BENCH.filter(b => b.id !== 'extrication').map(b => ({ ...b, ag: 'Fire', c: 'fire' })), ...PD_BENCH.map(b => ({ ...b, ag: 'Police', c: 'police' }))].filter(b => S.bench[b.id]).sort((a, b) => S.bench[b.id] - S.bench[a.id]);
+  if (!list.length) return '';
+  return `<div class="lbl">Fire and police</div><div class="rows ucb">${list.map(b => `<div class="row"><span class="agtag ${b.c}">${b.ag}</span><div class="t1">${esc(b.label)}</div><span class="r num">${hhmm(S.bench[b.id])}</span></div>`).join('')}</div>`;
+}
+
+/* ---------- Fire and police tablets: unified command on the same incident ---------- */
+const isFireUnit = u => ['fire', 'spec'].includes(kindOf(u.kind).g);
+const isPdUnit = u => u.kind === 'PD';
+function ucPanel(me) {
+  const row = (pos, name, c) => { const x = S.ics[pos]; return `<button class="ucrow ${c} ${me === c ? 'me' : ''}" data-act="sheet" data-arg="ics:${pos}"><span class="agtag ${c}">${name}</span><span class="ucwho">${x ? esc(x.who) : '<span class="note">Not assigned · tap to assign</span>'}</span><span class="note">${x ? 'since ' + hhmm(x.t) : ''}</span></button>`; };
+  return `<section class="panel" aria-label="Unified command">
+    <div class="ph"><h2>Unified command</h2><span class="meta">${esc(S.incident.commandName || '')}</span></div>
+    <div class="ucrows">${row('uc-ems', 'EMS', 'ems')}${row('uc-fire', 'Fire', 'fire')}${row('uc-pd', 'Police', 'police')}</div>
+  </section>`;
+}
+function agencyBenchPanel(list, title) {
+  const T0 = S.incident.dispatchAt, done = list.filter(b => S.bench[b.id]).length;
+  return `<section class="panel" aria-label="${esc(title)}">
+    <div class="ph"><h2>${esc(title)}</h2><span class="meta">${done} of ${list.length} · tap to stamp</span></div>
+    <div class="bench">${list.map(b => {
+      const t = S.bench[b.id];
+      return `<button class="${t ? 'done' : 'todo'}" data-act="bench" data-arg="${b.id}" aria-pressed="${t ? 'true' : 'false'}"><span class="tick">${icon('check')}</span><span class="b-label">${esc(b.label)}</span>${t ? `<span class="b-time">${hhmm(t)}<small>+${dur(t - T0)}</small></span>` : '<span></span>'}</button>`;
+    }).join('')}</div>
+  </section>`;
+}
+const agUnitRow = (u, extra = '') => `<button class="row" data-act="sheet" data-arg="unit:${u.id}"><span class="pill ${u.status}">${esc(statusName(u.status))}</span><div><div class="t1">${kindTag(u.kind)} ${esc(u.name)}</div><div class="t2">${[u.agency, u.crew ? 'crew ' + u.crew : '', u.par ? 'PAR ' + hhmm(u.par) : '', extra].filter(Boolean).map(esc).join(' · ')}</div></div><span class="r note">${mins(now() - u.t)}</span></button>`;
+function apparatusPanel() {
+  const units = S.units.filter(u => isFireUnit(u) && u.status !== 'released');
+  const on = units.filter(u => u.status === 'onscene');
+  const groups = FIRE_TASKS.map(t => ({ t, us: units.filter(u => u.task === t) })).filter(g => g.us.length);
+  const free = units.filter(u => !FIRE_TASKS.includes(u.task));
+  const lastPar = on.length && on.every(u => u.par) ? Math.min(...on.map(u => u.par)) : 0;
+  return `<section class="panel" aria-label="Apparatus">
+    <div class="ph"><h2>Apparatus · assignments</h2><button class="btn small" data-act="unit-add-as" data-arg="ENG">${icon('plus')} Add</button></div>
+    ${groups.map(g => `<div class="lbl">${esc(g.t)} · ${g.us.length}</div><div class="rows">${g.us.map(u => agUnitRow(u)).join('')}</div>`).join('')}
+    ${free.length ? `<div class="lbl">Not assigned · ${free.length}</div><div class="rows">${free.map(u => agUnitRow(u)).join('')}</div>` : ''}
+    ${units.length ? '' : '<div class="empty">No fire apparatus on the board yet. Add them here; tap one to set its status and assignment.</div>'}
+    ${on.length ? `<button class="btn block" data-act="par-fire">${icon('check')} PAR: all ${plural(on.length, 'crew')} on scene accounted for</button><div class="note">${lastPar ? `Last full PAR ${hhmm(lastPar)} · ${mins(now() - lastPar)} ago` : 'No PAR taken yet'}</div>` : ''}
+  </section>`;
+}
+function emsStatusPanel() {
+  const sent = S.transports.reduce((a, x) => a + x.n, 0);
+  return `<section class="panel" aria-label="EMS status">
+    <div class="ph"><h2>EMS · patients</h2><span class="meta">${plural(totalPts(), 'patient')}</span></div>
+    <div class="stats">${TX_CATS.map(k => `<div class="stat k-${k}"><span class="lbl">${cat(k).color}</span><span class="v num">${S.triage[k] || 0}</span></div>`).join('')}<div class="stat"><span class="lbl">Transported</span><span class="v num">${sent}</span></div></div>
+    <div class="note">${totalPts() ? `${TX_CATS.map(k => remaining(k)).reduce((a, b) => a + b, 0)} still on scene. ` : ''}EMS Command: ${esc((S.ics['uc-ems'] || {}).who || S.incident.ic || 'not set')}${S.incident.staging ? ` · Staging: ${esc(S.incident.staging)}` : ''}</div>
+  </section>`;
+}
+function fireView() {
+  return `<div class="board agency">
+    <div class="col c1" data-scroll="f1">${ucPanel('fire')}${agencyBenchPanel(FIRE_BENCH, 'Fire benchmarks')}</div>
+    <div class="col c2" data-scroll="f2">${apparatusPanel()}</div>
+    <div class="col c3" data-scroll="f3">${miniMap()}${emsStatusPanel()}${scenePanel()}</div>
+  </div>`;
+}
+function pointsPanel() {
+  const list = points();
+  return `<section class="panel" aria-label="Traffic and perimeter">
+    <div class="ph"><h2>Traffic and perimeter</h2><button class="btn small" data-act="sheet" data-arg="point-new">${icon('plus')} Add a point</button></div>
+    <div class="rows">${list.map(pt => `<button class="row" data-act="sheet" data-arg="point:${esc(pt.id)}"><span class="pk pt k-${esc(pt.kind)}">${esc(pointKind(pt.kind).tag)}</span><div><div class="t1">${esc(pt.name)}</div><div class="t2">${esc(pointKind(pt.kind).name)}${pt.unit ? ' · ' + esc(pt.unit) : ' · <span class="warn-t">nobody assigned</span>'}${pt.ll ? '' : ' · not on the map'}${pt.notes ? ' · ' + esc(pt.notes) : ''}</div></div></button>`).join('') || '<div class="empty">No points yet. Add traffic control points, closures, the perimeter and routes in and out; they show on every tablet\'s map.</div>'}</div>
+  </section>`;
+}
+function pdUnitsPanel() {
+  const units = S.units.filter(u => isPdUnit(u) && u.status !== 'released');
+  return `<section class="panel" aria-label="Police units">
+    <div class="ph"><h2>Police units</h2><button class="btn small" data-act="unit-add-as" data-arg="PD">${icon('plus')} Add</button></div>
+    <div class="rows">${units.map(u => { const at = points().filter(pt => pt.unit === u.name).map(pt => pt.name); return agUnitRow(u, at.length ? 'at ' + at.join(', ') : ''); }).join('') || '<div class="empty">No police units on the board yet.</div>'}</div>
+  </section>`;
+}
+function txForPolicePanel() {
+  const by = {};
+  S.transports.forEach(x => { const h = (hosp(x.hosp) || {}).short || 'Unknown'; by[h] = (by[h] || 0) + x.n; });
+  const rows = Object.entries(by).sort((a, b) => b[1] - a[1]);
+  return `<section class="panel" aria-label="Where patients went">
+    <div class="ph"><h2>Where patients went</h2><span class="meta">for family reunification</span></div>
+    <div class="rows">${rows.map(([h, n]) => `<div class="row"><span class="num">${n}</span><div class="t1">${esc(h)}</div></div>`).join('') || '<div class="empty">No patients transported yet.</div>'}</div>
+    <div class="note">Counts only, from EMS's transport log. No names on the board.</div>
+  </section>`;
+}
+function policeView() {
+  return `<div class="board agency">
+    <div class="col c1" data-scroll="p1">${ucPanel('police')}${agencyBenchPanel(PD_BENCH, 'Police benchmarks')}</div>
+    <div class="col c2" data-scroll="p2">${pointsPanel()}${pdUnitsPanel()}</div>
+    <div class="col c3" data-scroll="p3">${miniMap()}${emsStatusPanel()}${txForPolicePanel()}</div>
+  </div>`;
 }
 
 function resourcesPanel() {
@@ -2529,7 +2695,7 @@ function miniMap() {
       <button class="mbtn" data-act="map-layer" aria-pressed="${UI.mapLayer === 'sat'}" aria-label="Satellite imagery">${icon('layers')}<span>${UI.mapLayer === 'sat' ? 'Satellite' : 'Map'}</span></button>
       <button class="mbtn" data-act="view" data-arg="map" aria-label="Open the full map">${icon('expand')}</button>
     </div>
-    <div class="mapctl bl">${mapChips()}</div>
+    <div class="mapctl bl">${pinChip()}${mapChips()}</div>
   </section>`;
 }
 function mapChips() {
@@ -2587,6 +2753,8 @@ function pinChip() {
   if (!m) return '';
   if (m === 'post') return '<span class="mchip warn">Tap the map where the post is</span>';
   if (m.startsWith('post-move:')) return '<span class="mchip warn">Tap the post\'s new spot</span>';
+  if (m === 'point') return '<span class="mchip warn">Tap the map where the point is</span>';
+  if (m.startsWith('point-move:')) return '<span class="mchip warn">Tap the point\'s new spot</span>';
   return `<span class="mchip warn">Tap the map to place the ${esc(PIN_NAMES[m] || 'pin')} pin</span>`;
 }
 function mapView() {
@@ -2618,7 +2786,7 @@ function mapView() {
         <div>${COUNTY_STAGING.map((c, i) => { const mi = miles(sceneLL(), c.ll); return `<div class="load"><span class="nm">${esc(c.name)} <span class="note">${esc(c.note)}</span></span><span class="dist">${mi != null ? mi.toFixed(1) + ' mi' : ''}</span><span class="why">${w === 'mci' ? `<button class="btn small" data-act="use-cstage" data-arg="${i}">Use as staging</button>` : ''}<button class="btn small" data-act="map-goto" data-arg="${c.ll.join(',')}">Show</button></span></div>`; }).join('')}</div>
       </section>`;
   const side = w === 'event' ? mapPostsPanel() + camerasPanel() + nearHospPanel()
-    : w === 'mci' ? scenePanel + camerasPanel() + stagingPanel + nearHospPanel()
+    : w === 'mci' ? (DEV.role === 'police' ? pointsPanel() : '') + scenePanel + camerasPanel() + stagingPanel + nearHospPanel()
     : mciOn + camerasPanel() + nearHospPanel() + stagingPanel;
   return `<div class="mapview">
     <section class="mapcard" aria-label="Map">
@@ -3193,6 +3361,8 @@ function ensureMap() {
     const k = UI.pinMode, ll = [+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)];
     UI.pinMode = null;
     if (k === 'post') { const keep = UI.pendingPost || { pkind: 'fixed' }; UI.pendingPost = null; openSheet('post-new'); Object.assign(UI.form, keep, { pwhere: 'map', pll: ll, _init: true }); render(); return; }
+    if (k === 'point') { const keep = UI.pendingPoint || { ptkind: 'tcp' }; UI.pendingPoint = null; openSheet('point-new'); Object.assign(UI.form, keep, { ptwhere: 'map', ptll: ll, _init: true }); render(); return; }
+    if (k.startsWith('point-move:')) { const id = k.slice(11), pt = points().find(x => x.id === id); if (pt) dispatch('pointEdit', { id, fields: { ll } }, `${pt.name} moved on the map`, 'units'); render(); return; }
     if (k.startsWith('post-move:')) { const id = k.slice(10), po = postIn(EV, id); if (po) edispatch('postEdit', { id, fields: { ll } }, `${po.name} moved on the map`, 'units'); render(); return; }
     const field = k === 'scene' ? 'll' : k === 'staging' ? 'stagingLL' : 'lzLL';
     dispatch('pin', { field, ll }, `${k === 'scene' ? 'Scene' : k === 'staging' ? 'Staging' : 'LZ'} pinned at ${fmtLL(ll)}`, 'note');
@@ -3237,6 +3407,9 @@ function syncMarkers() {
   if (showInc && I.lzLL) L.marker(I.lzLL, { icon: pinIcon('lz', 'LZ', 34), title: 'Landing zone' }).addTo(ML.pins);
   if (showInc && I.stagingLL) L.marker(I.stagingLL, { icon: pinIcon('staging', 'S', 34), title: 'Staging' }).addTo(ML.pins);
   if (showInc && I.ll) L.marker(I.ll, { icon: pinIcon('scene', 'SCENE', 40), title: 'Scene', zIndexOffset: 1000 }).addTo(ML.pins);
+  if (showInc) points().filter(pt => pt.ll).forEach(pt => L.marker(pt.ll, { icon: pinIcon(`pt k-${pt.kind}`, esc(pointKind(pt.kind).tag), 30), title: pt.name, zIndexOffset: 400 })
+    .bindTooltip(`${esc(pt.name)}${pt.unit ? ' · ' + esc(pt.unit) : ''}`, { direction: 'top', offset: [0, -14] })
+    .on('click', () => openSheet('point:' + pt.id)).addTo(ML.pins));
   COUNTY_STAGING.forEach(c => L.marker(c.ll, { icon: pinIcon('cstage', 'S', 30), title: c.name }).bindTooltip(`County staging: ${c.name}`, { direction: 'top', offset: [0, -14] }).addTo(ML.pins));
   C.cameras.filter(c => c.ll).forEach(c => L.marker(c.ll, { icon: pinIcon('cam', 'CAM', 30), title: c.name }).bindTooltip(`Camera: ${c.name}`, { direction: 'top', offset: [0, -14] }).on('click', () => openSheet('cam:' + c.id)).addTo(ML.pins));
   if (eventLive()) EV.posts.filter(po => po.ll).forEach(po => {
@@ -3250,7 +3423,7 @@ function syncMarkers() {
     .bindTooltip(`${h.short}${hospMiles(h) != null ? ' · ' + hospMiles(h).toFixed(1) + ' mi' : ''}`, { direction: 'top', offset: [0, -14] }).addTo(ML.hosp));
 }
 function refreshChips() {
-  document.querySelectorAll('.mapcard.mini:not(.evmap) .mapctl.bl').forEach(el => { el.innerHTML = mapChips(); });
+  document.querySelectorAll('.mapcard.mini:not(.evmap) .mapctl.bl').forEach(el => { el.innerHTML = pinChip() + mapChips(); });
   if (UI.view === 'map') render();
 }
 
@@ -3309,6 +3482,7 @@ function incidentReport() {
     ['Location', [I.location, I.municipality].filter(Boolean).join(', ') || 'Not recorded'],
     I.ll && ['Coordinates', `${fmtLL(I.ll)} (${fmtDDM(I.ll)})`],
     ['Command', [I.commandName, I.ic && `EMS Command: ${I.ic}`].filter(Boolean).join(' · ') || 'Not recorded'],
+    (S.ics['uc-fire'] || S.ics['uc-pd']) && ['Unified command', [['EMS', 'uc-ems'], ['Fire', 'uc-fire'], ['Police', 'uc-pd']].filter(([, k]) => S.ics[k]).map(([n, k]) => `${n}: ${S.ics[k].who}`).join(' · ')],
     ['MCI level', I.mciLevel ? levelLabel(I.mciLevel) : 'Not declared'],
     ['Dispatched', fmtDT(I.dispatchAt)],
     ['Scene clear', S.bench.clear ? fmtDT(S.bench.clear) : `Still open when this report was made (${hhmm(now())})`],
@@ -3324,7 +3498,12 @@ function incidentReport() {
     rows: catsList().map(c => [`${c.color} · ${c.name}`, S.triage[c.k] || 0, TX_CATS.includes(c.k) ? sentCat(c.k) : '', TX_CATS.includes(c.k) ? remaining(c.k) : '']),
     keys: catsList().map(c => c.k),
   } });
-  sections.push({ h: 'Benchmarks', table: { head: ['Benchmark', 'Time', 'After dispatch'], rows: BENCHMARKS.map(b => [b.label, S.bench[b.id] ? hhmm(S.bench[b.id]) : 'Not marked', S.bench[b.id] ? durWords(S.bench[b.id] - I.dispatchAt) : '']) } });
+  // fire's and police's lists are in the report once their tablets have stamped anything
+  const bRow = (ag, b) => [ag, b.label, S.bench[b.id] ? hhmm(S.bench[b.id]) : 'Not marked', S.bench[b.id] ? durWords(S.bench[b.id] - I.dispatchAt) : ''];
+  const fireB = FIRE_BENCH.filter(b => b.id !== 'extrication'), used = list => list.some(b => S.bench[b.id]);
+  sections.push({ h: 'Benchmarks', table: { head: ['Agency', 'Benchmark', 'Time', 'After dispatch'], rows: [
+    ...BENCHMARKS.map(b => bRow('EMS', b)), ...(used(fireB) ? fireB.map(b => bRow('Fire', b)) : []), ...(used(PD_BENCH) ? PD_BENCH.map(b => bRow('Police', b)) : []),
+  ], widths: [52, 0, 70, 80] } });
   sections.push({ h: 'Transports', table: {
     head: ['Time', 'Unit', 'Category', 'Patients', 'Hospital', 'Tags · age'],
     rows: S.transports.slice().sort((a, b) => a.t - b.t).map(x => [hhmm(x.t), (unitIn(S, x.unit) || {}).name || x.unit || '', cat(x.cat).color, x.n, hName(x.hosp), [x.tags, x.age].filter(Boolean).join(' · ')]),
@@ -3346,6 +3525,7 @@ function incidentReport() {
     head: ['Time', 'Request', 'Qty', 'Status', 'Note'],
     rows: S.requests.map(r => [hhmm(r.t), r.what, r.qty || 1, reqStatusName(r.status), r.note || '']),
   }, empty: 'No requests.' });
+  if (points().length) sections.push({ h: 'Traffic and perimeter (police)', table: { head: ['Kind', 'Point', 'Unit', 'Where', 'Notes'], rows: points().map(pt => [pointKind(pt.kind).name, pt.name, pt.unit || '', pt.ll ? fmtLL(pt.ll) : '', pt.notes || '']) } });
   const ics = ICS_POSITIONS.filter(p => S.ics[p.id] && S.ics[p.id].who);
   sections.push({ h: 'Incident command (ICS)', table: { head: ['Position', 'Who', 'Since'], rows: ics.map(p => [p.label, S.ics[p.id].who, hhmm(S.ics[p.id].t)]) }, empty: 'No ICS positions filled.' });
   sections.push(logSection(S.log));
@@ -3603,7 +3783,7 @@ function sheetHtml() {
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
     role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet, 'cam-add': camAddSheet, cam: camSheet, 'feed-add': feedAddSheet, 'inc-clear': incClearSheet,
     'ev-new': evNewSheet, 'post-new': postNewSheet, post: postSheet, 'ev-person': evPersonSheet, 'ev-unit': evUnitSheet, 'ev-pt': evPtSheet, 'ev-end': evEndSheet,
-    report: reportSheet,
+    report: reportSheet, 'point-new': pointNewSheet, point: pointSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -4024,6 +4204,10 @@ const R = {
   reqAdd(st, p) { st.requests.push({ ...p.req }); },
   reqStatus(st, p) { const r = st.requests.find(x => x.id === p.id); if (r) r.status = p.st; },
   icsSet(st, p) { st.ics[p.pos] = { who: p.who, t: p.at }; },
+  pointAdd(st, p) { st.points = st.points || []; if (!st.points.some(x => x.id === p.point.id)) st.points.push({ ...p.point }); },
+  pointEdit(st, p) { const x = (st.points || []).find(q => q.id === p.id); if (x) Object.assign(x, p.fields); },
+  pointDel(st, p) { st.points = (st.points || []).filter(x => x.id !== p.id); },
+  unitPar(st, p) { p.ids.forEach(id => { const u = unitIn(st, id); if (u) u.par = p.at; }); },
   icsClear(st, p) { delete st.ics[p.pos]; },
   hospNotify(st, p) { st.hospitals[p.id] = { ...(st.hospitals[p.id] || {}), notifiedAt: p.at }; },
   hospReport(st, p) { st.hospitals[p.id] = { ...(st.hospitals[p.id] || {}), cap: p.cap, beds: p.beds, ed: p.ed, capAt: p.at }; },
@@ -4737,6 +4921,33 @@ function evNewSheet(arg) {
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="${edit ? 'ev-save' : 'ev-start'}">${edit ? 'Save' : 'Start the event'}</button>`,
   };
 }
+function pointNewSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { ptkind: 'tcp', ptwhere: DEV.me ? 'me' : 'map', _init: true });
+  const pd = S.units.filter(u => isPdUnit(u) && u.status !== 'released');
+  return {
+    title: 'Add a point',
+    body: `${field('Kind', `<div class="chips">${POINT_KINDS.map(k => opt('f-set', 'ptkind=' + k.k, f.ptkind === k.k, esc(k.name), 'small')).join('')}</div>`)}
+      ${field('Name', input('pt-name', 'ptname', f.ptname, f.ptkind === 'tcp' ? 'e.g. Rt 35 & Deal Rd' : f.ptkind === 'closure' ? 'e.g. Rt 35 southbound closed at Deal Rd' : pointKind(f.ptkind).name))}
+      ${field('Where', f.ptll ? `<div class="coord">${esc(fmtLL(f.ptll))}<small>Picked on the map</small></div>` : `<div class="chips">${opt('f-set', 'ptwhere=map', f.ptwhere === 'map', 'Tap it on the map', 'small')}${opt('f-set', 'ptwhere=me', f.ptwhere === 'me', 'Where I am', 'small')}${opt('f-set', 'ptwhere=none', f.ptwhere === 'none', 'Not on the map', 'small')}</div>`)}
+      ${pd.length ? field('Police unit · optional', `<div class="chips">${pd.map(u => opt('f-set', 'ptunit=' + u.name, f.ptunit === u.name, esc(u.name), 'small')).join('')}</div>`) : ''}
+      ${field('Notes · optional', input('pt-notes', 'ptnotes', f.ptnotes, 'e.g. Detour by Rt 66'))}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="point-save">${f.ptll || f.ptwhere !== 'map' ? 'Add the point' : 'Next: tap the map'}</button>`,
+  };
+}
+function pointSheet(id) {
+  const pt = points().find(x => x.id === id);
+  if (!pt) return { title: 'Point', body: '<div class="empty">This point is gone.</div>' };
+  const pd = S.units.filter(u => isPdUnit(u) && u.status !== 'released');
+  return {
+    title: pt.name,
+    body: `<div class="note">${esc(pointKind(pt.kind).name)}${pt.ll ? ' · ' + esc(fmtLL(pt.ll)) : ' · not on the map'}${pt.notes ? ' · ' + esc(pt.notes) : ''}</div>
+      ${field('Kind', `<div class="chips">${POINT_KINDS.map(k => opt('pt-kind', id + '=' + k.k, pt.kind === k.k, esc(k.name), 'small')).join('')}</div>`)}
+      ${field('Police unit', `<div class="chips">${pd.map(u => opt('pt-unit', id + '=' + u.name, pt.unit === u.name, esc(u.name), 'small')).join('')}${opt('pt-unit', id + '=', !pt.unit, 'Nobody', 'small')}</div>`)}
+      <div class="toolbar"><button class="btn small" data-act="pt-move" data-arg="${esc(id)}">${icon('map')} ${pt.ll ? 'Move it on the map' : 'Put it on the map'}</button>${pt.ll ? `<button class="btn small" data-act="map-goto" data-arg="${pt.ll.join(',')}">Show</button>` : ''}</div>`,
+    foot: `<button class="btn danger" data-act="pt-del" data-arg="${esc(id)}">Remove</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
+  };
+}
 function postNewSheet() {
   const f = UI.form;
   if (!f._init) Object.assign(f, { pkind: 'fixed', pwhere: DEV.me ? 'me' : 'map', _init: true });
@@ -4859,6 +5070,26 @@ const EVENT_ACTIONS = {
     const post = { id: uid(), name, kind: f.pkind || 'fixed', ll, notes: (f.pnotes || '').trim() };
     UI.sheet = null; UI.form = {};
     edispatch('postAdd', { post }, `Post added: ${name}`, 'units');
+  },
+  'point-save'() {
+    const f = UI.form, k = f.ptkind || 'tcp';
+    if (!f.ptll && f.ptwhere === 'map') { UI.sheet = null; UI.pinMode = 'point'; UI.pendingPoint = { ...f }; UI.form = {}; if (!UI.view || !document.querySelector('[data-map-slot]')) UI.view = 'map'; render(); showToast('Tap the map where it is', false); return; }
+    if (f.ptwhere === 'me' && !f.ptll && !DEV.me) { showToast('Tap Locate me on the map first', false); return; }
+    const ll = f.ptll || (f.ptwhere === 'me' && DEV.me ? DEV.me.ll : null);
+    const name = (f.ptname || '').trim() || pointKind(k).name;
+    const point = { id: uid(), kind: k, name, ll, unit: f.ptunit || '', notes: (f.ptnotes || '').trim() };
+    UI.sheet = null; UI.form = {};
+    dispatch('pointAdd', { point }, `${pointKind(k).name}: ${name}${point.unit ? ' · ' + point.unit : ''}`, 'units');
+  },
+  'pt-unit'(arg) { const i = arg.indexOf('='), id = arg.slice(0, i), unit = arg.slice(i + 1), pt = points().find(x => x.id === id); if (!pt || pt.unit === unit) return; dispatch('pointEdit', { id, fields: { unit } }, unit ? `${unit} → ${pt.name}` : `Nobody at ${pt.name}`, 'units'); },
+  'pt-kind'(arg) { const i = arg.indexOf('='), id = arg.slice(0, i), kind = arg.slice(i + 1), pt = points().find(x => x.id === id); if (!pt || pt.kind === kind) return; dispatch('pointEdit', { id, fields: { kind } }, `${pt.name} is now a ${pointKind(kind).name.toLowerCase()}`, 'units'); },
+  'pt-move'(id) { UI.sheet = null; UI.form = {}; UI.pinMode = 'point-move:' + id; if (!document.querySelector('[data-map-slot]')) UI.view = 'map'; render(); showToast('Tap the map where it goes', false); },
+  'pt-del'(id) { const pt = points().find(x => x.id === id); if (!pt) return; UI.sheet = null; UI.form = {}; dispatch('pointDel', { id }, `Removed: ${pt.name}`, 'units'); },
+  'unit-add-as'(kind) { openSheet('unit-add'); Object.assign(UI.form, { kind, agency: kind === 'PD' ? 'Police' : 'Fire', crew: kind === 'PD' ? 1 : 4 }); render(); },
+  'par-fire'() {
+    const on = S.units.filter(u => isFireUnit(u) && u.status === 'onscene');
+    if (!on.length) return;
+    dispatch('unitPar', { ids: on.map(u => u.id), at: now() }, `PAR: all ${plural(on.length, 'fire crew')} accounted for (${on.map(u => u.name).join(', ')})`, 'par');
   },
   'post-move'(id) { UI.sheet = null; UI.form = {}; UI.pinMode = 'post-move:' + id; if (UI.view !== 'event' && UI.view !== 'map') UI.view = 'event'; render(); showToast('Tap the map where the post goes', false); },
   'post-del'(id) { const po = postIn(EV, id); if (!po) return; UI.sheet = null; UI.form = {}; edispatch('postDel', { id }, `Post removed: ${po.name}`, 'units'); },
@@ -5638,7 +5869,7 @@ const A = {
   },
   est(d) { dispatch('est', { v: Math.max(0, (S.incident.est || 0) + Number(d)) }, '', 'triage', { toast: false }); },
   bench(id) {
-    const b = BENCHMARKS.find(x => x.id === id);
+    const b = ALL_BENCH.find(x => x.id === id);
     if (S.bench[id]) dispatch('bench', { id, on: false }, `Benchmark cleared: ${b.label}`, 'bench');
     else dispatch('bench', { id, on: true, at: now() }, b.label, 'bench');
   },
@@ -5650,7 +5881,7 @@ const A = {
 
   'f-set'(arg) {
     const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
-    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert'];
+    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert', 'ptkind', 'ptwhere'];
     UI.form[k] = UI.form[k] === v && !sticky.includes(k) ? '' : v;
     if (k === 'cat') UI.form.n = 1;
     render();
