@@ -1,0 +1,1697 @@
+<title>Scene Command Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-screen command board. Incident header with clocks across the top, a rail of views on the left,
+   and panels that scroll inside themselves on a landscape tablet, then stack into one column on a phone.
+   Night is the default (the PCR911 palette); Day is a high-contrast mode for direct sunlight. */
+:root {
+  --bg: #0B1B2B;
+  --surface: #12293D;
+  --raised: #183449;
+  --line: #25506E;
+  --fg: #EAF2F8;
+  --muted: #9FB6C8;
+  --faint: #6F8AA0;
+  --accent: #4FA3E3;
+  --accent-ink: #04121E;
+  --ok: #4CC38A;
+  --warn: #E8B14C;
+  --crit: #E8695C;
+  --scrim: rgb(2 8 14 / 0.62);
+
+  --red: #D7373F;     --red-ink: #FFFFFF;
+  --yellow: #F2C230;  --yellow-ink: #1D1600;
+  --green: #2DB86A;   --green-ink: #03180B;
+  --black: #000000;   --black-ink: #FFFFFF;  --black-edge: #8DA3B5;
+
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --tap: 56px;
+  --r: 12px;
+  color-scheme: dark;
+}
+:root[data-mode="day"] {
+  --bg: #FFFFFF;
+  --surface: #F2F5F8;
+  --raised: #E2E9F0;
+  --line: #8EA4B8;
+  --fg: #06131F;
+  --muted: #2E4558;
+  --faint: #536A7D;
+  --accent: #0B5FA5;
+  --accent-ink: #FFFFFF;
+  --ok: #0E7A45;
+  --warn: #8C5A00;
+  --crit: #B3261E;
+  --scrim: rgb(6 19 31 / 0.5);
+  --red: #C62828;     --red-ink: #FFFFFF;
+  --yellow: #F2C230;  --yellow-ink: #1D1600;
+  --green: #1E9E55;   --green-ink: #FFFFFF;
+  --black: #000000;   --black-ink: #FFFFFF;  --black-edge: #000000;
+  color-scheme: light;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 500 16px/1.4 var(--body);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- shell ---------- */
+.app {
+  height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "head head" "rail main";
+  gap: 12px;
+  padding-inline: 16px;
+  padding-block: 12px;
+}
+.head { grid-area: head; }
+.rail { grid-area: rail; }
+.main { grid-area: main; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+/* ---------- header ---------- */
+.head {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.inc { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+.inc-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inc h1 {
+  margin: 0;
+  font: 700 27px/1.1 var(--display);
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+.titlebtn { all: unset; cursor: pointer; border-radius: 6px; }
+.titlebtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.inc-sub { color: var(--muted); font-size: 15px; }
+.inc-sub b { color: var(--fg); font-weight: 600; }
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 700 13px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 9px; border-radius: 6px;
+  border: 1.5px solid var(--line); color: var(--muted); background: transparent;
+}
+button.tag { min-height: 32px; }
+.tag.mci { background: var(--crit); border-color: var(--crit); color: var(--accent-ink); }
+:root[data-mode="day"] .tag.mci { color: #FFFFFF; }
+.tag.suggest { border-color: var(--warn); color: var(--warn); }
+.tag.sample { border-style: dashed; }
+
+.clocks { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+.clock, .par, .iconbtn {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  min-width: 96px; padding: 8px 12px; border-radius: var(--r);
+  background: var(--surface); border: 1px solid var(--line);
+  text-align: left;
+}
+.clock .v, .par .v { font: 700 24px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.lbl { font: 600 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.par { min-width: 118px; }
+.par.due { border-color: var(--warn); }
+.par.due .v { color: var(--warn); }
+.par.over { background: var(--crit); border-color: var(--crit); }
+.par.over .v, .par.over .lbl { color: var(--accent-ink); }
+:root[data-mode="day"] .par.over .v, :root[data-mode="day"] .par.over .lbl { color: #FFFFFF; }
+.iconbtn { min-width: 64px; align-items: center; }
+.iconbtn svg { width: 26px; height: 26px; }
+
+/* ---------- rail ---------- */
+.rail { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: auto; }
+.rail button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  min-height: 70px; border-radius: var(--r);
+  background: transparent; border: 1px solid transparent; color: var(--muted);
+  font: 600 13px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.rail button svg { width: 28px; height: 28px; }
+.rail button[aria-current="page"] { background: var(--raised); border-color: var(--line); color: var(--fg); }
+.rail button[aria-current="page"] svg { color: var(--accent); }
+.rail .spacer { flex: 1; }
+.badge {
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; box-sizing: border-box;
+  background: var(--crit); color: var(--accent-ink); font: 700 12px/20px var(--mono); text-align: center;
+}
+:root[data-mode="day"] .badge { color: #FFFFFF; }
+.rail .ico { position: relative; }
+.rail .ico .badge { position: absolute; top: -6px; right: -14px; }
+
+svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- panels ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+  min-width: 0;
+}
+.ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ph h2 {
+  margin: 0; font: 700 15px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+}
+.ph .meta { color: var(--faint); font-size: 14px; }
+.empty { color: var(--faint); font-size: 15px; padding: 6px 0; }
+
+.btn {
+  min-height: var(--tap); padding: 0 18px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--raised); border: 1.5px solid var(--line); color: var(--fg);
+  font: 700 18px/1 var(--display); letter-spacing: 0.04em;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { border-color: var(--crit); color: var(--crit); background: transparent; }
+.btn.small { min-height: 44px; font-size: 16px; padding: 0 14px; }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn svg { width: 22px; height: 22px; }
+
+/* ---------- board ---------- */
+.board {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(320px, 1.12fr) minmax(320px, 1.12fr);
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+.col { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+/* triage */
+.tri-sum { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tri-total { font: 700 44px/1 var(--display); }
+.tri-total small { font: 600 16px/1 var(--body); color: var(--muted); margin-left: 6px; }
+.est { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+.est button { width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--raised); font: 700 20px/1 var(--mono); }
+.bar { height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; display: flex; }
+.bar span { display: block; height: 100%; }
+
+.tri {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 14px;
+  border-radius: var(--r);
+  border: 2px solid var(--c);
+  background: color-mix(in srgb, var(--c) 14%, var(--surface));
+}
+.tri-R { --c: var(--red); --ink: var(--red-ink); }
+.tri-Y { --c: var(--yellow); --ink: var(--yellow-ink); }
+.tri-G { --c: var(--green); --ink: var(--green-ink); }
+.tri-B { --c: var(--black-edge); --ink: var(--black-ink); background: color-mix(in srgb, var(--black) 55%, var(--surface)); }
+:root[data-mode="day"] .tri-B { background: #2A2F35; color: #FFFFFF; }
+:root[data-mode="day"] .tri-B .tri-sub { color: #D3DCE4; }
+.tri-head { display: flex; align-items: center; gap: 8px; }
+.swatch {
+  font: 700 13px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 5px 8px; border-radius: 5px; background: var(--c); color: var(--ink);
+}
+.tri-B .swatch { background: var(--black); color: var(--black-ink); border: 1.5px solid var(--black-edge); }
+:root[data-mode="day"] .tri-B .swatch { border-color: #FFFFFF; }
+.tri-name { font: 700 19px/1 var(--display); letter-spacing: 0.04em; text-transform: uppercase; }
+.tri-count { font: 700 56px/0.95 var(--display); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tri-sub { font-size: 14px; color: var(--muted); }
+.tri-sub b { color: var(--fg); }
+:root[data-mode="day"] .tri-B .tri-sub b { color: #FFFFFF; }
+.tri-btns { display: flex; gap: 8px; }
+.tri-btns button {
+  width: 64px; height: 72px; border-radius: 10px;
+  font: 700 34px/1 var(--display);
+  border: 2px solid var(--c); background: var(--surface); color: var(--fg);
+}
+.tri-btns button.plus { background: var(--c); color: var(--ink); }
+.tri-B .tri-btns button.plus { background: var(--black); color: var(--black-ink); border-color: var(--black-edge); }
+:root[data-mode="day"] .tri-B .tri-btns button { background: #000; color: #FFF; border-color: #FFF; }
+
+/* key/value strip */
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 15px; }
+.kv dt { color: var(--faint); font: 600 13px/1.6 var(--display); letter-spacing: 0.08em; text-transform: uppercase; }
+.kv dd { margin: 0; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hz {
+  font: 600 14px/1 var(--display); letter-spacing: 0.04em; padding: 6px 9px; border-radius: 6px;
+  border: 1.5px solid var(--warn); color: var(--warn);
+}
+
+/* benchmarks */
+.bench { display: flex; flex-direction: column; }
+.bench button {
+  display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px;
+  min-height: 52px; padding: 4px 4px; text-align: left;
+  background: transparent; border: 0; border-bottom: 1px solid var(--line);
+}
+.bench button:last-child { border-bottom: 0; }
+.tick {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center;
+}
+.tick svg { width: 18px; height: 18px; opacity: 0; }
+.bench .done .tick { background: var(--ok); border-color: var(--ok); color: var(--accent-ink); }
+:root[data-mode="day"] .bench .done .tick { color: #FFFFFF; }
+.bench .done .tick svg { opacity: 1; }
+.bench .b-label { font-size: 16px; font-weight: 600; }
+.bench .todo .b-label { color: var(--muted); font-weight: 500; }
+.bench .ready .b-label { color: var(--warn); font-weight: 600; }
+.bench .b-time { text-align: right; font: 700 15px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.bench .b-time small { display: block; font-size: 12px; color: var(--faint); font-weight: 500; }
+
+/* stat row */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
+.stat { background: var(--raised); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.stat .v { font: 700 30px/1 var(--display); font-variant-numeric: tabular-nums; }
+.stat.R { background: var(--red); color: var(--red-ink); }
+.stat.Y { background: var(--yellow); color: var(--yellow-ink); }
+.stat.G { background: var(--green); color: var(--green-ink); }
+.stat.R .lbl, .stat.Y .lbl, .stat.G .lbl { color: inherit; opacity: 0.85; }
+
+/* list rows */
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  min-height: 52px; padding: 6px 2px; border-bottom: 1px solid var(--line);
+  background: transparent; border-left: 0; border-right: 0; border-top: 0; text-align: left; width: 100%;
+}
+.row:last-child { border-bottom: 0; }
+.row .t1 { font-weight: 600; }
+.row .t2 { font-size: 14px; color: var(--muted); }
+.row .r { text-align: right; }
+.dot { width: 14px; height: 14px; border-radius: 4px; background: var(--c); border: 1.5px solid var(--c); }
+.dot.B { background: var(--black); border-color: var(--black-edge); }
+.c-R { --c: var(--red); } .c-Y { --c: var(--yellow); } .c-G { --c: var(--green); } .c-B { --c: var(--black-edge); }
+
+.pill {
+  display: inline-block; font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 5px 7px; border-radius: 5px; border: 1.5px solid var(--line); color: var(--muted); white-space: nowrap;
+}
+.pill.requested { border-color: var(--warn); color: var(--warn); }
+.pill.ack { border-color: var(--accent); color: var(--accent); }
+.pill.enroute { border-color: var(--accent); color: var(--accent); }
+.pill.onscene, .pill.done { border-color: var(--ok); color: var(--ok); }
+.pill.cancelled { text-decoration: line-through; }
+.pill.solid { background: var(--raised); }
+
+/* hospital load */
+.load { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.load:last-child { border-bottom: 0; }
+.load .nm { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.load .ct { font: 600 14px/1 var(--mono); color: var(--muted); }
+.load .bar { grid-column: 1 / -1; height: 10px; }
+
+/* ---------- generic view layouts ---------- */
+.view { display: flex; flex-direction: column; gap: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.grid-hosp { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; align-items: start; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar .grow { flex: 1; }
+.view-title { margin: 0; font: 700 26px/1 var(--display); letter-spacing: 0.02em; }
+
+/* units board */
+.lanes { display: grid; grid-template-columns: repeat(5, minmax(170px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.lane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lane h3 { margin: 0; display: flex; justify-content: space-between; font: 700 14px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.unit {
+  display: flex; flex-direction: column; gap: 4px; text-align: left;
+  padding: 10px; border-radius: 10px; background: var(--raised); border: 1.5px solid var(--line);
+  min-height: var(--tap);
+}
+.unit .u1 { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.unit .uid { font: 700 21px/1 var(--display); letter-spacing: 0.02em; }
+.unit .ut { font-size: 14px; color: var(--muted); }
+.unit .task { font: 600 14px/1.2 var(--body); color: var(--fg); }
+.kind { font: 700 12px/1 var(--display); letter-spacing: 0.08em; padding: 4px 6px; border-radius: 4px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.kind.ALS { color: var(--crit); border-color: var(--crit); }
+.kind.SUP, .kind.MCI { color: var(--warn); border-color: var(--warn); }
+
+/* hospitals */
+.hosp { gap: 10px; }
+.hosp h3 { margin: 0; font: 700 21px/1.1 var(--display); }
+.hosp .sub { color: var(--muted); font-size: 14px; }
+.caps { display: flex; flex-wrap: wrap; gap: 5px; }
+.cap { font: 600 13px/1 var(--display); letter-spacing: 0.04em; padding: 5px 7px; border-radius: 5px; background: var(--raised); color: var(--fg); }
+.cap.trauma { background: var(--crit); color: var(--accent-ink); }
+:root[data-mode="day"] .cap.trauma { color: #FFFFFF; }
+.capgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.capcell { border-radius: 10px; padding: 8px; border: 2px solid var(--c); display: flex; flex-direction: column; gap: 2px; }
+.capcell .v { font: 700 22px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.capcell.over { background: color-mix(in srgb, var(--crit) 22%, var(--surface)); }
+.note { font-size: 14px; color: var(--faint); }
+.note b { color: var(--muted); }
+.ok-t { color: var(--ok); } .warn-t { color: var(--warn); } .crit-t { color: var(--crit); }
+
+/* ICS chart */
+.ics { display: flex; flex-direction: column; gap: 14px; }
+.tier { display: flex; flex-direction: column; gap: 8px; }
+.tier > .lbl { padding-left: 2px; }
+.tier-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.pos {
+  display: flex; flex-direction: column; gap: 4px; text-align: left;
+  padding: 10px 12px; border-radius: 10px; min-height: 64px;
+  background: var(--surface); border: 1.5px solid var(--line);
+}
+.pos .pn { font: 700 14px/1.1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.pos .pw { font: 600 18px/1.2 var(--body); }
+.pos.vacant { border-style: dashed; }
+.pos.vacant .pw { color: var(--faint); font-weight: 500; font-size: 15px; }
+.pos.lead { border-color: var(--accent); }
+.branch { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.branch-col { display: flex; flex-direction: column; gap: 8px; }
+.branch-col .subs { display: flex; flex-direction: column; gap: 8px; padding-left: 12px; border-left: 2px solid var(--line); }
+
+/* radio scripts */
+.script { font: 500 19px/1.5 var(--body); margin: 0; white-space: pre-wrap; }
+.script b { font-family: var(--display); letter-spacing: 0.06em; color: var(--accent); }
+.script .k { display: inline-block; min-width: 1.4em; font: 700 19px/1 var(--display); color: var(--accent); }
+
+/* log */
+.log { display: flex; flex-direction: column; }
+.log .entry { display: grid; grid-template-columns: 64px 92px 1fr; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); align-items: baseline; }
+.log .entry:last-child { border-bottom: 0; }
+.log .lt { font: 700 15px/1 var(--mono); }
+.log .lk { font: 700 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.log .lx { min-width: 0; }
+.composer { display: flex; gap: 8px; }
+.composer input { flex: 1; min-width: 0; }
+
+/* inputs */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > .lbl { padding-left: 2px; }
+input[type="text"], input[type="search"], input[type="number"], input:not([type]), textarea {
+  min-height: var(--tap); box-sizing: border-box; padding: 0 14px; border-radius: 10px;
+  border: 1.5px solid var(--line); background: var(--bg); font-size: 18px; width: 100%;
+}
+textarea { padding: 12px 14px; min-height: 96px; resize: vertical; }
+.opt {
+  min-height: 52px; padding: 0 16px; border-radius: 10px;
+  background: var(--raised); border: 1.5px solid var(--line);
+  font: 700 17px/1.1 var(--display); letter-spacing: 0.03em; text-align: left;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.opt[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.opt[aria-pressed="true"] .kind { background: transparent; color: inherit; border-color: currentColor; }
+.opt small { font: 500 13px/1.2 var(--body); opacity: 0.85; letter-spacing: 0; }
+.opt.tall { min-height: 64px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; padding: 8px 14px; }
+.opt.cat-R[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: var(--red-ink); }
+.opt.cat-Y[aria-pressed="true"] { background: var(--yellow); border-color: var(--yellow); color: var(--yellow-ink); }
+.opt.cat-G[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: var(--green-ink); }
+.opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.opt-grid.wide { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.stepper { display: inline-flex; align-items: center; gap: 10px; }
+.stepper button { width: 52px; height: 52px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--raised); font: 700 26px/1 var(--display); }
+.stepper .v { min-width: 2.2em; text-align: center; font: 700 26px/1 var(--mono); }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--tap); }
+
+/* sheet */
+.sheet-wrap {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--scrim);
+  padding: 16px;
+}
+.sheet {
+  width: min(760px, 100%); max-height: 100%; box-sizing: border-box; overflow: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+  padding: 18px 20px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.sheet-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: -18px; background: var(--surface); padding-block: 4px; z-index: 1; }
+.sheet-h h2 { margin: 0; font: 700 26px/1.1 var(--display); }
+.sheet-f { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; position: sticky; bottom: -20px; background: var(--surface); padding-block: 10px; }
+.close { width: 52px; height: 52px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--raised); display: grid; place-items: center; }
+.close svg { width: 24px; height: 24px; }
+
+/* toast */
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 30; display: flex; align-items: center; gap: 14px;
+  max-width: calc(100% - 32px); box-sizing: border-box;
+  padding: 10px 10px 10px 18px; border-radius: 12px;
+  background: var(--fg); color: var(--bg); font-weight: 600;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.35);
+}
+.toast button { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-ink); font: 700 17px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
+.toast span { min-width: 0; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1180px) {
+  .board { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: auto; }
+  .board .col { overflow: visible; }
+  .board .col.c3 { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .lanes { grid-template-columns: repeat(5, minmax(170px, 1fr)); }
+}
+@media (max-width: 900px) {
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .branch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "head" "main" "rail";
+    gap: 10px;
+  }
+  .rail { flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 2px; }
+  .rail button { flex: 1 0 58px; min-height: 58px; font-size: 11px; gap: 3px; }
+  .rail button svg { width: 24px; height: 24px; }
+  .rail .spacer { display: none; }
+  .board, .board .col.c3 { grid-template-columns: minmax(0, 1fr); }
+  .inc h1 { font-size: 23px; }
+  .clocks { width: 100%; }
+  .clock, .par, .iconbtn { flex: 1 1 0; min-width: 0; padding: 8px; }
+  .clock .v, .par .v { font-size: 20px; }
+  .tri-count { font-size: 46px; }
+  .tri-btns button { width: 56px; height: 64px; }
+  .branch { grid-template-columns: minmax(0, 1fr); }
+  .log .entry { grid-template-columns: 56px 1fr; }
+  .log .lk { display: none; }
+  .sheet-wrap { align-items: flex-end; padding: 0; }
+  .sheet { border-radius: 18px 18px 0 0; max-height: 92%; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .par.over { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { filter: brightness(1.25); } }
+  .sheet { animation: rise 0.16s ease-out; }
+  @keyframes rise { from { transform: translateY(16px); opacity: 0.6; } }
+}
+</style>
+
+<div class="app" id="app"></div>
+<div id="sheet-root"></div>
+<div id="toast-root"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   Reference data. Everything an agency would configure lives up here.
+   ===================================================================== */
+
+const CATS = [
+  { k: 'R', color: 'Red',    name: 'Immediate' },
+  { k: 'Y', color: 'Yellow', name: 'Delayed' },
+  { k: 'G', color: 'Green',  name: 'Minor' },
+  { k: 'B', color: 'Black',  name: 'Expectant / Deceased' },
+];
+const TX_CATS = ['R', 'Y', 'G'];
+
+/* MCI levels: filled in from research below (MCI_LEVELS). */
+const MCI_LEVELS = [];
+
+const HOSPITALS = [];
+
+const MUNICIPALITIES = ['Aberdeen','Allenhurst','Allentown','Asbury Park','Atlantic Highlands','Avon-by-the-Sea','Belmar','Bradley Beach','Brielle','Colts Neck','Deal','Eatontown','Englishtown','Fair Haven','Farmingdale','Freehold Borough','Freehold Township','Hazlet','Highlands','Holmdel','Howell','Interlaken','Keansburg','Keyport','Lake Como','Little Silver','Loch Arbour','Long Branch','Manalapan','Manasquan','Marlboro','Matawan','Middletown','Millstone','Monmouth Beach','Neptune City','Neptune Township','Ocean Township','Oceanport','Red Bank','Roosevelt','Rumson','Sea Bright','Sea Girt','Shrewsbury Borough','Shrewsbury Township','Spring Lake','Spring Lake Heights','Tinton Falls','Union Beach','Upper Freehold','Wall','West Long Branch'];
+
+const INCIDENT_TYPES = ['Motor vehicle crash','Bus crash','Fire / smoke','Hazmat / CO','Active threat','Crowd / event','Structural collapse','Water / beach rescue','Rail incident','Storm / flooding','Other'];
+
+const HAZARDS = ['Traffic','Fuel spill','Fire / smoke','Downed wires','Hazmat','Unstable vehicle','Violence','Crowd','Water','Weather','Darkness'];
+
+const UNIT_KINDS = [
+  { k: 'BLS',  name: 'BLS ambulance' },
+  { k: 'ALS',  name: 'ALS / medic' },
+  { k: 'SUP',  name: 'EMS supervisor' },
+  { k: 'MCI',  name: 'MCI unit / trailer' },
+  { k: 'BUS',  name: 'Bus' },
+  { k: 'AIR',  name: 'Air medical' },
+  { k: 'FIRE', name: 'Fire' },
+  { k: 'PD',   name: 'Police' },
+  { k: 'OEM',  name: 'OEM' },
+];
+const TRANSPORT_KINDS = ['BLS', 'ALS', 'BUS', 'AIR'];
+
+const STATUSES = [
+  { k: 'enroute',      name: 'En route' },
+  { k: 'staged',       name: 'Staged' },
+  { k: 'onscene',      name: 'On scene' },
+  { k: 'transporting', name: 'Transporting' },
+  { k: 'released',     name: 'Released' },
+];
+
+const TASKS = ['Command','Triage','Treatment · Red','Treatment · Yellow','Treatment · Green','Transport','Loading','Extrication','Staging','Rehab','LZ','Safety'];
+
+const REQUEST_CATALOG = [];
+
+const ICS_POSITIONS = [
+  { id: 'uc-ems',   tier: 'command', label: 'EMS Command' },
+  { id: 'uc-fire',  tier: 'command', label: 'Fire Command' },
+  { id: 'uc-pd',    tier: 'command', label: 'Police Command' },
+  { id: 'safety',   tier: 'staff',   label: 'Safety Officer' },
+  { id: 'pio',      tier: 'staff',   label: 'Public Information' },
+  { id: 'liaison',  tier: 'staff',   label: 'Liaison · OEM / hospitals' },
+  { id: 'staging',  tier: 'ops',     label: 'Staging Area Manager' },
+  { id: 'medgrp',   tier: 'ops',     label: 'Medical Group Supervisor', lead: true },
+  { id: 'rehab',    tier: 'ops',     label: 'Rehab' },
+  { id: 'triage',   tier: 'med',     label: 'Triage Unit Leader' },
+  { id: 'treat',    tier: 'med',     label: 'Treatment Unit Leader' },
+  { id: 'tx-red',   tier: 'sub', parent: 'treat', label: 'Red Treatment' },
+  { id: 'tx-yel',   tier: 'sub', parent: 'treat', label: 'Yellow Treatment' },
+  { id: 'tx-grn',   tier: 'sub', parent: 'treat', label: 'Green Treatment' },
+  { id: 'transport',tier: 'med',     label: 'Transport Unit Leader' },
+  { id: 'medcom',   tier: 'sub', parent: 'transport', label: 'Medical Communications' },
+  { id: 'amb-stg',  tier: 'sub', parent: 'transport', label: 'Ambulance Staging' },
+  { id: 'morgue',   tier: 'med',     label: 'Morgue' },
+];
+
+const BENCHMARKS = [
+  { id: 'command',   label: 'Command established' },
+  { id: 'sizeup',    label: 'Size-up given to dispatch' },
+  { id: 'mci',       label: 'MCI declared · county notified' },
+  { id: 'staging',   label: 'Staging established' },
+  { id: 'hospitals', label: 'Hospitals notified' },
+  { id: 'treatment', label: 'Treatment area set up' },
+  { id: 'triage',    label: 'Primary triage complete' },
+  { id: 'reds',      label: 'All Immediate transported' },
+  { id: 'allpts',    label: 'All patients transported' },
+  { id: 'clear',     label: 'Scene clear · units released' },
+];
+
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+const KEY = 'scene-command-v1';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const now = () => Date.now();
+const pad = n => String(n).padStart(2, '0');
+const hhmm = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const hhmmss = t => { const d = new Date(t); return hhmm(t) + ':' + pad(d.getSeconds()); };
+const dur = ms => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return h ? `${h}:${pad(m)}:${pad(x)}` : `${pad(m)}:${pad(x)}`;
+};
+const mins = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${pad(m % 60)}`; };
+const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
+const cat = k => CATS.find(c => c.k === k);
+const hosp = id => HOSPITALS.find(h => h.id === id);
+const unitById = id => S.units.find(u => u.id === id);
+const statusName = k => (STATUSES.find(s => s.k === k) || {}).name || k;
+
+const ICON = {
+  board: '<rect x="3" y="3" width="7.5" height="9" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.5"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.5"/><rect x="3" y="15" width="7.5" height="6" rx="1.5"/>',
+  amb: '<path d="M2.5 6.5h11v10h-11z"/><path d="M13.5 9.5h4.2l3.3 3.6v3.4h-7.5"/><circle cx="6.5" cy="17.5" r="1.9"/><circle cx="17" cy="17.5" r="1.9"/><path d="M8 9v4.5M5.75 11.25h4.5"/>',
+  units: '<circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 20c.8-3.6 3-5.4 5.5-5.4s4.7 1.8 5.5 5.4"/><path d="M14 15.2c.8-.3 1.6-.4 2.5-.4 2.3 0 4.2 1.6 5 5.2"/>',
+  hosp: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 6.5v6M9 9.5h6M9.5 21v-4.5h5V21"/>',
+  ics: '<rect x="8.5" y="2.5" width="7" height="4.5" rx="1"/><rect x="2.5" y="16.5" width="7" height="4.5" rx="1"/><rect x="14.5" y="16.5" width="7" height="4.5" rx="1"/><path d="M12 7v4.5M6 16.5v-5h12v5"/>',
+  radio: '<rect x="5.5" y="8" width="13" height="13.5" rx="2"/><path d="M9 8l7-5.5"/><path d="M9 13h6M9 16.5h6"/>',
+  log: '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M3.5 6h1.5M3.5 12h1.5M3.5 18h1.5"/>',
+  menu: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>',
+};
+const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
+
+/* =====================================================================
+   State
+   ===================================================================== */
+let S;                   // incident state, persisted on this device
+let UI = { view: 'board', sheet: null, form: {}, logFilter: 'all' };
+let undoSnap = null;
+let toastTimer = null;
+
+function blankState(opts = {}) {
+  const t = now();
+  return {
+    v: 1,
+    sample: false,
+    incident: {
+      type: opts.type || 'Motor vehicle crash',
+      location: opts.location || '',
+      municipality: opts.municipality || '',
+      commandName: opts.commandName || '',
+      ic: opts.ic || '',
+      agency: opts.agency || '',
+      staging: opts.staging || '',
+      access: opts.access || '',
+      hazards: opts.hazards || [],
+      lz: opts.lz || 'Not requested',
+      lzLocation: '',
+      est: opts.est ?? 0,
+      mciLevel: 0,
+      dispatchAt: t,
+    },
+    triage: { R: 0, Y: 0, G: 0, B: 0 },
+    transports: [],
+    units: [],
+    requests: [],
+    hospitals: {},
+    ics: {},
+    bench: { command: t },
+    par: { interval: 15, last: t },
+    log: [{ t, kind: 'bench', text: 'Command established' }],
+    mode: (S && S.mode) || 'night',
+  };
+}
+
+function sampleState() {
+  const T0 = now() - 22 * 60000 - 14000;      // dispatched 22 min ago
+  const at = (m, s = 0) => T0 + m * 60000 + s * 1000;
+  const st = blankState();
+  st.sample = true;
+  st.mode = (S && S.mode) || 'night';
+  Object.assign(st.incident, {
+    type: 'Bus crash',
+    location: 'Route 35 & Deal Road',
+    municipality: 'Ocean Township',
+    commandName: 'Deal Road Command',
+    ic: 'Lt. R. Ramos',
+    agency: 'Your squad',
+    staging: 'Seaview Square lot, Rt 35 northbound',
+    access: 'Enter from Deal Road eastbound; Rt 35 SB closed at the scene',
+    hazards: ['Traffic', 'Fuel spill', 'Unstable vehicle'],
+    lz: 'Standby',
+    lzLocation: 'Joe Palaia Park ballfield (proposed)',
+    est: 20,
+    mciLevel: 2,
+    dispatchAt: T0,
+  });
+  st.triage = { R: 4, Y: 6, G: 8, B: 1 };
+
+  st.units = [
+    U('EMS 41', 'SUP', 'Your squad', 1, 'onscene', 'Command', at(3, 5)),
+    U('A-4111', 'BLS', 'Your squad', 2, 'onscene', 'Triage', at(3, 5)),
+    U('A-4112', 'BLS', 'Your squad', 2, 'transporting', 'To JSUMC', at(12, 40)),
+    U('M-7',    'ALS', 'ALS provider', 2, 'transporting', 'To JSUMC', at(14, 10)),
+    U('M-12',   'ALS', 'ALS provider', 2, 'onscene', 'Treatment · Red', at(9, 30)),
+    U('A-3511', 'BLS', 'Mutual aid', 2, 'onscene', 'Treatment · Yellow', at(8, 0)),
+    U('A-3711', 'BLS', 'Mutual aid', 3, 'transporting', 'To Monmouth Medical', at(17, 20)),
+    U('A-2611', 'BLS', 'Mutual aid', 2, 'onscene', 'Treatment · Green', at(10, 45)),
+    U('A-2311', 'BLS', 'Mutual aid', 2, 'staged', '', at(15, 50)),
+    U('A-5211', 'BLS', 'Mutual aid', 2, 'staged', '', at(19, 5)),
+    U('A-4711', 'BLS', 'Mutual aid', 2, 'enroute', '', at(16, 0)),
+    U('M-3',    'ALS', 'ALS provider', 2, 'enroute', '', at(16, 0)),
+    U('MCI-1',  'MCI', 'County', 2, 'enroute', '', at(6, 0)),
+    U('E-41',   'FIRE', 'Fire', 4, 'onscene', 'Extrication', at(4, 30)),
+    U('PD 12',  'PD', 'Police', 1, 'onscene', 'Traffic', at(2, 50)),
+  ];
+  const uidOf = name => st.units.find(u => u.name === name).id;
+
+  st.transports = [
+    { id: uid(), cat: 'R', n: 1, tags: '402117', unit: uidOf('A-4112'), hosp: 'jsumc', t: at(15, 20) },
+    { id: uid(), cat: 'R', n: 1, tags: '402121', unit: uidOf('M-7'),    hosp: 'jsumc', t: at(17, 45) },
+    { id: uid(), cat: 'Y', n: 1, tags: '402130', unit: uidOf('A-3711'), hosp: 'mmc',   t: at(20, 5) },
+  ];
+
+  st.requests = [
+    { id: uid(), what: 'BLS ambulances', qty: 6, status: 'enroute', t: at(4, 40), note: '4 arrived' },
+    { id: uid(), what: 'ALS units', qty: 2, status: 'enroute', t: at(4, 40), note: '' },
+    { id: uid(), what: 'County MCI unit', qty: 1, status: 'enroute', t: at(5, 10), note: '' },
+    { id: uid(), what: 'Bus for walking wounded', qty: 1, status: 'requested', t: at(18, 30), note: '8 Green' },
+    { id: uid(), what: 'Air medical', qty: 1, status: 'ack', t: at(13, 0), note: 'Standby, no launch yet' },
+  ];
+
+  st.ics = {
+    'uc-ems': { who: 'Lt. R. Ramos · EMS 41', t: at(3, 10) },
+    'uc-fire': { who: 'Chief 41', t: at(4, 30) },
+    'uc-pd': { who: 'Sgt. D. Lee · PD 12', t: at(6, 0) },
+    'triage': { who: 'A-4111 crew', t: at(3, 30) },
+    'treat': { who: 'Medic M-12', t: at(9, 40) },
+    'tx-yel': { who: 'A-3511 crew', t: at(10, 0) },
+    'tx-grn': { who: 'A-2611 crew', t: at(11, 0) },
+    'transport': { who: 'EMT K. Shah · A-4111', t: at(12, 0) },
+    'staging': { who: 'A-2311 crew', t: at(16, 0) },
+  };
+
+  st.bench = {
+    command: at(3, 10), sizeup: at(3, 40), mci: at(4, 30), staging: at(6, 5),
+    hospitals: at(9, 30), treatment: at(11, 0), triage: at(14, 20),
+  };
+  st.par = { interval: 15, last: at(10, 0) };
+
+  st.log = [
+    L(at(0, 0), 'note', 'Dispatched: bus vs. box truck, Rt 35 & Deal Rd, Ocean Twp'),
+    L(at(2, 50), 'units', 'PD 12 on scene'),
+    L(at(3, 5), 'units', 'EMS 41, A-4111 on scene'),
+    L(at(3, 10), 'bench', 'Command established: Deal Road Command, Lt. R. Ramos'),
+    L(at(3, 40), 'bench', 'Size-up given to dispatch'),
+    L(at(4, 30), 'bench', 'MCI declared, Level 2. County notified'),
+    L(at(4, 40), 'request', 'Requested 6 × BLS ambulances, 2 × ALS units'),
+    L(at(5, 10), 'request', 'Requested County MCI unit'),
+    L(at(6, 5), 'bench', 'Staging established: Seaview Square lot'),
+    L(at(9, 30), 'bench', 'Hospitals notified via MCI alert'),
+    L(at(10, 0), 'par', 'PAR complete: 8 of 8 units accounted for'),
+    L(at(11, 0), 'bench', 'Treatment area set up, north side of lot'),
+    L(at(13, 0), 'request', 'Air medical placed on standby'),
+    L(at(14, 20), 'bench', 'Primary triage complete: 19 patients'),
+    L(at(15, 20), 'transport', 'A-4112 departed: 1 Immediate → JSUMC (tag 402117)'),
+    L(at(17, 45), 'transport', 'M-7 departed: 1 Immediate → JSUMC (tag 402121)'),
+    L(at(18, 30), 'request', 'Requested bus for 8 Green patients'),
+    L(at(20, 5), 'transport', 'A-3711 departed: 1 Delayed → Monmouth Medical (tag 402130)'),
+  ];
+  return st;
+
+  function U(name, kind, agency, crew, status, task, t) { return { id: uid(), name, kind, agency, crew, status, task, t }; }
+  function L(t, kind, text) { return { t, kind, text }; }
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && s.v === 1) return s;
+    }
+  } catch (e) { /* storage unavailable: run in memory */ }
+  return null;
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* in-memory only */ }
+}
+function loadUi() {
+  try { const v = localStorage.getItem(KEY + ':view'); if (v) UI.view = v; } catch (e) {}
+}
+function saveUi() {
+  try { localStorage.setItem(KEY + ':view', UI.view); } catch (e) {}
+}
+
+/* =====================================================================
+   Derived numbers
+   ===================================================================== */
+const sentCat = k => S.transports.filter(t => t.cat === k).reduce((a, t) => a + t.n, 0);
+const remaining = k => Math.max(0, S.triage[k] - sentCat(k));
+const totalPts = () => S.triage.R + S.triage.Y + S.triage.G + S.triage.B;
+const totalSent = () => S.transports.reduce((a, t) => a + t.n, 0);
+const remainingTx = () => TX_CATS.reduce((a, k) => a + remaining(k), 0);
+const hospSent = (id, k) => S.transports.filter(t => t.hosp === id && (!k || t.cat === k)).reduce((a, t) => a + t.n, 0);
+const hospCap = id => (S.hospitals[id] && S.hospitals[id].cap) || null;
+const unitsBy = st => S.units.filter(u => u.status === st);
+const openRequests = () => S.requests.filter(r => r.status !== 'onscene' && r.status !== 'cancelled');
+
+function suggestedLevel() {
+  const n = Math.max(totalPts(), S.incident.est || 0);
+  let lvl = 0;
+  for (const L of MCI_LEVELS) if (n >= L.min) lvl = L.level;
+  return lvl;
+}
+function levelLabel(lvl) {
+  const L = MCI_LEVELS.find(x => x.level === lvl);
+  return L ? L.label : '';
+}
+
+function benchReady(id) {
+  if (S.bench[id]) return false;
+  if (id === 'reds') return S.triage.R > 0 && remaining('R') === 0;
+  if (id === 'allpts') return totalPts() > 0 && remainingTx() === 0;
+  if (id === 'mci') return suggestedLevel() > 0;
+  return false;
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+const app = document.getElementById('app');
+const sheetRoot = document.getElementById('sheet-root');
+const toastRoot = document.getElementById('toast-root');
+
+function render() {
+  const scrolls = {};
+  document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = [el.scrollTop, el.scrollLeft]; });
+  document.documentElement.dataset.mode = S.mode;
+
+  app.innerHTML = header() + rail() + `<main class="main" data-scroll="main-${UI.view}">${view()}</main>`;
+  sheetRoot.innerHTML = UI.sheet ? sheetHtml() : '';
+
+  document.querySelectorAll('[data-scroll]').forEach(el => {
+    const v = scrolls[el.dataset.scroll];
+    if (v) { el.scrollTop = v[0]; el.scrollLeft = v[1]; }
+  });
+  tick();
+}
+
+function header() {
+  const I = S.incident;
+  const lvl = I.mciLevel, sug = suggestedLevel();
+  const mci = lvl
+    ? `<button class="tag mci" data-act="sheet" data-arg="mci">MCI · ${esc(levelLabel(lvl))}</button>`
+    : `<button class="tag" data-act="sheet" data-arg="mci">No MCI declared</button>`;
+  const suggest = sug > lvl ? `<button class="tag suggest" data-act="sheet" data-arg="mci">Count suggests ${esc(levelLabel(sug))}</button>` : '';
+  const sample = S.sample ? `<span class="tag sample">Sample incident</span>` : '';
+  const title = [I.type, I.location].filter(Boolean).join(' · ') || 'New incident';
+  const sub = [
+    I.municipality && esc(I.municipality),
+    I.commandName && `<b>${esc(I.commandName)}</b>`,
+    I.ic && `EMS Command: ${esc(I.ic)}`,
+  ].filter(Boolean).join(' · ');
+  return `<header class="head">
+    <div class="inc">
+      <div class="inc-top">${mci}${suggest}${sample}</div>
+      <h1><button class="titlebtn" data-act="sheet" data-arg="incident">${esc(title)}</button></h1>
+      <div class="inc-sub">${sub || 'Tap the title to fill in incident details'}</div>
+    </div>
+    <div class="clocks">
+      <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
+      <div class="clock"><span class="lbl">Since dispatch</span><span class="v" data-clock="elapsed">--:--</span></div>
+      <button class="par" id="par-btn" data-act="sheet" data-arg="par"><span class="lbl" data-clock="par-lbl">PAR due</span><span class="v" data-clock="par">--:--</span></button>
+      <button class="iconbtn" data-act="mode" aria-label="Switch to ${S.mode === 'day' ? 'night' : 'day'} mode">${icon(S.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${S.mode === 'day' ? 'Night' : 'Day'}</span></button>
+    </div>
+  </header>`;
+}
+
+const VIEWS = [
+  { id: 'board',     label: 'Board',     icon: 'board' },
+  { id: 'transport', label: 'Transport', icon: 'amb' },
+  { id: 'units',     label: 'Units',     icon: 'units' },
+  { id: 'hospitals', label: 'Hospitals', icon: 'hosp' },
+  { id: 'ics',       label: 'ICS',       icon: 'ics' },
+  { id: 'radio',     label: 'Radio',     icon: 'radio' },
+  { id: 'log',       label: 'Log',       icon: 'log' },
+];
+function rail() {
+  const badge = id => {
+    if (id === 'transport') { const r = remaining('R'); return r ? `<span class="badge" aria-label="${r} Immediate awaiting transport">${r}</span>` : ''; }
+    if (id === 'units') { const n = openRequests().filter(r => r.status === 'requested').length; return n ? `<span class="badge" aria-label="${n} requests not acknowledged">${n}</span>` : ''; }
+    return '';
+  };
+  return `<nav class="rail" aria-label="Views">
+    ${VIEWS.map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
+    <span class="spacer"></span>
+    <button data-act="sheet" data-arg="menu">${icon('menu')}Menu</button>
+  </nav>`;
+}
+
+function view() {
+  switch (UI.view) {
+    case 'transport': return transportView();
+    case 'units': return unitsView();
+    case 'hospitals': return hospitalsView();
+    case 'ics': return icsView();
+    case 'radio': return radioView();
+    case 'log': return logView();
+    default: return boardView();
+  }
+}
+
+/* ---------- Board ---------- */
+function boardView() {
+  return `<div class="board">
+    <div class="col c1" data-scroll="b1">${triagePanel()}</div>
+    <div class="col c2" data-scroll="b2">${scenePanel()}${benchPanel()}</div>
+    <div class="col c3" data-scroll="b3">${transportSummary()}${resourcesPanel()}</div>
+  </div>`;
+}
+
+function triagePanel() {
+  const n = totalPts(), est = S.incident.est || 0;
+  const denom = Math.max(n, est, 1);
+  const seg = CATS.map(c => `<span style="width:${(S.triage[c.k] / denom) * 100}%;background:var(--${c.k === 'R' ? 'red' : c.k === 'Y' ? 'yellow' : c.k === 'G' ? 'green' : 'black-edge'})"></span>`).join('');
+  return `<section class="panel" aria-label="Triage counts">
+    <div class="ph"><h2>Triage</h2><span class="meta">START</span></div>
+    <div class="tri-sum">
+      <div class="tri-total num">${n}<small>${n === 1 ? 'patient' : 'patients'}</small></div>
+      <div class="est">Est. <button data-act="est" data-arg="-1" aria-label="Lower estimate">−</button><span class="num" style="min-width:2ch;text-align:center;font-weight:700;color:var(--fg)">${est}</span><button data-act="est" data-arg="1" aria-label="Raise estimate">+</button></div>
+    </div>
+    <div class="bar" role="img" aria-label="${n} of an estimated ${est} triaged">${seg}</div>
+    ${CATS.map(c => triRow(c)).join('')}
+  </section>`;
+}
+function triRow(c) {
+  const count = S.triage[c.k];
+  const sub = c.k === 'B'
+    ? (count ? 'Leave in place unless directed' : 'None')
+    : `${sentCat(c.k)} transported · <b>${remaining(c.k)} on scene</b>`;
+  return `<div class="tri tri-${c.k}">
+    <div>
+      <div class="tri-head"><span class="swatch">${c.color}</span><span class="tri-name">${c.name}</span></div>
+      <div class="tri-count num">${count}</div>
+      <div class="tri-sub">${sub}</div>
+    </div>
+    <div class="tri-btns">
+      <button data-act="tri" data-arg="${c.k}-" aria-label="Remove one ${c.name}">−</button>
+      <button class="plus" data-act="tri" data-arg="${c.k}+" aria-label="Add one ${c.name}">+</button>
+    </div>
+  </div>`;
+}
+
+function scenePanel() {
+  const I = S.incident;
+  return `<section class="panel" aria-label="Scene">
+    <div class="ph"><h2>Scene</h2><button class="btn small" data-act="sheet" data-arg="incident">Edit</button></div>
+    <dl class="kv">
+      <dt>Staging</dt><dd>${esc(I.staging) || '<span class="note">Not set</span>'}</dd>
+      <dt>Access</dt><dd>${esc(I.access) || '<span class="note">Not set</span>'}</dd>
+      <dt>Air / LZ</dt><dd>${esc(I.lz)}${I.lzLocation ? ` · ${esc(I.lzLocation)}` : ''}</dd>
+      <dt>Hazards</dt><dd>${I.hazards.length ? `<div class="chips">${I.hazards.map(h => `<span class="hz">${esc(h)}</span>`).join('')}</div>` : '<span class="note">None noted</span>'}</dd>
+    </dl>
+  </section>`;
+}
+
+function benchPanel() {
+  const T0 = S.incident.dispatchAt;
+  const done = BENCHMARKS.filter(b => S.bench[b.id]).length;
+  return `<section class="panel" aria-label="Benchmarks">
+    <div class="ph"><h2>Benchmarks</h2><span class="meta">${done} of ${BENCHMARKS.length} · tap to stamp</span></div>
+    <div class="bench">
+      ${BENCHMARKS.map(b => {
+        const t = S.bench[b.id];
+        const cls = t ? 'done' : benchReady(b.id) ? 'ready' : 'todo';
+        const right = t
+          ? `<span class="b-time">${hhmm(t)}<small>+${dur(t - T0)}</small></span>`
+          : cls === 'ready' ? `<span class="b-time warn-t" style="font-family:var(--display);letter-spacing:.06em">READY</span>` : '<span></span>';
+        return `<button class="${cls}" data-act="bench" data-arg="${b.id}" aria-pressed="${t ? 'true' : 'false'}"><span class="tick">${icon('check')}</span><span class="b-label">${b.label}</span>${right}</button>`;
+      }).join('')}
+    </div>
+  </section>`;
+}
+
+function transportSummary() {
+  const recent = S.transports.slice(-4).reverse();
+  return `<section class="panel" aria-label="Transport">
+    <div class="ph"><h2>Awaiting transport</h2><span class="meta">${totalSent()} sent</span></div>
+    <div class="stats">
+      ${TX_CATS.map(k => `<div class="stat ${k}"><span class="lbl">${cat(k).name}</span><span class="v num">${remaining(k)}</span></div>`).join('')}
+    </div>
+    <button class="btn primary block" data-act="sheet" data-arg="transport" ${remainingTx() ? '' : 'disabled'}>${icon('amb')} Log a transport</button>
+    <div class="rows">
+      ${recent.length ? recent.map(txRow).join('') : '<div class="empty">No transports yet</div>'}
+    </div>
+  </section>
+  ${hospLoadPanel()}`;
+}
+function txRow(t) {
+  const u = unitById(t.unit), h = hosp(t.hosp);
+  return `<div class="row c-${t.cat}">
+    <span class="dot ${t.cat}"></span>
+    <div><div class="t1">${esc(u ? u.name : 'Unit')} → ${esc(h ? h.short : t.hosp)}</div><div class="t2">${t.n > 1 ? `${t.n} × ` : ''}${cat(t.cat).name}${t.tags ? ` · tag ${esc(t.tags)}` : ''}</div></div>
+    <span class="r num">${hhmm(t.t)}</span>
+  </div>`;
+}
+
+function hospLoadPanel() {
+  const used = HOSPITALS.filter(h => hospSent(h.id) > 0 || hospCap(h.id));
+  const list = used.length ? used : HOSPITALS.slice(0, 4);
+  return `<section class="panel" aria-label="Hospital load">
+    <div class="ph"><h2>Hospital load</h2><button class="btn small" data-act="view" data-arg="hospitals">All hospitals</button></div>
+    <div>
+      ${list.slice(0, 6).map(h => {
+        const cap = hospCap(h.id);
+        const capTotal = cap ? cap.R + cap.Y + cap.G : 0;
+        const sent = hospSent(h.id);
+        const pct = capTotal ? Math.min(100, (sent / capTotal) * 100) : 0;
+        const full = capTotal && sent >= capTotal;
+        return `<div class="load">
+          <span class="nm">${esc(h.short)} <span class="note">${esc(h.town)}</span></span>
+          <span class="ct">${TX_CATS.map(k => `<span title="${cat(k).name}">${hospSent(h.id, k)}${cap ? '/' + cap[k] : ''}</span>`).join(' · ')}</span>
+          <div class="bar"><span style="width:${pct}%;background:${full ? 'var(--crit)' : 'var(--accent)'}"></span></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="note">Sent / capacity, Red · Yellow · Green. Capacity is what each ED reports back.</div>
+  </section>`;
+}
+
+function resourcesPanel() {
+  const counts = STATUSES.filter(s => s.k !== 'released').map(s => ({ s, n: unitsBy(s.k).length }));
+  const reqs = openRequests();
+  return `<section class="panel" aria-label="Resources">
+    <div class="ph"><h2>Resources</h2><button class="btn small" data-act="view" data-arg="units">Units</button></div>
+    <div class="stats">${counts.map(c => `<div class="stat"><span class="lbl">${c.s.name}</span><span class="v num">${c.n}</span></div>`).join('')}</div>
+    <div class="rows">
+      ${reqs.length ? reqs.map(reqRow).join('') : '<div class="empty">No open requests</div>'}
+    </div>
+    <button class="btn block" data-act="sheet" data-arg="request">${icon('plus')} Request resources</button>
+  </section>`;
+}
+function reqRow(r) {
+  return `<button class="row" data-act="req-next" data-arg="${r.id}" aria-label="${esc(r.what)}, ${statusName(r.status)}. Tap to advance status.">
+    <span class="pill ${r.status}">${reqStatusName(r.status)}</span>
+    <div><div class="t1">${r.qty > 1 ? r.qty + ' × ' : ''}${esc(r.what)}</div><div class="t2">${hhmm(r.t)}${r.note ? ' · ' + esc(r.note) : ''}</div></div>
+    <span class="r note">${mins(now() - r.t)}</span>
+  </button>`;
+}
+const REQ_FLOW = ['requested', 'ack', 'enroute', 'onscene'];
+const reqStatusName = k => ({ requested: 'Requested', ack: 'Acknowledged', enroute: 'En route', onscene: 'On scene', cancelled: 'Cancelled' }[k] || k);
+
+/* ---------- Transport view ---------- */
+function transportView() {
+  const list = S.transports.slice().reverse();
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Transport</h2><button class="btn primary" data-act="sheet" data-arg="transport" ${remainingTx() ? '' : 'disabled'}>${icon('amb')} Log a transport</button></div>
+    <div class="grid2">
+      <section class="panel">
+        <div class="ph"><h2>On scene, awaiting transport</h2><span class="meta">${remainingTx()} patients</span></div>
+        <div class="stats">${TX_CATS.map(k => `<div class="stat ${k}"><span class="lbl">${cat(k).name}</span><span class="v num">${remaining(k)}</span></div>`).join('')}</div>
+        <div class="note">${S.triage.B ? `${plural(S.triage.B, 'patient')} triaged Black, not counted for transport.` : ''}</div>
+        <div class="ph"><h2>Ready to load</h2><span class="meta">Ambulances on scene or staged</span></div>
+        <div class="rows">${readyUnits().length ? readyUnits().map(u => `<button class="row" data-act="tx-with" data-arg="${u.id}" ${remainingTx() ? '' : 'disabled'}><span class="kind ${u.kind}">${u.kind}</span><div><div class="t1">${esc(u.name)}</div><div class="t2">${statusName(u.status)}${u.task ? ' · ' + esc(u.task) : ''}</div></div><span class="r note">Load →</span></button>`).join('') : '<div class="empty">No transport units available. Request more from Units.</div>'}</div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Transport log</h2><span class="meta">${plural(totalSent(), 'patient')} · ${plural(S.transports.length, 'departure')}</span></div>
+        <div class="rows">${list.length ? list.map(txRow).join('') : '<div class="empty">Departures you log appear here with tag number, unit, destination and time.</div>'}</div>
+      </section>
+    </div>
+  </div>`;
+}
+const readyUnits = () => S.units.filter(u => TRANSPORT_KINDS.includes(u.kind) && (u.status === 'onscene' || u.status === 'staged'));
+
+/* ---------- Units view ---------- */
+function unitsView() {
+  const lanes = ['enroute', 'staged', 'onscene', 'transporting', 'released'];
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Units</h2>
+      <button class="btn" data-act="sheet" data-arg="request">${icon('plus')} Request</button>
+      <button class="btn primary" data-act="sheet" data-arg="unit-add">${icon('plus')} Add unit</button></div>
+    <div class="lanes" data-scroll="lanes">
+      ${lanes.map(st => {
+        const us = unitsBy(st);
+        return `<section class="lane"><h3><span>${statusName(st)}</span><span class="num">${us.length}</span></h3>
+          ${us.length ? us.map(u => `<button class="unit" data-act="sheet" data-arg="unit:${u.id}">
+            <span class="u1"><span class="uid">${esc(u.name)}</span><span class="kind ${u.kind}">${u.kind}</span></span>
+            ${u.task ? `<span class="task">${esc(u.task)}</span>` : ''}
+            <span class="ut">${esc(u.agency)}${u.crew ? ` · crew ${u.crew}` : ''} · ${hhmm(u.t)}</span>
+          </button>`).join('') : '<div class="empty">None</div>'}
+        </section>`;
+      }).join('')}
+    </div>
+    <section class="panel">
+      <div class="ph"><h2>Resource requests</h2><span class="meta">Tap a request to move it along: requested → acknowledged → en route → on scene</span></div>
+      <div class="rows">${S.requests.length ? S.requests.slice().reverse().map(reqRow).join('') : '<div class="empty">No requests yet</div>'}</div>
+    </section>
+  </div>`;
+}
+
+/* ---------- Hospitals view ---------- */
+function hospitalsView() {
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Hospitals</h2><span class="note">Tap a hospital to enter the capacity it reports and mark it notified.</span></div>
+    <div class="grid-hosp">
+      ${HOSPITALS.map(h => {
+        const cap = hospCap(h.id), hs = S.hospitals[h.id] || {};
+        return `<button class="panel hosp" data-act="sheet" data-arg="hosp:${h.id}" style="text-align:left">
+          <div><h3>${esc(h.name)}</h3><div class="sub">${esc(h.town)} · ${esc(h.sys)}${h.drive ? ` · ~${h.drive} min` : ''}</div></div>
+          <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
+          <div class="capgrid">${TX_CATS.map(k => {
+            const s = hospSent(h.id, k), c = cap ? cap[k] : null;
+            return `<div class="capcell c-${k} ${c != null && s > c ? 'over' : ''}"><span class="lbl">${cat(k).color}</span><span class="v">${s}${c != null ? `<span class="note">/${c}</span>` : ''}</span></div>`;
+          }).join('')}</div>
+          <div class="note">${hs.notifiedAt ? `<span class="ok-t">Notified ${hhmm(hs.notifiedAt)}</span>` : 'Not notified'}${hs.capAt ? ` · capacity as of ${hhmm(hs.capAt)}` : ' · no capacity reported'}</div>
+        </button>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+/* ---------- ICS view ---------- */
+function icsView() {
+  const pos = (id) => {
+    const p = ICS_POSITIONS.find(x => x.id === id), a = S.ics[id];
+    return `<button class="pos ${a ? '' : 'vacant'} ${p.lead ? 'lead' : ''}" data-act="sheet" data-arg="ics:${id}">
+      <span class="pn">${esc(p.label)}</span>
+      <span class="pw">${a ? esc(a.who) : 'Vacant · Command holds it'}</span>
+    </button>`;
+  };
+  const tier = (label, ids) => `<div class="tier"><span class="lbl">${label}</span><div class="tier-row">${ids.map(pos).join('')}</div></div>`;
+  const med = ICS_POSITIONS.filter(p => p.tier === 'med');
+  const filled = Object.keys(S.ics).length;
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">ICS organization</h2><span class="note">${filled} of ${ICS_POSITIONS.length} positions filled. Tap a box to assign it.</span></div>
+    <div class="ics">
+      ${tier('Unified command', ['uc-ems', 'uc-fire', 'uc-pd'])}
+      ${tier('Command staff', ['safety', 'pio', 'liaison'])}
+      ${tier('Operations', ['staging', 'medgrp', 'rehab'])}
+      <div class="tier"><span class="lbl">Medical group</span>
+        <div class="branch">
+          ${med.map(m => `<div class="branch-col">${pos(m.id)}${ICS_POSITIONS.some(s => s.parent === m.id) ? `<div class="subs">${ICS_POSITIONS.filter(s => s.parent === m.id).map(s => pos(s.id)).join('')}</div>` : ''}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- Radio view ---------- */
+function radioView() {
+  const scripts = radioScripts();
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Radio reports</h2><span class="note">Written from what's on the board. Read them as-is or copy them to a message.</span></div>
+    <div class="grid2">
+      ${scripts.map((s, i) => `<section class="panel">
+        <div class="ph"><h2>${esc(s.title)}</h2><button class="btn small" data-act="copy" data-arg="${i}">${icon('copy')} Copy</button></div>
+        <div class="note">${esc(s.when)}</div>
+        <p class="script" id="script-${i}">${s.html}</p>
+      </section>`).join('')}
+    </div>
+  </div>`;
+}
+
+function listCounts(get, cats = CATS) {
+  const parts = cats.map(c => ({ c, n: get(c.k) })).filter(x => x.n > 0).map(x => `${x.n} ${x.c.name}`);
+  return parts.length ? parts.join(', ') : 'none';
+}
+function radioScripts() {
+  const I = S.incident;
+  const cmd = I.commandName || 'Command';
+  const loc = [I.location, I.municipality].filter(Boolean).join(', ') || '[location]';
+  const n = totalPts();
+  const onScene = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
+  const amb = onScene.filter(u => TRANSPORT_KINDS.includes(u.kind));
+  const reqs = openRequests();
+  const reqText = reqs.length ? reqs.map(r => `${r.qty > 1 ? r.qty + ' ' : ''}${r.what} (${reqStatusName(r.status).toLowerCase()})`).join('; ') : 'nothing further at this time';
+  const counts = n ? `${n} patients: ${listCounts(k => S.triage[k])}` : `estimated ${I.est || 'unknown number of'} patients, triage under way`;
+  const mciLine = I.mciLevel ? `${cmd} is declaring a mass casualty incident, ${levelLabel(I.mciLevel)}.` : `No MCI declared at this time.`;
+
+  const methane = [
+    ['M', 'Major incident', mciLine],
+    ['E', 'Exact location', `${loc}.`],
+    ['T', 'Type', `${I.type}.`],
+    ['H', 'Hazards', I.hazards.length ? `${I.hazards.join(', ')}.` : 'None noted.'],
+    ['A', 'Access', [I.access, I.staging && `Staging at ${I.staging}`].filter(Boolean).join('. ') + '.'],
+    ['N', 'Number of casualties', `${counts}.`],
+    ['E', 'Emergency services', `On scene: ${amb.length} transport units, ${S.units.filter(u => u.kind === 'FIRE' && u.status === 'onscene').length ? 'Fire, ' : ''}${S.units.filter(u => u.kind === 'PD' && u.status === 'onscene').length ? 'Police. ' : ''}Requesting: ${reqText}.`],
+  ];
+
+  const sentList = listCounts(sentCat, CATS.filter(c => c.k !== 'B'));
+  const can = [
+    ['C', 'Conditions', `${counts}. ${I.hazards.length ? 'Hazards: ' + I.hazards.join(', ') + '.' : ''}`],
+    ['A', 'Actions', `${BENCHMARKS.filter(b => S.bench[b.id]).slice(-3).map(b => b.label + ' ' + hhmm(S.bench[b.id])).join('; ')}. Transported ${totalSent()} (${sentList}). Remaining on scene: ${listCounts(remaining, CATS.filter(c => c.k !== 'B'))}.`],
+    ['N', 'Needs', `${reqText}.`],
+  ];
+
+  const hospLine = `This is ${cmd}. We have an MCI at ${loc}, ${I.type.toLowerCase()}. ${counts}. First patients are ${totalSent() ? 'already en route' : 'about to leave'}. How many Red, Yellow and Green can you accept right now? Our transport officer will call each unit in with a tag number.`;
+
+  const handoff = `${cmd} · ${loc}\n${I.type}. Dispatched ${hhmm(I.dispatchAt)}, ${mins(now() - I.dispatchAt)} ago.\nEMS Command: ${I.ic || 'unassigned'}. ${I.mciLevel ? 'MCI ' + levelLabel(I.mciLevel) + '.' : 'No MCI declared.'}\nPatients: ${counts}. Transported ${totalSent()}; ${remainingTx()} awaiting transport.\nPositions: ${ICS_POSITIONS.filter(p => S.ics[p.id]).map(p => p.label + ' – ' + S.ics[p.id].who).join('; ') || 'none assigned'}.\nUnits: ${S.units.filter(u => u.status !== 'released').length} assigned (${unitsBy('onscene').length} on scene, ${unitsBy('staged').length} staged, ${unitsBy('enroute').length} en route, ${unitsBy('transporting').length} transporting).\nOpen requests: ${reqText}.\nStaging: ${I.staging || 'not set'}. Hazards: ${I.hazards.join(', ') || 'none noted'}.`;
+
+  const fmt = rows => rows.map(([k, label, text]) => `<span class="k">${k}</span><b>${esc(label.toUpperCase())}</b> ${esc(text)}`).join('\n');
+  const plain = rows => rows.map(([k, label, text]) => `${label}: ${text}`).join('\n');
+
+  return [
+    { title: 'Initial report · METHANE', when: 'First arriving officer to dispatch. Re-send if the picture changes a lot.', html: fmt(methane), text: plain(methane) },
+    { title: 'Progress report · CAN', when: 'Every 10 to 15 minutes, or when asked for an update.', html: fmt(can), text: plain(can) },
+    { title: 'Hospital MCI notification', when: 'Medical Communications to each receiving ED.', html: esc(hospLine), text: hospLine },
+    { title: 'Command transfer briefing', when: 'Read to the officer taking over command, or paste into the after-action file.', html: esc(handoff), text: handoff },
+  ];
+}
+
+/* ---------- Log view ---------- */
+const LOG_KINDS = [
+  { k: 'all', name: 'All' }, { k: 'triage', name: 'Triage' }, { k: 'transport', name: 'Transport' }, { k: 'units', name: 'Units' },
+  { k: 'request', name: 'Requests' }, { k: 'bench', name: 'Benchmarks' }, { k: 'par', name: 'PAR' }, { k: 'note', name: 'Notes' },
+];
+function logView() {
+  const list = S.log.filter(e => UI.logFilter === 'all' || e.kind === UI.logFilter).slice().reverse();
+  const quick = ['Extrication complete', 'Fire knocked down', 'Road reopened', 'Medical examiner notified', 'Rehab set up', 'Weather changing'];
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Incident log</h2><span class="note">Every tap on the board is stamped here, for the after-action report.</span></div>
+    <section class="panel">
+      <form class="composer" data-form="note">
+        <input id="note-input" type="text" placeholder="Add a note to the log" data-field="note" value="${esc(UI.form.note || '')}" autocomplete="off">
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      <div class="chips">${quick.map(q => `<button class="opt" data-act="quick-note" data-arg="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    </section>
+    <div class="chips">${LOG_KINDS.map(k => `<button class="opt" data-act="log-filter" data-arg="${k.k}" aria-pressed="${UI.logFilter === k.k}">${k.name}</button>`).join('')}</div>
+    <section class="panel">
+      <div class="log">${list.length ? list.map(e => `<div class="entry"><span class="lt">${hhmm(e.t)}</span><span class="lk">${esc(e.kind)}</span><span class="lx">${esc(e.text)}</span></div>`).join('') : '<div class="empty">Nothing logged in this category yet</div>'}</div>
+    </section>
+  </div>`;
+}
+
+/* =====================================================================
+   Sheets
+   ===================================================================== */
+function sheetHtml() {
+  const [kind, arg] = UI.sheet.split(':');
+  const body = ({
+    transport: transportSheet, par: parSheet, unit: unitSheet, 'unit-add': unitAddSheet, request: requestSheet,
+    ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
+  }[kind] || (() => ({ title: '', body: '' })))(arg);
+  return `<div class="sheet-wrap" data-act="backdrop">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(body.title)}" data-scroll="sheet-${esc(UI.sheet)}">
+      <div class="sheet-h"><h2>${esc(body.title)}</h2><button class="close" data-act="close" aria-label="Close">${icon('x')}</button></div>
+      ${body.body}
+      ${body.foot ? `<div class="sheet-f">${body.foot}</div>` : ''}
+    </div>
+  </div>`;
+}
+const opt = (act, arg, pressed, label, cls = '') => `<button class="opt ${cls}" data-act="${act}" data-arg="${esc(arg)}" aria-pressed="${pressed ? 'true' : 'false'}">${label}</button>`;
+const field = (label, inner) => `<div class="field"><span class="lbl">${label}</span>${inner}</div>`;
+const stepper = (name, value, min = 0, max = 999) => `<div class="stepper"><button data-act="step" data-arg="${name}:-1:${min}:${max}" aria-label="Decrease">−</button><span class="v">${value}</span><button data-act="step" data-arg="${name}:1:${min}:${max}" aria-label="Increase">+</button></div>`;
+
+function transportSheet() {
+  const f = UI.form;
+  const units = readyUnits();
+  const k = f.cat;
+  const hs = HOSPITALS.slice().sort((a, b) => hospRank(a, k) - hospRank(b, k));
+  const maxN = k ? remaining(k) : 1;
+  return {
+    title: 'Log a transport',
+    body: `
+      ${field('Category', `<div class="opt-grid">${TX_CATS.map(c => opt('f-set', 'cat=' + c, k === c, `${cat(c).color} · ${cat(c).name} <small>${remaining(c)} left</small>`, 'tall cat-' + c)).join('')}</div>`)}
+      <div class="grid2">
+        ${field('Patients on this unit', stepper('n', f.n || 1, 1, Math.max(1, maxN)))}
+        ${field('Triage tag number', `<input id="tx-tag" type="text" inputmode="numeric" placeholder="Optional" data-field="tags" value="${esc(f.tags || '')}" autocomplete="off">`)}
+      </div>
+      ${field('Unit', units.length ? `<div class="opt-grid">${units.map(u => opt('f-set', 'unit=' + u.id, f.unit === u.id, `<span class="kind ${u.kind}">${u.kind}</span> ${esc(u.name)}`)).join('')}</div>` : '<div class="empty">No transport units are on scene or staged.</div>')}
+      ${field('Destination', `<div class="opt-grid wide">${hs.map(h => {
+        const cap = hospCap(h.id), c = k && cap ? cap[k] : null, s = k ? hospSent(h.id, k) : 0;
+        const left = c != null ? c - s : null;
+        const capTxt = left == null ? 'capacity not reported' : left > 0 ? `${left} ${cat(k).color} open` : `<span class="crit-t">at capacity</span>`;
+        const fit = k === 'R' && h.trauma ? ' · trauma' : '';
+        return opt('f-set', 'hosp=' + h.id, f.hosp === h.id, `${esc(h.short)}${h.drive ? ` · ~${h.drive} min` : ''}<small>${capTxt}${fit}</small>`, 'tall');
+      }).join('')}</div>`)}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="tx-save" ${k && f.unit && f.hosp ? '' : 'disabled'}>Log departure</button>`,
+  };
+}
+function hospRank(h, k) {
+  let r = h.drive || 60;
+  if (k === 'R' && h.trauma) r -= 100;
+  const cap = hospCap(h.id);
+  if (k && cap && hospSent(h.id, k) >= cap[k]) r += 200;
+  return r;
+}
+
+function parSheet() {
+  const f = UI.form;
+  const units = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
+  f.par = f.par || {};
+  const checked = units.filter(u => f.par[u.id]).length;
+  return {
+    title: 'PAR check',
+    body: `<div class="note">Tap each unit as its officer reports all crew accounted for. Interval: every ${S.par.interval} minutes (change it in Menu).</div>
+      <div class="opt-grid">${units.map(u => opt('par-toggle', u.id, !!f.par[u.id], `${icon('check')} ${esc(u.name)} <small>crew ${u.crew || '?'}</small>`)).join('') || '<div class="empty">No units on scene</div>'}</div>
+      <div class="toolbar"><button class="btn small" data-act="par-all">Mark all accounted</button><span class="note">${checked} of ${units.length} accounted</span></div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="par-save">Complete PAR</button>`,
+  };
+}
+
+function unitSheet(id) {
+  const u = unitById(id);
+  if (!u) return { title: 'Unit', body: '<div class="empty">This unit is gone.</div>' };
+  return {
+    title: `${u.name} · ${u.kind}`,
+    body: `<div class="note">${esc(u.agency)}${u.crew ? ` · crew ${u.crew}` : ''} · status since ${hhmm(u.t)}</div>
+      ${field('Status', `<div class="opt-grid">${STATUSES.map(s => opt('unit-status', id + '=' + s.k, u.status === s.k, s.name)).join('')}</div>`)}
+      ${field('Assignment', `<div class="opt-grid">${TASKS.map(t => opt('unit-task', id + '=' + t, u.task === t, esc(t))).join('')}${opt('unit-task', id + '=', !u.task, 'None')}</div>`)}`,
+    foot: `<button class="btn danger" data-act="unit-remove" data-arg="${id}">Remove unit</button><span class="grow" style="flex:1"></span><button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+
+function unitAddSheet() {
+  const f = UI.form;
+  f.kind = f.kind || 'BLS'; f.status = f.status || 'onscene';
+  return {
+    title: 'Add a unit',
+    body: `${field('Type', `<div class="opt-grid">${UNIT_KINDS.map(k => opt('f-set', 'kind=' + k.k, f.kind === k.k, `<span class="kind ${k.k}">${k.k}</span> ${k.name}`)).join('')}</div>`)}
+      <div class="grid2">
+        ${field('Unit ID', `<input id="unit-name" type="text" placeholder="e.g. A-4113" data-field="name" value="${esc(f.name || '')}" autocomplete="off" autocapitalize="characters">`)}
+        ${field('Agency', `<input id="unit-agency" type="text" placeholder="e.g. Mutual aid" data-field="agency" value="${esc(f.agency || '')}" autocomplete="off" list="agency-list">`)}
+      </div>
+      <datalist id="agency-list"><option value="Your squad"><option value="Mutual aid"><option value="ALS provider"><option value="County"><option value="NJ EMS Task Force"><option value="Fire"><option value="Police"></datalist>
+      ${field('Crew', stepper('crew', f.crew ?? 2, 0, 12))}
+      ${field('Status', `<div class="opt-grid">${STATUSES.filter(s => s.k !== 'released').map(s => opt('f-set', 'status=' + s.k, f.status === s.k, s.name)).join('')}</div>`)}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="unit-save">Add unit</button>`,
+  };
+}
+
+function requestSheet() {
+  const f = UI.form;
+  return {
+    title: 'Request resources',
+    body: `${field('What', `<div class="opt-grid wide">${REQUEST_CATALOG.map(r => opt('f-set', 'what=' + r.what, f.what === r.what, `${esc(r.what)}${r.hint ? `<small>${esc(r.hint)}</small>` : ''}`, 'tall')).join('')}</div>`)}
+      <div class="grid2">
+        ${field('How many', stepper('qty', f.qty || 1, 1, 50))}
+        ${field('Note', `<input id="req-note" type="text" placeholder="Optional" data-field="note2" value="${esc(f.note2 || '')}" autocomplete="off">`)}
+      </div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="req-save" ${f.what ? '' : 'disabled'}>Log request</button>`,
+  };
+}
+
+function icsSheet(id) {
+  const p = ICS_POSITIONS.find(x => x.id === id), a = S.ics[id];
+  const f = UI.form;
+  if (f.who == null) f.who = a ? a.who : '';
+  const picks = S.units.filter(u => u.status === 'onscene' || u.status === 'staged').map(u => `${u.name} crew`);
+  return {
+    title: p.label,
+    body: `${field('Assigned to', `<input id="ics-who" type="text" placeholder="Name and unit" data-field="who" value="${esc(f.who)}" autocomplete="off">`)}
+      ${field('Quick pick', `<div class="opt-grid">${picks.map(x => opt('f-set', 'who=' + x, f.who === x, esc(x))).join('')}</div>`)}
+      <div class="note">${a ? `Assigned ${hhmm(a.t)}.` : 'While vacant, this job belongs to the position above it.'}</div>`,
+    foot: `${a ? `<button class="btn danger" data-act="ics-clear" data-arg="${id}">Vacate</button>` : ''}<span style="flex:1"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="ics-save" data-arg="${id}">Assign</button>`,
+  };
+}
+
+function hospSheet(id) {
+  const h = hosp(id), hs = S.hospitals[id] || {}, f = UI.form;
+  if (!f.cap) f.cap = hs.cap ? { ...hs.cap } : { R: 0, Y: 0, G: 0 };
+  return {
+    title: h.name,
+    body: `<div class="note">${esc(h.town)} · ${esc(h.sys)}</div>
+      <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
+      ${h.note ? `<div class="note">${esc(h.note)}</div>` : ''}
+      <div class="ph"><h2>Capacity the ED reports</h2></div>
+      <div class="grid2">${TX_CATS.map(k => field(`${cat(k).color} · ${cat(k).name} <span class="note">(${hospSent(id, k)} sent)</span>`, stepper('cap.' + k, f.cap[k], 0, 99))).join('')}</div>
+      <div class="switch"><span>${hs.notifiedAt ? `Notified at ${hhmm(hs.notifiedAt)}` : 'Not yet notified'}</span>${hs.notifiedAt ? '' : `<button class="btn" data-act="hosp-notify" data-arg="${id}">Mark notified now</button>`}</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="hosp-save" data-arg="${id}">Save capacity</button>`,
+  };
+}
+
+function incidentFields(f) {
+  return `${field('Incident type', `<div class="opt-grid">${INCIDENT_TYPES.map(t => opt('f-set', 'type=' + t, f.type === t, esc(t))).join('')}</div>`)}
+    <div class="grid2">
+      ${field('Location', `<input id="inc-loc" type="text" placeholder="Street, cross street, or mile marker" data-field="location" value="${esc(f.location || '')}" autocomplete="off">`)}
+      ${field('Municipality', `<input id="inc-muni" type="text" placeholder="Monmouth County town" data-field="municipality" value="${esc(f.municipality || '')}" list="muni-list" autocomplete="off">`)}
+      ${field('Command name', `<input id="inc-cmd" type="text" placeholder="e.g. Ocean Ave Command" data-field="commandName" value="${esc(f.commandName || '')}" autocomplete="off">`)}
+      ${field('EMS Command (you)', `<input id="inc-ic" type="text" placeholder="Name · unit" data-field="ic" value="${esc(f.ic || '')}" autocomplete="off">`)}
+      ${field('Staging location', `<input id="inc-stg" type="text" placeholder="Where incoming units report" data-field="staging" value="${esc(f.staging || '')}" autocomplete="off">`)}
+      ${field('Access route', `<input id="inc-acc" type="text" placeholder="How units get in" data-field="access" value="${esc(f.access || '')}" autocomplete="off">`)}
+    </div>
+    <datalist id="muni-list">${MUNICIPALITIES.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+    ${field('Hazards', `<div class="chips">${HAZARDS.map(h => opt('f-toggle', 'hazards=' + h, (f.hazards || []).includes(h), esc(h))).join('')}</div>`)}
+    <div class="grid2">
+      ${field('Air medical / LZ', `<div class="chips">${['Not requested', 'Standby', 'Launched', 'LZ set', 'Aircraft on scene'].map(x => opt('f-set', 'lz=' + x, f.lz === x, x)).join('')}</div>`)}
+      ${field('LZ location', `<input id="inc-lz" type="text" placeholder="Field, lot, or coordinates" data-field="lzLocation" value="${esc(f.lzLocation || '')}" autocomplete="off">`)}
+    </div>`;
+}
+function incidentSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, JSON.parse(JSON.stringify(S.incident)), { _init: true });
+  return {
+    title: 'Incident details',
+    body: incidentFields(f),
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="inc-save">Save</button>`,
+  };
+}
+function newIncidentSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { type: 'Motor vehicle crash', hazards: [], lz: 'Not requested', est: 0, ic: S.incident.ic || '', _init: true });
+  return {
+    title: 'Start a new incident',
+    body: `<div class="note">This clears the board on this device and starts the clock now. The current incident's log is replaced.</div>
+      ${incidentFields(f)}
+      ${field('Estimated patients', stepper('est', f.est || 0, 0, 500))}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="inc-new">Establish command</button>`,
+  };
+}
+
+function mciSheet() {
+  const sug = suggestedLevel();
+  const n = Math.max(totalPts(), S.incident.est || 0);
+  return {
+    title: 'MCI level',
+    body: `<div class="note">${n} patients counted or estimated${sug ? `, which fits ${esc(levelLabel(sug))}` : ''}. Declaring is your call; the board only suggests.</div>
+      <div class="opt-grid wide">
+        ${opt('mci-set', '0', !S.incident.mciLevel, 'No MCI <small>Routine multi-patient call</small>', 'tall')}
+        ${MCI_LEVELS.map(L => opt('mci-set', String(L.level), S.incident.mciLevel === L.level, `${esc(L.label)} <small>${esc(L.range)}${L.note ? ' · ' + esc(L.note) : ''}</small>`, 'tall')).join('')}
+      </div>
+      ${MCI_NOTE ? `<div class="note">${MCI_NOTE}</div>` : ''}`,
+    foot: `<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+const MCI_NOTE = '';
+
+function menuSheet() {
+  return {
+    title: 'Menu',
+    body: `<div class="switch"><span>Display</span><div class="chips">${opt('mode-set', 'night', S.mode !== 'day', 'Night')}${opt('mode-set', 'day', S.mode === 'day', 'Day · sunlight')}</div></div>
+      <div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>
+      <div class="opt-grid wide">
+        <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
+        <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
+      </div>
+      <div class="note"><b>Prototype.</b> Data stays on this device only. Nothing is sent to CAD, EMTrack, or anyone else, and two tablets do not share a board yet. Use practice data.</div>`,
+    foot: `<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+
+/* =====================================================================
+   Actions
+   ===================================================================== */
+function commit(msg, kind, fn, { toast = true } = {}) {
+  undoSnap = JSON.stringify(S);
+  fn();
+  if (msg) S.log.push({ t: now(), kind, text: msg });
+  save();
+  render();
+  if (toast && msg) showToast(msg, true);
+}
+function openSheet(name) { UI.sheet = name; UI.form = {}; render(); const first = sheetRoot.querySelector('.sheet'); if (first) first.focus?.(); }
+function closeSheet() { UI.sheet = null; UI.form = {}; render(); }
+
+function showToast(msg, canUndo) {
+  clearTimeout(toastTimer);
+  toastRoot.innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${canUndo ? '<button data-act="undo">Undo</button>' : ''}</div>`;
+  toastTimer = setTimeout(() => { toastRoot.innerHTML = ''; }, 5000);
+}
+
+const A = {
+  view(id) { UI.view = id; saveUi(); render(); app.querySelector('.main')?.scrollTo?.(0, 0); },
+  sheet(name) { openSheet(name); },
+  close() { closeSheet(); },
+  backdrop(_, el, e) { if (e.target === el) closeSheet(); },
+  mode() { S.mode = S.mode === 'day' ? 'night' : 'day'; save(); render(); },
+  'mode-set'(m) { S.mode = m; save(); render(); },
+  undo() {
+    if (!undoSnap) return;
+    S = JSON.parse(undoSnap); undoSnap = null; save(); render(); showToast('Undone', false);
+  },
+
+  tri(arg) {
+    const k = arg[0], d = arg[1] === '+' ? 1 : -1, c = cat(k);
+    if (d < 0 && S.triage[k] <= (k === 'B' ? 0 : sentCat(k))) {
+      showToast(S.triage[k] ? `Can't go below the ${sentCat(k)} already transported` : `No ${c.name} patients to remove`, false);
+      return;
+    }
+    commit(`Triage ${d > 0 ? '+1' : '−1'} ${c.color} (${c.name}): now ${S.triage[k] + d}`, 'triage', () => { S.triage[k] += d; });
+  },
+  est(d) {
+    const v = Math.max(0, (S.incident.est || 0) + Number(d));
+    S.incident.est = v; save(); render();
+  },
+  bench(id) {
+    const b = BENCHMARKS.find(x => x.id === id);
+    if (S.bench[id]) commit(`Benchmark cleared: ${b.label}`, 'bench', () => { delete S.bench[id]; });
+    else commit(`${b.label}`, 'bench', () => { S.bench[id] = now(); });
+  },
+  'mci-set'(lvl) {
+    const L = Number(lvl);
+    if (L === S.incident.mciLevel) return;
+    commit(L ? `MCI declared: ${levelLabel(L)}` : 'MCI stood down', 'bench', () => {
+      S.incident.mciLevel = L;
+      if (L && !S.bench.mci) S.bench.mci = now();
+    });
+  },
+
+  'f-set'(arg) {
+    const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
+    UI.form[k] = UI.form[k] === v && k !== 'cat' && k !== 'type' && k !== 'kind' && k !== 'status' && k !== 'lz' ? '' : v;
+    if (k === 'cat') UI.form.n = 1;
+    render();
+  },
+  'f-toggle'(arg) {
+    const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
+    const a = UI.form[k] = (UI.form[k] || []).slice();
+    const j = a.indexOf(v); if (j >= 0) a.splice(j, 1); else a.push(v);
+    render();
+  },
+  step(arg) {
+    const [name, d, min, max] = arg.split(':');
+    const path = name.split('.');
+    let obj = UI.form; for (let i = 0; i < path.length - 1; i++) obj = obj[path[i]];
+    const key = path[path.length - 1];
+    const def = name === 'n' || name === 'qty' ? 1 : name === 'crew' ? 2 : 0;
+    obj[key] = Math.min(Number(max), Math.max(Number(min), (obj[key] ?? def) + Number(d)));
+    render();
+  },
+
+  'tx-with'(unitId) { openSheet('transport'); UI.form.unit = unitId; UI.form.cat = TX_CATS.find(k => remaining(k) > 0); UI.form.n = 1; render(); },
+  'tx-save'() {
+    const f = UI.form, u = unitById(f.unit), h = hosp(f.hosp), n = Math.min(f.n || 1, remaining(f.cat));
+    if (!u || !h || !f.cat || n < 1) return;
+    UI.sheet = null;
+    commit(`${u.name} departed: ${n} ${cat(f.cat).name} → ${h.short}${f.tags ? ` (tag ${f.tags})` : ''}`, 'transport', () => {
+      S.transports.push({ id: uid(), cat: f.cat, n, tags: (f.tags || '').trim(), unit: u.id, hosp: h.id, t: now() });
+      u.status = 'transporting'; u.task = 'To ' + h.short; u.t = now();
+    });
+    UI.form = {};
+  },
+
+  'par-toggle'(id) { UI.form.par = UI.form.par || {}; UI.form.par[id] = !UI.form.par[id]; render(); },
+  'par-all'() { UI.form.par = {}; S.units.filter(u => u.status === 'onscene' || u.status === 'staged').forEach(u => { UI.form.par[u.id] = true; }); render(); },
+  'par-save'() {
+    const units = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
+    const ok = units.filter(u => UI.form.par && UI.form.par[u.id]);
+    const missing = units.filter(u => !(UI.form.par && UI.form.par[u.id])).map(u => u.name);
+    UI.sheet = null;
+    commit(`PAR complete: ${ok.length} of ${units.length} units accounted for${missing.length ? '. NOT accounted: ' + missing.join(', ') : ''}`, 'par', () => { S.par.last = now(); });
+    UI.form = {};
+  },
+  'par-int'(m) { S.par.interval = Number(m); save(); render(); },
+
+  'unit-status'(arg) {
+    const [id, st] = arg.split('='), u = unitById(id);
+    if (!u || u.status === st) return;
+    commit(`${u.name}: ${statusName(st)}`, 'units', () => { u.status = st; u.t = now(); if (st === 'released' || st === 'staged') u.task = ''; });
+  },
+  'unit-task'(arg) {
+    const i = arg.indexOf('='), id = arg.slice(0, i), task = arg.slice(i + 1), u = unitById(id);
+    if (!u || u.task === task) return;
+    commit(task ? `${u.name} assigned: ${task}` : `${u.name}: assignment cleared`, 'units', () => { u.task = task; if (task && u.status !== 'onscene') { u.status = 'onscene'; u.t = now(); } });
+  },
+  'unit-remove'(id) {
+    const u = unitById(id); if (!u) return;
+    UI.sheet = null;
+    commit(`${u.name} removed from the board`, 'units', () => { S.units = S.units.filter(x => x.id !== id); });
+  },
+  'unit-save'() {
+    const f = UI.form, name = (f.name || '').trim().toUpperCase();
+    if (!name) { showToast('Give the unit an ID first', false); document.getElementById('unit-name')?.focus(); return; }
+    UI.sheet = null;
+    commit(`${name} (${f.kind}) added: ${statusName(f.status)}`, 'units', () => {
+      S.units.push({ id: uid(), name, kind: f.kind, agency: (f.agency || '').trim() || 'Mutual aid', crew: f.crew ?? 2, status: f.status, task: '', t: now() });
+    });
+    UI.form = {};
+  },
+
+  'req-save'() {
+    const f = UI.form; if (!f.what) return;
+    UI.sheet = null;
+    commit(`Requested ${(f.qty || 1) > 1 ? (f.qty) + ' × ' : ''}${f.what}${f.note2 ? ' (' + f.note2 + ')' : ''}`, 'request', () => {
+      S.requests.push({ id: uid(), what: f.what, qty: f.qty || 1, status: 'requested', t: now(), note: (f.note2 || '').trim() });
+    });
+    UI.form = {};
+  },
+  'req-next'(id) {
+    const r = S.requests.find(x => x.id === id); if (!r) return;
+    const i = REQ_FLOW.indexOf(r.status); if (i < 0 || i === REQ_FLOW.length - 1) return;
+    const nx = REQ_FLOW[i + 1];
+    commit(`${r.what}: ${reqStatusName(nx)}`, 'request', () => { r.status = nx; });
+  },
+
+  'ics-save'(id) {
+    const who = (UI.form.who || '').trim(), p = ICS_POSITIONS.find(x => x.id === id);
+    if (!who) { showToast('Enter a name or pick a crew', false); return; }
+    UI.sheet = null;
+    commit(`${p.label}: ${who}`, 'units', () => { S.ics[id] = { who, t: now() }; });
+    UI.form = {};
+  },
+  'ics-clear'(id) {
+    const p = ICS_POSITIONS.find(x => x.id === id);
+    UI.sheet = null;
+    commit(`${p.label} vacated`, 'units', () => { delete S.ics[id]; });
+    UI.form = {};
+  },
+
+  'hosp-notify'(id) {
+    const h = hosp(id);
+    commit(`${h.short} notified`, 'note', () => { S.hospitals[id] = { ...(S.hospitals[id] || {}), notifiedAt: now() }; });
+  },
+  'hosp-save'(id) {
+    const h = hosp(id), c = UI.form.cap;
+    UI.sheet = null;
+    commit(`${h.short} capacity: Red ${c.R}, Yellow ${c.Y}, Green ${c.G}`, 'note', () => { S.hospitals[id] = { ...(S.hospitals[id] || {}), cap: { ...c }, capAt: now() }; });
+    UI.form = {};
+  },
+
+  'inc-save'() {
+    const f = UI.form;
+    UI.sheet = null;
+    commit('Incident details updated', 'note', () => {
+      for (const k of ['type', 'location', 'municipality', 'commandName', 'ic', 'staging', 'access', 'hazards', 'lz', 'lzLocation']) S.incident[k] = typeof f[k] === 'string' ? f[k].trim() : f[k];
+    });
+    UI.form = {};
+  },
+  'inc-new'() {
+    const f = UI.form;
+    undoSnap = JSON.stringify(S);
+    S = blankState({ ...f, location: (f.location || '').trim(), commandName: (f.commandName || '').trim(), ic: (f.ic || '').trim() });
+    S.log[0].text = `Command established${S.incident.commandName ? ': ' + S.incident.commandName : ''}${S.incident.ic ? ', ' + S.incident.ic : ''}`;
+    UI.sheet = null; UI.form = {}; UI.view = 'board';
+    save(); render(); showToast('New incident started. Clock running.', true);
+  },
+  'load-sample'() {
+    undoSnap = JSON.stringify(S);
+    S = sampleState(); UI.sheet = null; UI.form = {};
+    save(); render(); showToast('Sample incident loaded', true);
+  },
+
+  'log-filter'(k) { UI.logFilter = k; render(); },
+  'quick-note'(text) { commit(text, 'note', () => {}); },
+
+  copy(i) {
+    const s = radioScripts()[Number(i)];
+    const done = () => showToast('Copied', false);
+    const fallback = () => {
+      const el = document.getElementById('script-' + i);
+      const r = document.createRange(); r.selectNodeContents(el);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      showToast('Selected. Use your copy command.', false);
+    };
+    try { navigator.clipboard.writeText(s.text).then(done, fallback); } catch (e) { fallback(); }
+  },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const act = el.dataset.act;
+  if (act === 'backdrop' && e.target !== el) return;
+  if (A[act]) { e.preventDefault(); A[act](el.dataset.arg, el, e); }
+  wake();
+});
+document.addEventListener('input', e => {
+  const f = e.target.dataset && e.target.dataset.field;
+  if (f) UI.form[f] = e.target.value;
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  if (e.target.dataset.form === 'note') {
+    const text = (UI.form.note || '').trim();
+    if (!text) return;
+    UI.form.note = '';
+    commit(text, 'note', () => {});
+    document.getElementById('note-input')?.focus();
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && UI.sheet) closeSheet(); });
+
+/* =====================================================================
+   Clocks
+   ===================================================================== */
+function tick() {
+  const t = now();
+  const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
+  set('now', hhmm(t));
+  set('elapsed', dur(t - S.incident.dispatchAt));
+  const due = S.par.last + S.par.interval * 60000, left = due - t;
+  set('par', left >= 0 ? dur(left) : '+' + dur(-left));
+  set('par-lbl', left >= 0 ? 'PAR due in' : 'PAR overdue');
+  const b = document.getElementById('par-btn');
+  if (b) { b.classList.toggle('due', left >= 0 && left < 120000); b.classList.toggle('over', left < 0); }
+}
+
+/* Keep the screen awake while the board is open, where the browser allows it. */
+let lock = null;
+async function wake() {
+  try { if (!lock && navigator.wakeLock && document.visibilityState === 'visible') { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (e) { /* not granted */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); } });
+
+/* =====================================================================
+   Boot
+   ===================================================================== */
+S = load() || sampleState();
+loadUi();
+render();
+setInterval(tick, 1000);
+})();
+</script>
