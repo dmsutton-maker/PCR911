@@ -1,0 +1,2528 @@
+<title>Scene Command Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/*@LEAFLET_CSS*/
+</style>
+<style>
+/* Layout: one-screen command board. Incident header with clocks across the top, a rail of views on the left,
+   and panels that scroll inside themselves on a landscape tablet, then stack into one column on a phone.
+   Night is the default (the PCR911 palette); Day is a high-contrast mode for direct sunlight. */
+:root {
+  --bg: #0B1B2B;
+  --surface: #12293D;
+  --raised: #183449;
+  --line: #25506E;
+  --fg: #EAF2F8;
+  --muted: #9FB6C8;
+  --faint: #6F8AA0;
+  --accent: #4FA3E3;
+  --accent-ink: #04121E;
+  --ok: #4CC38A;
+  --warn: #E8B14C;
+  --crit: #E8695C;
+  --scrim: rgb(2 8 14 / 0.62);
+  --on-solid: #04121E;
+
+  --red: #D7373F;     --red-ink: #FFFFFF;
+  --yellow: #F2C230;  --yellow-ink: #1D1600;
+  --green: #2DB86A;   --green-ink: #03180B;
+  --black: #000000;   --black-ink: #FFFFFF;  --black-edge: #8DA3B5;
+  --gray: #8B97A4;    --gray-ink: #0B1218;
+  --white: #F4F6F8;   --white-ink: #06131F;
+
+  /* map (built-in, offline) */
+  --water: #07131E;
+  --land: #10263A;
+  --land-home: #17344B;
+  --town-edge: #2B5878;
+  --road-major: #E8B14C;
+  --road: #8C7A52;
+
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --tap: 56px;
+  --r: 12px;
+  color-scheme: dark;
+}
+:root[data-mode="day"] {
+  --bg: #FFFFFF;
+  --surface: #F2F5F8;
+  --raised: #E2E9F0;
+  --line: #8EA4B8;
+  --fg: #06131F;
+  --muted: #2E4558;
+  --faint: #536A7D;
+  --accent: #0B5FA5;
+  --accent-ink: #FFFFFF;
+  --ok: #0E7A45;
+  --warn: #8C5A00;
+  --crit: #B3261E;
+  --scrim: rgb(6 19 31 / 0.5);
+  --on-solid: #FFFFFF;
+  --red: #C62828;     --red-ink: #FFFFFF;
+  --yellow: #F2C230;  --yellow-ink: #1D1600;
+  --green: #1E9E55;   --green-ink: #FFFFFF;
+  --black: #000000;   --black-ink: #FFFFFF;  --black-edge: #000000;
+  --gray: #6B7783;    --gray-ink: #FFFFFF;
+  --white: #FFFFFF;   --white-ink: #06131F;
+  --water: #C9DCEB;
+  --land: #EEF2F5;
+  --land-home: #FFFFFF;
+  --town-edge: #9DB0C1;
+  --road-major: #B56A00;
+  --road: #9A8F7A;
+  color-scheme: light;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 500 16px/1.4 var(--body);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- shell ---------- */
+.app {
+  height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "head head" "rail main";
+  gap: 12px;
+  padding-inline: 16px;
+  padding-block: 12px;
+}
+.head { grid-area: head; }
+.rail { grid-area: rail; }
+.main { grid-area: main; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+/* ---------- header ---------- */
+.head { display: flex; align-items: stretch; gap: 16px; flex-wrap: wrap; }
+.inc { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+.inc-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inc h1 { margin: 0; font: 700 27px/1.1 var(--display); letter-spacing: 0.01em; text-wrap: balance; }
+.titlebtn { all: unset; cursor: pointer; border-radius: 6px; }
+.titlebtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.inc-sub { color: var(--muted); font-size: 15px; }
+.inc-sub b { color: var(--fg); font-weight: 600; }
+.tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 700 13px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 9px; border-radius: 6px;
+  border: 1.5px solid var(--line); color: var(--muted); background: transparent;
+}
+button.tag { min-height: 32px; }
+.tag.mci { background: var(--crit); border-color: var(--crit); color: var(--on-solid); }
+.tag.suggest { border-color: var(--warn); color: var(--warn); }
+.tag.sample { border-style: dashed; }
+
+.clocks { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+.clock, .par, .iconbtn {
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  min-width: 96px; padding: 8px 12px; border-radius: var(--r);
+  background: var(--surface); border: 1px solid var(--line); text-align: left;
+}
+.clock .v, .par .v { font: 700 24px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.lbl { font: 600 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.par { min-width: 118px; }
+.par.due { border-color: var(--warn); }
+.par.due .v { color: var(--warn); }
+.par.over { background: var(--crit); border-color: var(--crit); }
+.par.over .v, .par.over .lbl { color: var(--on-solid); }
+.iconbtn { min-width: 64px; align-items: center; }
+.iconbtn svg { width: 26px; height: 26px; }
+
+/* ---------- rail ---------- */
+.rail { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: auto; }
+.rail button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 60px; flex-shrink: 0; border-radius: var(--r);
+  background: transparent; border: 1px solid transparent; color: var(--muted);
+  font: 600 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.rail button svg { width: 26px; height: 26px; }
+.rail button[aria-current="page"] { background: var(--raised); border-color: var(--line); color: var(--fg); }
+.rail button[aria-current="page"] svg { color: var(--accent); }
+.rail .spacer { flex: 1; }
+.badge {
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; box-sizing: border-box;
+  background: var(--crit); color: var(--on-solid); font: 700 12px/20px var(--mono); text-align: center;
+}
+.rail .ico { position: relative; }
+.rail .ico .badge { position: absolute; top: -6px; right: -14px; }
+svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- panels ---------- */
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
+}
+.ph { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ph h2 { margin: 0; font: 700 15px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.ph .meta { color: var(--faint); font-size: 14px; }
+.empty { color: var(--faint); font-size: 15px; padding: 6px 0; }
+
+.btn {
+  min-height: var(--tap); padding: 0 18px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--raised); border: 1.5px solid var(--line); color: var(--fg);
+  font: 700 18px/1 var(--display); letter-spacing: 0.04em; text-decoration: none;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { border-color: var(--crit); color: var(--crit); background: transparent; }
+.btn.small { min-height: 44px; font-size: 16px; padding: 0 14px; }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn svg { width: 22px; height: 22px; }
+
+/* ---------- board ---------- */
+.board {
+  display: grid;
+  grid-template-columns: minmax(290px, 1fr) minmax(310px, 1.1fr) minmax(330px, 1.2fr);
+  gap: 12px; height: 100%; min-height: 0;
+}
+.col { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+/* triage */
+.tri-sum { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tri-total { font: 700 44px/1 var(--display); }
+.tri-total small { font: 600 16px/1 var(--body); color: var(--muted); margin-left: 6px; }
+.est { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; }
+.est button { width: 40px; height: 40px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--raised); font: 700 20px/1 var(--mono); }
+.est .num { min-width: 2ch; text-align: center; font-weight: 700; color: var(--fg); }
+.bar { height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; display: flex; }
+.bar span { display: block; height: 100%; }
+
+.tri {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px;
+  padding: 10px 10px 10px 14px; border-radius: var(--r);
+  border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface));
+}
+.tri-R { --c: var(--red); --ink: var(--red-ink); }
+.tri-Y { --c: var(--yellow); --ink: var(--yellow-ink); }
+.tri-G { --c: var(--green); --ink: var(--green-ink); }
+.tri-X { --c: var(--gray); --ink: var(--gray-ink); }
+.tri-W { --c: var(--white); --ink: var(--white-ink); }
+:root[data-mode="day"] .tri-W { --c: #6B7783; }
+:root[data-mode="day"] .tri-W .swatch, :root[data-mode="day"] .tri-W .tri-btns button.plus { background: #FFFFFF; color: #06131F; border: 1.5px solid #6B7783; }
+.tri-B { --c: var(--black-edge); --ink: var(--black-ink); background: color-mix(in srgb, var(--black) 55%, var(--surface)); }
+:root[data-mode="day"] .tri-B { background: #2A2F35; color: #FFFFFF; }
+:root[data-mode="day"] .tri-B .tri-sub { color: #D3DCE4; }
+.tri-head { display: flex; align-items: center; gap: 8px; }
+.swatch { font: 700 13px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 8px; border-radius: 5px; background: var(--c); color: var(--ink); }
+.tri-B .swatch { background: var(--black); color: var(--black-ink); border: 1.5px solid var(--black-edge); }
+:root[data-mode="day"] .tri-B .swatch { border-color: #FFFFFF; }
+.tri-name { font: 700 19px/1 var(--display); letter-spacing: 0.04em; text-transform: uppercase; }
+.tri-count { font: 700 56px/0.95 var(--display); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tri-sub { font-size: 14px; color: var(--muted); }
+.tri-sub b { color: var(--fg); }
+:root[data-mode="day"] .tri-B .tri-sub b { color: #FFFFFF; }
+.tri-btns { display: flex; gap: 8px; }
+.tri-btns button { width: 64px; height: 72px; border-radius: 10px; font: 700 34px/1 var(--display); border: 2px solid var(--c); background: var(--surface); color: var(--fg); }
+.tri-btns button.plus { background: var(--c); color: var(--ink); }
+.tri-B .tri-btns button.plus { background: var(--black); color: var(--black-ink); border-color: var(--black-edge); }
+:root[data-mode="day"] .tri-B .tri-btns button { background: #000; color: #FFF; border-color: #FFF; }
+
+/* key/value strip */
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 15px; margin: 0; }
+.kv dt { color: var(--faint); font: 600 13px/1.6 var(--display); letter-spacing: 0.08em; text-transform: uppercase; }
+.kv dd { margin: 0; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hz { font: 600 14px/1 var(--display); letter-spacing: 0.04em; padding: 6px 9px; border-radius: 6px; border: 1.5px solid var(--warn); color: var(--warn); }
+
+/* benchmarks */
+.bench { display: flex; flex-direction: column; }
+.bench button {
+  display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px;
+  min-height: 50px; padding: 4px; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line);
+}
+.bench button:last-child { border-bottom: 0; }
+.tick { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; }
+.tick svg { width: 18px; height: 18px; opacity: 0; }
+.bench .done .tick { background: var(--ok); border-color: var(--ok); color: var(--on-solid); }
+.bench .done .tick svg { opacity: 1; }
+.bench .b-label { font-size: 16px; font-weight: 600; }
+.bench .todo .b-label { color: var(--muted); font-weight: 500; }
+.bench .ready .b-label { color: var(--warn); font-weight: 600; }
+.bench .b-time { text-align: right; font: 700 15px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.bench .b-time small { display: block; font-size: 12px; color: var(--faint); font-weight: 500; }
+.bench .b-ready { font: 700 14px/1 var(--display); letter-spacing: 0.08em; color: var(--warn); }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); gap: 8px; }
+.stat { background: var(--raised); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat .v { font: 700 30px/1 var(--display); font-variant-numeric: tabular-nums; }
+.stat.R { background: var(--red); color: var(--red-ink); }
+.stat.Y { background: var(--yellow); color: var(--yellow-ink); }
+.stat.G { background: var(--green); color: var(--green-ink); }
+.stat.R .lbl, .stat.Y .lbl, .stat.G .lbl { color: inherit; opacity: 0.85; }
+
+/* list rows */
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  min-height: 52px; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line);
+  background: transparent; text-align: left; width: 100%; box-sizing: border-box;
+}
+.row:last-child { border-bottom: 0; }
+.row .t1 { font-weight: 600; }
+.row .t2 { font-size: 14px; color: var(--muted); }
+.row .r { text-align: right; }
+.dot { width: 14px; height: 14px; border-radius: 4px; background: var(--c); border: 1.5px solid var(--c); }
+.dot.B { background: var(--black); border-color: var(--black-edge); }
+.c-R { --c: var(--red); } .c-Y { --c: var(--yellow); } .c-G { --c: var(--green); } .c-B { --c: var(--black-edge); }
+
+.pill { display: inline-block; font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 7px; border-radius: 5px; border: 1.5px solid var(--line); color: var(--muted); white-space: nowrap; }
+.pill.requested { border-color: var(--warn); color: var(--warn); }
+.pill.ack, .pill.enroute { border-color: var(--accent); color: var(--accent); }
+.pill.onscene, .pill.done, .pill.open { border-color: var(--ok); color: var(--ok); }
+.pill.diversion { border-color: var(--crit); color: var(--crit); }
+.pill.advisory { border-color: var(--warn); color: var(--warn); }
+
+/* hospital load */
+.load { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 7px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; width: 100%; }
+.load:last-child { border-bottom: 0; }
+.load .nm { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.load .ct { font: 600 14px/1 var(--mono); color: var(--muted); }
+.load .bar { grid-column: 1 / -1; height: 8px; }
+.load .why { grid-column: 1 / -1; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+
+/* ---------- map ---------- */
+.mapcard { position: relative; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); background: var(--water); min-height: 0; }
+.mapcard.mini { height: 270px; flex-shrink: 0; }
+.mapslot, .mapbox { position: absolute; inset: 0; }
+.map-park { position: fixed; left: -9999px; top: 0; width: 400px; height: 300px; visibility: hidden; }
+.mapctl { position: absolute; z-index: 1100; display: flex; gap: 6px; }
+.mapctl.tr { top: 8px; right: 8px; }
+.mapctl.bl { bottom: 8px; left: 8px; right: 8px; flex-wrap: wrap; pointer-events: none; }
+.mapctl.bl > * { pointer-events: auto; }
+.mbtn {
+  min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1.5px solid var(--line); color: var(--fg);
+  font: 700 15px/1 var(--display); letter-spacing: 0.05em; text-decoration: none;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.25);
+}
+.mbtn svg { width: 22px; height: 22px; }
+.mbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mchip { padding: 6px 9px; border-radius: 8px; background: color-mix(in srgb, var(--bg) 85%, transparent); border: 1px solid var(--line); font: 600 13px/1.2 var(--mono); color: var(--fg); }
+.mchip.warn { color: var(--warn); border-color: var(--warn); font-family: var(--display); letter-spacing: 0.04em; }
+.map-fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--muted); }
+
+.leaflet-container { background: var(--water); font: 500 14px/1.3 var(--body); }
+.leaflet-touch .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 22px; }
+.leaflet-bar a, .leaflet-bar a:hover { background: var(--surface); color: var(--fg); border-bottom-color: var(--line); }
+.leaflet-touch .leaflet-bar { border: 1.5px solid var(--line); }
+.leaflet-control-attribution.leaflet-control { background: color-mix(in srgb, var(--bg) 75%, transparent); color: var(--faint); font-size: 10px; }
+.leaflet-control-attribution a { color: var(--muted); }
+.mapcard.mini .leaflet-control-zoom { display: none; }
+
+.pin {
+  width: 34px; height: 34px; box-sizing: border-box; border-radius: 50%;
+  display: grid; place-items: center; font: 700 14px/1 var(--display); letter-spacing: 0.02em;
+  border: 3px solid #FFFFFF; box-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+}
+.pin.scene { background: var(--crit); color: #FFFFFF; width: 40px; height: 40px; font-size: 13px; }
+.pin.staging { background: var(--warn); color: #1D1600; }
+.pin.cstage { background: var(--surface); color: var(--warn); border: 2.5px dashed var(--warn); width: 30px; height: 30px; font-size: 12px; }
+.pin.lz { background: var(--accent); color: var(--accent-ink); }
+.pin.me { background: #2F7BFF; width: 22px; height: 22px; }
+.pin.hosp { border-radius: 7px; width: 28px; height: 28px; background: var(--surface); color: var(--fg); border: 2.5px solid var(--accent); font-size: 15px; }
+.pin.hosp.trauma { background: var(--crit); color: #FFFFFF; border-color: #FFFFFF; }
+.town-label { font: 700 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg); pointer-events: none; transform: translate(-50%, -50%); }
+
+.mapview { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; height: 100%; min-height: 0; }
+.mapview .mapcard { height: 100%; min-height: 420px; }
+.mapside { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; }
+.coord { font: 600 15px/1.5 var(--mono); }
+.coord small { display: block; color: var(--faint); font: 500 12px/1.3 var(--body); }
+
+/* ---------- generic view layouts ---------- */
+.view { display: flex; flex-direction: column; gap: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.grid-hosp { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; align-items: start; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar .grow { flex: 1; }
+.view-title { margin: 0; font: 700 26px/1 var(--display); letter-spacing: 0.02em; }
+
+/* units */
+.lanes { display: grid; grid-template-columns: repeat(6, minmax(160px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.lane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lane h3 { margin: 0; display: flex; justify-content: space-between; font: 700 14px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.unit { position: relative; display: flex; flex-direction: column; border-radius: 10px; background: var(--raised); border: 1.5px solid var(--line); }
+.unit .open { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px; background: transparent; border: 0; min-height: var(--tap); }
+.unit .u1 { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.unit .uid { font: 700 21px/1 var(--display); letter-spacing: 0.02em; }
+.unit .ut { font-size: 14px; color: var(--muted); }
+.unit .task { font: 600 14px/1.2 var(--body); color: var(--fg); }
+.unit .quick { margin: 0 8px 8px; min-height: 44px; border-radius: 8px; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); font: 700 15px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
+.kind { font: 700 12px/1 var(--display); letter-spacing: 0.08em; padding: 4px 6px; border-radius: 4px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+.kind.g-ems.ALS { color: var(--crit); border-color: var(--crit); }
+.kind.SUP, .kind.MCI { color: var(--warn); border-color: var(--warn); }
+.kind.g-fire { color: var(--crit); border-color: var(--crit); background: color-mix(in srgb, var(--crit) 12%, var(--bg)); }
+.kind.g-spec { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, var(--bg)); }
+.ppl { width: 100%; border-collapse: collapse; font-size: 15px; }
+.ppl th { text-align: left; font: 600 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.ppl td { padding: 0; border-bottom: 1px solid var(--line); }
+.ppl td button { all: unset; display: block; box-sizing: border-box; width: 100%; padding: 12px 8px; cursor: pointer; }
+.ppl td button:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.scroll-x { overflow-x: auto; }
+
+/* hospitals */
+.hosp { gap: 10px; text-align: left; }
+.hosp h3 { margin: 0; font: 700 21px/1.1 var(--display); }
+.hosp .sub { color: var(--muted); font-size: 14px; }
+.caps { display: flex; flex-wrap: wrap; gap: 5px; }
+.cap { font: 600 13px/1 var(--display); letter-spacing: 0.04em; padding: 5px 7px; border-radius: 5px; background: var(--raised); color: var(--fg); }
+.cap.trauma { background: var(--crit); color: var(--on-solid); }
+.capgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.capcell { border-radius: 10px; padding: 8px; border: 2px solid var(--c); display: flex; flex-direction: column; gap: 2px; }
+.capcell .v { font: 700 22px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.capcell.over { background: color-mix(in srgb, var(--crit) 22%, var(--surface)); }
+.beds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.bedcell { background: var(--raised); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; }
+.bedcell .v { font: 700 18px/1 var(--mono); }
+.bedcell .v.none { color: var(--faint); font-weight: 500; }
+.dist { font: 700 15px/1 var(--mono); color: var(--fg); white-space: nowrap; }
+.note { font-size: 14px; color: var(--faint); }
+.note b { color: var(--muted); }
+.ok-t { color: var(--ok); } .warn-t { color: var(--warn); } .crit-t { color: var(--crit); }
+
+/* phone directory */
+.phone { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+.phone:last-child { border-bottom: 0; }
+.phone .pn { font-weight: 600; }
+.phone .pnote { font-size: 13px; color: var(--muted); }
+.phone .pnum { font: 700 19px/1.2 var(--mono); user-select: all; -webkit-user-select: all; }
+.phone .pact { display: flex; gap: 6px; }
+.phone .pnum.missing { font: 500 14px var(--body); color: var(--faint); user-select: none; }
+
+/* ICS chart */
+.ics { display: flex; flex-direction: column; gap: 14px; }
+.tier { display: flex; flex-direction: column; gap: 8px; }
+.tier > .lbl { padding-left: 2px; }
+.tier-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.pos { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px 12px; border-radius: 10px; min-height: 64px; background: var(--surface); border: 1.5px solid var(--line); }
+.pos .pn { font: 700 14px/1.1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.pos .pw { font: 600 18px/1.2 var(--body); }
+.pos.vacant { border-style: dashed; }
+.pos.vacant .pw { color: var(--faint); font-weight: 500; font-size: 15px; }
+.pos.lead { border-color: var(--accent); }
+.branch { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.branch-col { display: flex; flex-direction: column; gap: 8px; }
+.branch-col .subs { display: flex; flex-direction: column; gap: 8px; padding-left: 12px; border-left: 2px solid var(--line); }
+
+/* radio scripts */
+.script { font: 500 19px/1.5 var(--body); margin: 0; white-space: pre-wrap; }
+.script b { font-family: var(--display); letter-spacing: 0.06em; color: var(--accent); }
+.script .k { display: inline-block; min-width: 1.4em; font: 700 19px/1 var(--display); color: var(--accent); }
+
+/* log */
+.log { display: flex; flex-direction: column; }
+.log .entry { display: grid; grid-template-columns: 64px 92px minmax(0, 1fr); gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--line); align-items: baseline; }
+.log .entry:last-child { border-bottom: 0; }
+.log .lt { font: 700 15px/1 var(--mono); }
+.log .lk { font: 700 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.composer { display: flex; gap: 8px; }
+.composer input { flex: 1; min-width: 0; }
+
+/* inputs */
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > .lbl { padding-left: 2px; }
+input[type="text"], input[type="search"], input:not([type]), textarea {
+  min-height: var(--tap); box-sizing: border-box; padding: 0 14px; border-radius: 10px;
+  border: 1.5px solid var(--line); background: var(--bg); font-size: 18px; width: 100%;
+}
+textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16px/1.5 var(--mono); }
+.opt {
+  min-height: 52px; padding: 0 16px; border-radius: 10px; background: var(--raised); border: 1.5px solid var(--line);
+  font: 700 17px/1.1 var(--display); letter-spacing: 0.03em; text-align: left; display: inline-flex; align-items: center; gap: 8px;
+}
+.opt[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.opt[aria-pressed="true"] .kind { background: transparent; color: inherit; border-color: currentColor; }
+.opt small { font: 500 13px/1.2 var(--body); opacity: 0.85; letter-spacing: 0; }
+.opt.tall { min-height: 64px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; padding: 8px 14px; }
+.opt.cat-R[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: var(--red-ink); }
+.opt.cat-Y[aria-pressed="true"] { background: var(--yellow); border-color: var(--yellow); color: var(--yellow-ink); }
+.opt.cat-G[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: var(--green-ink); }
+.opt.small { min-height: 44px; font-size: 15px; padding: 0 12px; }
+.opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.opt-grid.wide { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.stepper { display: inline-flex; align-items: center; gap: 10px; }
+.stepper button { width: 52px; height: 52px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--raised); font: 700 26px/1 var(--display); }
+.stepper .v { min-width: 2.2em; text-align: center; font: 700 26px/1 var(--mono); }
+.stepper.sm button { width: 44px; height: 44px; font-size: 22px; }
+.stepper.sm .v { font-size: 20px; min-width: 1.8em; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--tap); flex-wrap: wrap; }
+.parse { font: 500 14px/1.5 var(--mono); color: var(--muted); }
+
+/* sheet */
+.sheet-wrap { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: var(--scrim); padding: 16px; }
+.sheet {
+  width: min(780px, 100%); max-height: 100%; box-sizing: border-box; overflow: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 20px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.sheet-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: -18px; background: var(--surface); padding-block: 4px; z-index: 1; }
+.sheet-h h2 { margin: 0; font: 700 26px/1.1 var(--display); }
+.sheet-f { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; position: sticky; bottom: -20px; background: var(--surface); padding-block: 10px; }
+.sheet-f .grow { flex: 1; }
+.close { width: 52px; height: 52px; flex-shrink: 0; border-radius: 10px; border: 1.5px solid var(--line); background: var(--raised); display: grid; place-items: center; }
+.close svg { width: 24px; height: 24px; }
+
+/* toast */
+.toast {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  z-index: 3000; display: flex; align-items: center; gap: 14px; max-width: min(560px, calc(100% - 32px)); box-sizing: border-box;
+  padding: 10px 10px 10px 18px; border-radius: 12px; background: var(--fg); color: var(--bg); font-weight: 600;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.35);
+}
+.toast button { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-ink); font: 700 17px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; flex-shrink: 0; }
+.toast span { min-width: 0; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  .board { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: auto; }
+  .board .col { overflow: visible; }
+  .board .col.c3 { order: 1; }
+  .board .col.c2 { order: 2; grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .mapview { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .mapview .mapcard { height: 62vh; }
+}
+@media (max-width: 900px) {
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .branch { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "head" "main" "rail"; gap: 10px; }
+  .rail { flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 2px; }
+  .rail button { flex: 1 0 56px; min-height: 56px; font-size: 11px; gap: 3px; }
+  .rail button svg { width: 22px; height: 22px; }
+  .rail .spacer { display: none; }
+  .board, .board .col.c2 { grid-template-columns: minmax(0, 1fr); }
+  .mapcard.mini { height: 240px; }
+  .inc h1 { font-size: 23px; }
+  .clocks { width: 100%; }
+  .clock, .par, .iconbtn { flex: 1 1 0; min-width: 0; padding: 8px; }
+  .clock .v, .par .v { font-size: 20px; }
+  .tri-count { font-size: 46px; }
+  .tri-btns button { width: 56px; height: 64px; }
+  .branch { grid-template-columns: minmax(0, 1fr); }
+  .beds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-hosp { grid-template-columns: minmax(0, 1fr); }
+  .log .entry { grid-template-columns: 56px minmax(0, 1fr); }
+  .log .lk { display: none; }
+  .sheet-wrap { align-items: flex-end; padding: 0; }
+  .sheet { border-radius: 18px 18px 0 0; max-height: 92%; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .par.over { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { filter: brightness(1.25); } }
+  .sheet { animation: rise 0.16s ease-out; }
+  @keyframes rise { from { transform: translateY(16px); opacity: 0.6; } }
+}
+</style>
+
+<div class="app" id="app"></div>
+<div id="sheet-root"></div>
+<div id="toast-root"></div>
+<div class="map-park" id="map-park" aria-hidden="true"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   Reference data. Everything an agency would configure lives up here.
+   ===================================================================== */
+
+const GEO = /*@GEO*/null;              // Census 2023 town boundaries + NJ primary/secondary roads
+const SAMPLE_SCENE = /*@SCENE*/null;   // NJ OGIS 2020 aerial of the sample scene
+
+/* Category names follow the NJ statewide EMS protocol (8/2025, section 9.1), which allows START or SALT.
+   White "Uninjured" is on the NJ Disaster Triage Tag. */
+const CAT_DEFS = {
+  R: { color: 'Red',    name: 'Immediate' },
+  Y: { color: 'Yellow', name: 'Delayed' },
+  G: { color: 'Green',  name: 'Minimal' },
+  X: { color: 'Gray',   name: 'Expectant' },
+  B: { color: 'Black',  name: 'Deceased' },
+  W: { color: 'White',  name: 'Uninjured' },
+};
+const TX_CATS = ['R', 'Y', 'G'];
+const PATIENT_KEYS = ['R', 'Y', 'G', 'X', 'B'];
+
+/* NJ has no statewide numbered MCI levels. Protocol 9.1 separates a multiple casualty situation from a mass
+   casualty incident; Monmouth escalates by alarm, using the Garden State Parkway run cards in the county
+   EMS communications plan (2023). */
+const MCI_LEVELS = [
+  { level: 1, label: 'Multiple casualty', say: 'a multiple casualty situation', range: 'Patients within what is on scene', note: 'NJ protocol 9.1' },
+  { level: 2, label: 'MCI · 1st alarm', say: 'a mass casualty incident, 1st alarm', range: '10 ambulances, 2 rescues, 2 ALS' },
+  { level: 3, label: 'MCI · 2nd alarm', say: 'a mass casualty incident, 2nd alarm', range: '+10 ambulances, 2 rescues, 2 ALS' },
+  { level: 4, label: 'MCI · 3rd alarm', say: 'a mass casualty incident, 3rd alarm', range: '+5 ambulances, 1–2 ALS' },
+];
+const MCI_NOTE = 'Alarm resources are the Parkway run cards in the Monmouth County EMS communications plan (2023). Confirm the run card for your location with County Communications.';
+
+/* Hospitals. `ll` from OpenStreetMap; phones only where an official source lists them. */
+const HOSPITALS = [
+  { id: 'jsumc', name: 'Jersey Shore University Medical Center', short: 'JSUMC', town: 'Neptune', sys: 'Hackensack Meridian Health', lic: { beds: 584, icu: 62, peds: 44, picu: 10, psych: 30 }, phones: { main: '732-775-5500', psych: '732-776-4555' },
+    ll: [40.20898, -74.04099],
+    trauma: 'Trauma · NJ Level II', caps: ['Trauma · NJ Level II', 'ACS Level I adult & peds', 'Comprehensive stroke', 'Cardiac surgery + PCI', "K. Hovnanian Children's", 'L&D'],
+    tags: ['trauma', 'peds', 'stroke', 'pci', 'ob', 'psych'],
+    note: "Monmouth County's only trauma center. State-designated Level II; verified by the American College of Surgeons as Level I adult (2022) and Level I pediatric (2025)." },
+  { id: 'mmc', name: 'Monmouth Medical Center', short: 'Monmouth Medical', town: 'Long Branch', sys: 'RWJBarnabas Health', lic: { beds: 483, icu: 28, peds: 15, picu: 5, psych: 63 }, phones: { main: '732-222-5200', psych: '732-923-6999' },
+    ll: [40.29526, -73.98561],
+    caps: ['Primary stroke', 'Primary PCI', "Unterberg Children's", 'L&D · Level III NICU', 'Psych screening center', 'Hyperbaric (wound care)'], tags: ['peds', 'stroke', 'pci', 'ob', 'psych', 'hbo'],
+    note: 'Runs the county psychiatric emergency screening service around the clock. Approved to move to Tinton Falls, about 2032; Long Branch keeps an ED.' },
+  { id: 'riverview', name: 'Riverview Medical Center', short: 'Riverview', town: 'Red Bank', sys: 'Hackensack Meridian Health', lic: { beds: 455, icu: 53, psych: 31 }, phones: { main: '732-741-2700', psych: '732-219-5325' },
+    ll: [40.35367, -74.06318],
+    caps: ['Primary stroke', 'Primary PCI', 'L&D · NICU', 'Psych screening'], tags: ['stroke', 'pci', 'ob', 'psych'] },
+  { id: 'bayshore', name: 'Bayshore Medical Center', short: 'Bayshore', town: 'Holmdel', sys: 'Hackensack Meridian Health', lic: { beds: 211, icu: 26 }, phones: { main: '732-739-5900' },
+    ll: [40.40659, -74.19177],
+    caps: ['Primary stroke', 'Primary PCI'], tags: ['stroke', 'pci'] },
+  { id: 'centrastate', name: 'CentraState Medical Center', short: 'CentraState', town: 'Freehold Twp', sys: 'Atlantic Health', lic: { beds: 276, icu: 26, peds: 12, psych: 19 }, phones: { main: '732-431-2000', psych: '732-294-2595' },
+    ll: [40.23751, -74.31248],
+    caps: ['Primary stroke', 'Primary PCI', 'Pediatric ED', 'L&D', 'Psych'], tags: ['peds', 'stroke', 'pci', 'ob', 'psych'],
+    note: 'Part of Atlantic Health since 2021. Hersh Pediatric Center: pediatric ED and inpatient unit (2025).' },
+  { id: 'oumc', name: 'Ocean University Medical Center', short: 'Ocean University', town: 'Brick', sys: 'Hackensack Meridian Health', lic: { beds: 311, icu: 24 }, phones: { main: '732-840-2200' },
+    ll: [40.07664, -74.13303],
+    caps: ['Primary stroke', 'Primary PCI', 'L&D', 'Hyperbaric (wound care)'], tags: ['stroke', 'pci', 'ob', 'hbo'] },
+  { id: 'cmc', name: 'Community Medical Center', short: 'Community', town: 'Toms River', sys: 'RWJBarnabas Health', lic: { beds: 587, icu: 50, peds: 17 }, phones: { main: '732-557-8000', ed: '732-557-8080', hbo: '732-557-2121' },
+    ll: [39.96254, -74.21462],
+    caps: ['Primary stroke', 'Primary PCI', 'L&D', 'Hyperbaric (wound care)'], tags: ['stroke', 'pci', 'ob', 'hbo'],
+    note: 'Hyperbaric center is a weekday wound-care program (Mon–Fri 8:00–3:30), not a 24/7 emergency chamber.' },
+  { id: 'mmcsc', name: 'Monmouth Medical Center Southern Campus', short: 'MMC Southern', town: 'Lakewood', sys: 'RWJBarnabas Health', lic: { beds: 241, icu: 20, psych: 60 }, phones: { main: '732-363-1900', ed: '732-886-4525', psych: '732-886-4474' },
+    ll: [40.07321, -74.21940],
+    caps: ['Primary stroke', 'Psych screening center (Ocean Co.)', 'Hyperbaric (wound care)'], tags: ['stroke', 'psych', 'hbo'],
+    note: "Ocean County's primary psychiatric screening center." },
+  { id: 'rwjuh', name: 'Robert Wood Johnson University Hospital', short: 'RWJUH', town: 'New Brunswick', sys: 'RWJBarnabas Health', lic: { beds: 603, icu: 97, peds: 54, picu: 14 }, phones: { main: '732-828-3000' },
+    ll: [40.49530, -74.44961],
+    trauma: 'Trauma · NJ Level I', caps: ['Trauma · NJ Level I', 'ACS Level I adult & peds', 'Comprehensive stroke', 'Cardiac surgery + PCI', "Bristol-Myers Squibb Children's"],
+    tags: ['trauma', 'peds', 'stroke', 'pci'], note: 'Nearest state-designated Level I trauma center to Monmouth County.' },
+  { id: 'jfk', name: 'JFK University Medical Center', short: 'JFK', town: 'Edison', sys: 'Hackensack Meridian Health', lic: null, phones: null,
+    ll: [40.55635, -74.35017],
+    caps: ['Comprehensive stroke', 'Primary PCI'], tags: ['stroke', 'pci'] },
+  { id: 'obmc', name: 'Old Bridge Medical Center', short: 'Old Bridge', town: 'Old Bridge', sys: 'Hackensack Meridian Health', lic: { beds: 113, icu: 10 }, phones: { main: '732-360-1000' },
+    ll: [40.38335, -74.32351],
+    caps: ['Primary stroke'], tags: ['stroke'], note: 'Formerly Raritan Bay Medical Center, Old Bridge (renamed 2021).' },
+  { id: 'rbmc', name: 'Raritan Bay Medical Center', short: 'Raritan Bay', town: 'Perth Amboy', sys: 'Hackensack Meridian Health', lic: { beds: 340, icu: 25, psych: 26 }, phones: { main: '732-324-5000', psych: '732-324-5289' },
+    ll: [40.51910, -74.28101],
+    caps: ['Primary stroke', 'Primary PCI', 'Psych', 'Hyperbaric (wound care)'], tags: ['stroke', 'pci', 'psych', 'hbo'] },
+  { id: 'somc', name: 'Southern Ocean Medical Center', short: 'Southern Ocean', town: 'Manahawkin', sys: 'Hackensack Meridian Health', lic: { beds: 156, icu: 12 }, phones: { main: '609-597-6011' },
+    ll: [39.72105, -74.28469],
+    caps: ['Primary stroke', 'L&D', 'Hyperbaric (wound care)'], tags: ['stroke', 'ob', 'hbo'] },
+  { id: 'cbmc', name: 'Cooperman Barnabas Medical Center', short: 'Cooperman Barnabas', town: 'Livingston', sys: 'RWJBarnabas Health', lic: { beds: 529, icu: 44, peds: 35, picu: 10, burn: 18 }, phones: { main: '973-322-5000', ed: '973-322-5180', burn: '973-322-5920' },
+    ll: [40.76346, -74.30484],
+    caps: ['State burn center', 'Comprehensive stroke', 'Pediatric burns', 'Hyperbaric'], tags: ['burn', 'stroke', 'peds', 'hbo'],
+    note: "New Jersey's only state-certified burn center: 12 burn ICU and 18 step-down beds. Formerly Saint Barnabas. The Crozer (PA) burn center closed in 2025." },
+];
+
+/* No hospital near Monmouth is verified for 24/7 emergency hyperbaric care; the local chambers are wound-care programs.
+   For CO poisoning or a dive injury, NJ Poison Control and Divers Alert Network advise on where to go. */
+const SPECIALTIES = [
+  { k: 'trauma', name: 'Trauma' },
+  { k: 'peds',   name: 'Pediatric' },
+  { k: 'burn',   name: 'Burn' },
+  { k: 'stroke', name: 'Stroke' },
+  { k: 'pci',    name: 'STEMI / PCI' },
+  { k: 'ob',     name: 'L&D' },
+  { k: 'psych',  name: 'Psych' },
+  { k: 'hbo',    name: 'Hyperbaric' },
+];
+
+const BED_TYPES = [
+  { k: 'icu',   name: 'ICU' },
+  { k: 'ms',    name: 'Med/Surg' },
+  { k: 'peds',  name: 'Peds' },
+  { k: 'picu',  name: 'PICU' },
+  { k: 'burn',  name: 'Burn' },
+  { k: 'or',    name: 'OR' },
+  { k: 'psych', name: 'Psych' },
+  { k: 'negp',  name: 'Neg. press.' },
+];
+/* Monmouth/Ocean diversion terms (county EMS communications plan). ED divert ends after 2 hours, the others after 4.
+   Trauma patients are never diverted from a trauma center, nor burn patients from a burn center. */
+const ED_STATUS = ['Open', 'ED divert', 'Critical care divert', 'Special services divert', 'Psychiatric divert', 'Full divert', 'Facility divert'];
+const isDivert = s => !!s && s !== 'Open';
+const COUNTY_STAGING = [
+  { name: 'Monmouth Executive Airport', note: '1717 Route 34, Wall', ll: [40.18944, -74.12472] },
+  { name: 'Parkway Monmouth Rest Area', note: 'Between exits 98 and 100, Wall', ll: [40.19844, -74.09912] },
+];
+
+const CHANNELS = [
+  { name: 'EMS Countywide', freq: '153.755', use: 'Interagency EMS' },
+  { name: 'Monmouth EMS 2', freq: '155.340', use: 'Ambulance, county and hospital' },
+  { name: 'SPEN 4', freq: '153.785', use: 'Multi-discipline' },
+  { name: 'Fireground 3', freq: '154.280', use: 'Medevac / landing zone' },
+  { name: 'Fireground 4', freq: '154.965', use: 'Medevac / landing zone' },
+  { name: 'JEMS 3', freq: '155.280', use: 'Statewide EMS coordination' },
+  { name: 'EMS North / Central / South Response', use: 'Units to County dispatch' },
+  { name: 'NJICS VCALL / VTAC / UCALL / UTAC', use: 'Only when assigned' },
+];
+
+/* Each number is from the organization's own published listing (checked October 2026). Entries with no number had no
+   official listing that could be confirmed; they stay so an agency can fill them in. */
+const CONTACTS = [
+  { group: 'County', name: 'County Communications · Sheriff', num: '732-577-8700', note: 'Non-emergency line. Mutual aid, staging areas, medevac requests. 24/7 for County OEM.' },
+  { group: 'County', name: 'Sheriff\'s Office main', num: '732-431-6400', note: 'Communications Division x1700' },
+  { group: 'County', name: 'County OEM · Coordinator', num: '732-431-7400 x1801', note: 'After hours use 732-577-8700' },
+  { group: 'County', name: 'County EMS Coordinator', num: '732-988-8000 x241', note: 'As listed in the 2023 county EMS plan; confirm' },
+  { group: 'County', name: 'County Health Department', num: '732-431-7456', note: 'Leads the county Hazmat Task Force' },
+  { group: 'County', name: 'Fire Marshal · Fire Safety Services', num: '732-683-8856', note: 'Sheriff\'s Office, Freehold' },
+  { group: 'County', name: 'Psychiatric emergency screening', num: '732-923-6999', note: 'Monmouth County primary screening center, Monmouth Medical Center, 24/7' },
+  { group: 'County', name: 'Medical examiner (Middlesex/Monmouth)', num: '', note: 'No official listing could be confirmed' },
+  { group: 'Neighboring counties', name: 'Ocean County OEM', num: '732-341-3451', note: '24/7' },
+  { group: 'Neighboring counties', name: 'Middlesex County OEM', num: '732-316-7100', note: '24/7' },
+  { group: 'Neighboring counties', name: 'Ocean County psychiatric screening', num: '732-886-4474', note: 'MMC Southern Campus, Lakewood' },
+  { group: 'State', name: 'NJ EMS Task Force Operations Center', num: '973-878-9911', note: '24/7. Requests come from the County EMS Coordinator.' },
+  { group: 'State', name: 'NJSP Regional Operations Intelligence Center', num: '609-963-6900', note: 'Requests for NJ Task Force 1 (USAR)' },
+  { group: 'State', name: 'NJ State Police headquarters', num: '609-882-2000', note: '' },
+  { group: 'State', name: 'NJ Healthcare Coalitions · EMResource', num: '1-800-457-2262', note: 'NJ Hospital Association, 24/7' },
+  { group: 'State', name: 'NJ DOH Office of EMS', num: '609-633-7777', note: 'Routine business' },
+  { group: 'State', name: 'NJDEP hotline (WARN-DEP)', num: '1-877-927-6337', note: '24/7. The county Hazmat Task Force asks for the DEP case number.' },
+  { group: 'Hazmat & poison', name: 'NJ Poison Control', num: '1-800-222-1222', note: 'NJ Poison Information & Education System' },
+  { group: 'Hazmat & poison', name: 'CHEMTREC', num: '1-800-424-9300', note: 'Chemical emergency, 24/7' },
+  { group: 'Hazmat & poison', name: 'Divers Alert Network', num: '+1-919-684-9111', note: 'Dive injuries and hyperbaric referral, 24/7, collect accepted' },
+  { group: 'Air medical', name: 'REMCS medevac', num: '800-332-4356', note: 'As listed in the county EMS plan. In Monmouth, request through County Communications.' },
+  { group: 'Air medical', name: 'HMH AirMed dispatch', num: '866-662-6800', note: 'Authorized requesters only' },
+  { group: 'Specialty lines', name: 'Burn center transfer · Cooperman Barnabas', num: '973-322-5920', note: 'NJ\'s only state-certified burn center' },
+  { group: 'Specialty lines', name: 'Monmouth Medical Center ED', num: '', note: 'Two official listings disagree (732-923-7300 and 732-923-7386). Confirm, then add it.' },
+  { group: 'Utilities', name: 'JCP&L outages and downed wires', num: '1-888-544-4877', note: '' },
+  { group: 'Utilities', name: 'New Jersey Natural Gas emergency', num: '800-427-5325', note: '800-GAS-LEAK, 24/7' },
+  { group: 'Support', name: 'American Red Cross', num: '1-800-733-2767', note: '24 hours. Central NJ chapter office in Tinton Falls: 732-493-9100' },
+  { group: 'Support', name: 'NJSP Marine Services · Atlantic Highlands', num: '732-541-0491', note: 'Also VHF 16' },
+  { group: 'Support', name: 'NJSP Marine Services · Point Pleasant', num: '732-899-5050', note: 'Also VHF 16' },
+];
+
+const INCIDENT_TYPES = ['Motor vehicle crash','Bus crash','Fire / smoke','Hazmat / CO','Active threat','Crowd / event','Structural collapse','Water / beach rescue','Rail incident','Storm / flooding','Other'];
+const HAZARDS = ['Traffic','Fuel spill','Fire / smoke','Downed wires','Hazmat','Unstable vehicle','Violence','Crowd','Water','Weather','Darkness'];
+
+const UNIT_KINDS = [
+  { k: 'BLS',   g: 'ems',  name: 'BLS ambulance' },
+  { k: 'ALS',   g: 'ems',  name: 'ALS / medic' },
+  { k: 'SUP',   g: 'ems',  name: 'EMS supervisor' },
+  { k: 'MCI',   g: 'ems',  name: 'MCI unit' },
+  { k: 'BUS',   g: 'ems',  name: 'Bus' },
+  { k: 'AIR',   g: 'ems',  name: 'Air medical' },
+  { k: 'ENG',   g: 'fire', name: 'Engine' },
+  { k: 'TRK',   g: 'fire', name: 'Ladder / truck' },
+  { k: 'RES',   g: 'fire', name: 'Heavy rescue' },
+  { k: 'CHF',   g: 'fire', name: 'Fire chief' },
+  { k: 'HAZ',   g: 'spec', name: 'Hazmat' },
+  { k: 'TECH',  g: 'spec', name: 'Technical rescue' },
+  { k: 'WATER', g: 'spec', name: 'Water / dive' },
+  { k: 'USAR',  g: 'spec', name: 'USAR' },
+  { k: 'BOMB',  g: 'spec', name: 'Bomb squad' },
+  { k: 'TAC',   g: 'spec', name: 'Tactical / TEMS' },
+  { k: 'PD',    g: 'sup',  name: 'Police' },
+  { k: 'OEM',   g: 'sup',  name: 'OEM' },
+  { k: 'REHAB', g: 'sup',  name: 'Rehab' },
+  { k: 'UTIL',  g: 'sup',  name: 'Utility' },
+  { k: 'ME',    g: 'sup',  name: 'Medical examiner' },
+  { k: 'RC',    g: 'sup',  name: 'Red Cross' },
+];
+const KIND_GROUPS = [
+  { g: 'all', name: 'All' }, { g: 'ems', name: 'EMS' }, { g: 'fire', name: 'Fire' }, { g: 'spec', name: 'Special ops' }, { g: 'sup', name: 'Police & support' },
+];
+const TRANSPORT_KINDS = ['BLS', 'ALS', 'BUS', 'AIR'];
+
+const STATUSES = [
+  { k: 'available',    name: 'Available' },
+  { k: 'enroute',      name: 'En route' },
+  { k: 'staged',       name: 'Staged' },
+  { k: 'onscene',      name: 'On scene' },
+  { k: 'transporting', name: 'Transporting' },
+  { k: 'released',     name: 'Released' },
+];
+
+const TASKS = ['Command','Triage','Treatment · Red','Treatment · Yellow','Treatment · Green','Transport','Loading','Extrication','Fire suppression','Hazmat','Staging','Rehab','LZ','Safety','Traffic'];
+const CERTS = ['EMR', 'EMT', 'Paramedic', 'RN', 'Driver', 'Officer', 'Firefighter'];
+
+/* County assets are named as in the Monmouth County EMS communications plan (2023); NJ EMS Task Force assets
+   from its brochure. Mutual aid goes through County Communications; EMSTF through the County EMS Coordinator. */
+const REQUEST_CATALOG = [
+  { group: 'EMS · through County Communications', what: 'BLS ambulances', hint: 'Mutual aid' },
+  { group: 'EMS · through County Communications', what: 'ALS / MICU units', hint: 'HMH or RWJBH paramedics' },
+  { group: 'EMS · through County Communications', what: 'Ambulance strike team', hint: 'About 5 ambulances and a leader' },
+  { group: 'EMS · through County Communications', what: 'EMS supervisor' },
+  { group: 'EMS · through County Communications', what: 'Air medical', hint: 'County Communications coordinates the aircraft' },
+  { group: 'County MCI support', what: 'Mass Casualty Trailer 67-MCT-1', hint: 'Marlboro FA' },
+  { group: 'County MCI support', what: 'Mass Casualty Response unit', hint: 'MCR-1 Atlantic Highlands · MCR-2 Howell' },
+  { group: 'County MCI support', what: 'Medical Ambulance Bus', hint: 'MAB-2 Shark River Hills · MAB-6 Atl. Highlands/Keyport' },
+  { group: 'County MCI support', what: 'Staging Area Management Team', hint: 'SAMT-1 West Long Branch · SAMT-2 Hazlet' },
+  { group: 'County MCI support', what: 'Field Comm', hint: 'Mobile communications; automatic at 6+ squads' },
+  { group: 'County MCI support', what: 'County EMS Coordinator' },
+  { group: 'NJ EMS Task Force · through County EMS Coordinator', what: 'EMSTF Mass Care Response Unit', hint: 'Supplies for 100 patients' },
+  { group: 'NJ EMS Task Force · through County EMS Coordinator', what: 'EMSTF Medical Ambulance Bus', hint: 'Up to 20 stretcher patients' },
+  { group: 'NJ EMS Task Force · through County EMS Coordinator', what: 'EMSTF ambulance strike team' },
+  { group: 'NJ EMS Task Force · through County EMS Coordinator', what: 'EMSTF Mobile Satellite ED', hint: '14 critical-care beds, x-ray, lab' },
+  { group: 'NJ EMS Task Force · through County EMS Coordinator', what: 'EMSTF ASAP / Gator', hint: 'Off-road, carries a full-size cot' },
+  { group: 'Fire & special operations', what: 'Engine company' },
+  { group: 'Fire & special operations', what: 'Ladder / truck' },
+  { group: 'Fire & special operations', what: 'Heavy rescue', hint: 'Extrication' },
+  { group: 'Fire & special operations', what: 'County Hazmat Task Force', hint: 'Ask County Communications for a consult or a response; have the NJDEP case number' },
+  { group: 'Fire & special operations', what: 'Technical rescue', hint: 'Collapse, trench, confined space, high angle' },
+  { group: 'Fire & special operations', what: 'Water rescue', hint: 'A.N.S.W.E.R. team, Sheriff Maritime team, NJSP Marine' },
+  { group: 'Fire & special operations', what: 'USAR · NJ Task Force 1', hint: 'Requested through the NJSP ROIC' },
+  { group: 'Fire & special operations', what: 'Bomb squad', hint: 'No county unit; NJ State Police Bomb Unit' },
+  { group: 'Fire & special operations', what: 'Tactical team · MOCERT', hint: 'Prosecutor\'s Office, through local police' },
+  { group: 'Police & support', what: 'Police · traffic control' },
+  { group: 'Police & support', what: 'County OEM' },
+  { group: 'Police & support', what: 'Rehab' },
+  { group: 'Police & support', what: 'Red Cross' },
+  { group: 'Police & support', what: 'Medical examiner' },
+  { group: 'Police & support', what: 'Utility · power or gas' },
+  { group: 'Police & support', what: 'Bus for walking wounded' },
+];
+
+const ICS_POSITIONS = [
+  { id: 'uc-ems',   tier: 'command', label: 'EMS Command' },
+  { id: 'uc-fire',  tier: 'command', label: 'Fire Command' },
+  { id: 'uc-pd',    tier: 'command', label: 'Police Command' },
+  { id: 'safety',   tier: 'staff',   label: 'Safety Officer' },
+  { id: 'pio',      tier: 'staff',   label: 'Public Information' },
+  { id: 'liaison',  tier: 'staff',   label: 'Liaison · OEM / hospitals' },
+  { id: 'staging',  tier: 'ops',     label: 'Staging Area Manager' },
+  { id: 'medgrp',   tier: 'ops',     label: 'Medical Group Supervisor', lead: true },
+  { id: 'rehab',    tier: 'ops',     label: 'Rehab' },
+  { id: 'triage',   tier: 'med',     label: 'Triage Unit Leader' },
+  { id: 'treat',    tier: 'med',     label: 'Treatment Unit Leader' },
+  { id: 'tx-red',   tier: 'sub', parent: 'treat', label: 'Red Treatment' },
+  { id: 'tx-yel',   tier: 'sub', parent: 'treat', label: 'Yellow Treatment' },
+  { id: 'tx-grn',   tier: 'sub', parent: 'treat', label: 'Green Treatment' },
+  { id: 'transport',tier: 'med',     label: 'Transport Unit Leader' },
+  { id: 'medcom',   tier: 'sub', parent: 'transport', label: 'Medical Communications' },
+  { id: 'amb-stg',  tier: 'sub', parent: 'transport', label: 'Ambulance Staging' },
+  { id: 'morgue',   tier: 'med',     label: 'Morgue' },
+];
+
+const BENCHMARKS = [
+  { id: 'command',   label: 'Command established' },
+  { id: 'sizeup',    label: 'Size-up given to dispatch' },
+  { id: 'mci',       label: 'MCI declared · county notified' },
+  { id: 'staging',   label: 'Staging established' },
+  { id: 'hospitals', label: 'Hospitals notified' },
+  { id: 'treatment', label: 'Treatment area set up' },
+  { id: 'triage',    label: 'Primary triage complete' },
+  { id: 'extrication', label: 'Extrication complete' },
+  { id: 'reds',      label: 'All Immediate transported' },
+  { id: 'allpts',    label: 'All patients transported' },
+  { id: 'clear',     label: 'Scene clear · units released' },
+];
+
+/* Towns come from the Census file so names and boundaries agree. */
+const titleCase = s => s.replace(/\b([a-z])/g, (m, c) => c.toUpperCase());
+const TOWNS = (GEO ? GEO.towns : []).map(t => ({ name: titleCase(t.n), home: !!t.m, ll: t.c }));
+const MUNICIPALITIES = TOWNS.filter(t => t.home).map(t => t.name).sort();
+const townLL = name => { const n = (name || '').trim().toLowerCase(); const t = TOWNS.find(x => x.name.toLowerCase() === n) || TOWNS.find(x => x.home && x.name.toLowerCase().startsWith(n)); return t ? t.ll : null; };
+
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+const KEY = 'scene-command-v2';
+const CONFIG_KEY = 'scene-command-config-v1';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const now = () => Date.now();
+const pad = n => String(n).padStart(2, '0');
+const hhmm = t => { const d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const dur = ms => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return h ? `${h}:${pad(m)}:${pad(x)}` : `${pad(m)}:${pad(x)}`;
+};
+const mins = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${pad(m % 60)}`; };
+const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
+const cat = k => ({ k, ...CAT_DEFS[k], name: k === 'B' && !(S && S.method === 'SALT') ? 'Expectant / Deceased' : CAT_DEFS[k].name });
+const catsList = () => { const keys = S.method === 'SALT' ? ['R', 'Y', 'G', 'X', 'B'] : ['R', 'Y', 'G', 'B']; if (S.white) keys.push('W'); return keys.map(cat); };
+const COLOR_VAR = { R: 'red', Y: 'yellow', G: 'green', X: 'gray', B: 'black-edge', W: 'white' };
+const hosp = id => HOSPITALS.find(h => h.id === id);
+const unitById = id => S.units.find(u => u.id === id);
+const statusName = k => (STATUSES.find(s => s.k === k) || {}).name || k;
+const kindOf = k => UNIT_KINDS.find(x => x.k === k) || { k, g: 'sup', name: k };
+const kindTag = k => `<span class="kind g-${kindOf(k).g} ${esc(k)}">${esc(k)}</span>`;
+
+/* Distance */
+const toRad = d => d * Math.PI / 180;
+function miles(a, b) {
+  if (!a || !b) return null;
+  const R = 3958.8, dLat = toRad(b[0] - a[0]), dLon = toRad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+/* A rough road estimate from straight-line distance: 1.3x the distance at 40 mph. Shown as an estimate. */
+const estMin = mi => Math.max(1, Math.round(mi * 1.3 / 40 * 60));
+const ddm = (v, pos, neg) => { const a = Math.abs(v), d = Math.floor(a), m = (a - d) * 60; return `${d}° ${m.toFixed(3)}′ ${v >= 0 ? pos : neg}`; };
+const fmtLL = ll => `${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;
+const fmtDDM = ll => `${ddm(ll[0], 'N', 'S')}  ${ddm(ll[1], 'E', 'W')}`;
+
+const ICON = {
+  board: '<rect x="3" y="3" width="7.5" height="9" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.5"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.5"/><rect x="3" y="15" width="7.5" height="6" rx="1.5"/>',
+  map: '<path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4z"/><path d="M9 4v14M15 6v14"/>',
+  amb: '<path d="M2.5 6.5h11v10h-11z"/><path d="M13.5 9.5h4.2l3.3 3.6v3.4h-7.5"/><circle cx="6.5" cy="17.5" r="1.9"/><circle cx="17" cy="17.5" r="1.9"/><path d="M8 9v4.5M5.75 11.25h4.5"/>',
+  units: '<circle cx="8" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 20c.8-3.6 3-5.4 5.5-5.4s4.7 1.8 5.5 5.4"/><path d="M14 15.2c.8-.3 1.6-.4 2.5-.4 2.3 0 4.2 1.6 5 5.2"/>',
+  hosp: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 6.5v6M9 9.5h6M9.5 21v-4.5h5V21"/>',
+  phone: '<path d="M6.6 3.5h2.6l1.6 4.2-2 1.4a11 11 0 0 0 6.1 6.1l1.4-2 4.2 1.6v2.6a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/>',
+  ics: '<rect x="8.5" y="2.5" width="7" height="4.5" rx="1"/><rect x="2.5" y="16.5" width="7" height="4.5" rx="1"/><rect x="14.5" y="16.5" width="7" height="4.5" rx="1"/><path d="M12 7v4.5M6 16.5v-5h12v5"/>',
+  radio: '<rect x="5.5" y="8" width="13" height="13.5" rx="2"/><path d="M9 8l7-5.5"/><path d="M9 13h6M9 16.5h6"/>',
+  log: '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M3.5 6h1.5M3.5 12h1.5M3.5 18h1.5"/>',
+  menu: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+  moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>',
+  locate: '<circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="7.5"/>',
+  layers: '<path d="M12 3 2.5 8 12 13l9.5-5L12 3z"/><path d="M2.5 12.5 12 17.5l9.5-5M2.5 16.5 12 21.5l9.5-5"/>',
+  expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+  person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20.5c.9-4 3.6-6 7-6s6.1 2 7 6"/>',
+};
+const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
+
+/* =====================================================================
+   State
+   ===================================================================== */
+let S;    // the incident, persisted on this device
+let C;    // agency configuration that outlives incidents: rosters, extra phone numbers
+let UI = { view: 'board', sheet: null, form: {}, logFilter: 'all', unitGroup: 'all', hospFilter: [], pinMode: null, mapLayer: 'sat', live: 'unknown' };
+let undoSnap = null;
+let toastTimer = null;
+
+function defaultConfig() {
+  return {
+    v: 1,
+    roster: [],
+    members: [],
+    contacts: [],
+  };
+}
+
+function blankState(opts = {}) {
+  const t = now();
+  const st = {
+    v: 2,
+    sample: false,
+    incident: {
+      type: opts.type || 'Motor vehicle crash',
+      location: opts.location || '',
+      municipality: opts.municipality || '',
+      commandName: opts.commandName || '',
+      ic: opts.ic || '',
+      staging: opts.staging || '',
+      access: opts.access || '',
+      hazards: opts.hazards || [],
+      lz: opts.lz || 'Not requested',
+      lzLocation: opts.lzLocation || '',
+      est: opts.est ?? 0,
+      mciLevel: 0,
+      dispatchAt: t,
+      ll: null, stagingLL: null, lzLL: null,
+    },
+    me: null,
+    triage: { R: 0, Y: 0, G: 0, X: 0, B: 0, W: 0 },
+    method: (S && S.method) || 'START',
+    white: !!(S && S.white),
+    transports: [],
+    units: (C.roster || []).map(r => ({ id: uid(), name: r.name, kind: r.kind, agency: r.agency, crew: r.crew ?? 2, status: 'available', task: '', t })),
+    people: [],
+    requests: [],
+    hospitals: {},
+    ics: {},
+    bench: { command: t },
+    par: { interval: (S && S.par && S.par.interval) || 20, last: t },
+    log: [{ t, kind: 'bench', text: 'Command established' }],
+    mode: (S && S.mode) || 'night',
+  };
+  return st;
+}
+
+function sampleState() {
+  const T0 = now() - 22 * 60000 - 14000;      // dispatched 22 min ago
+  const at = (m, s = 0) => T0 + m * 60000 + s * 1000;
+  const st = blankState();
+  st.sample = true;
+  const P = SAMPLE_SCENE ? SAMPLE_SCENE.pts : { scene: [40.25183, -74.03932], staging: [40.25025, -74.04013], lz: [40.24906, -74.03551] };
+  Object.assign(st.incident, {
+    type: 'Bus crash',
+    location: 'Route 35 & Deal Road',
+    municipality: 'Ocean Township',
+    commandName: 'Deal Road Command',
+    ic: 'Lt. R. Ramos',
+    staging: 'Shopping center lot, SW corner of Rt 35 & Deal Rd',
+    access: 'Enter from Deal Road westbound; Rt 35 southbound closed at the scene',
+    hazards: ['Traffic', 'Fuel spill', 'Unstable vehicle'],
+    lz: 'Standby',
+    lzLocation: 'Ballfields southeast of the scene (proposed)',
+    est: 20,
+    mciLevel: 2,
+    dispatchAt: T0,
+    ll: P.scene, stagingLL: P.staging, lzLL: P.lz,
+  });
+  st.triage = { R: 4, Y: 6, G: 8, X: 0, B: 1, W: 0 };
+
+  /* Unit numbers follow the county's town–unit pattern (56–63 ambulances, 50 the officer). Squads are made up. */
+  st.units = [
+    U('41-50',      'SUP',  'Your squad', 1, 'onscene', 'Command', at(3, 5)),
+    U('41-56',      'BLS',  'Your squad', 2, 'onscene', 'Triage', at(3, 5)),
+    U('41-57',      'BLS',  'Your squad', 2, 'transporting', 'To JSUMC', at(12, 40)),
+    U('MICU 7',     'ALS',  'HMH paramedics', 2, 'transporting', 'To JSUMC', at(14, 10)),
+    U('MICU 12',    'ALS',  'RWJBH paramedics', 2, 'onscene', 'Treatment · Red', at(9, 30)),
+    U('35-56',      'BLS',  'Squad 35', 2, 'onscene', 'Treatment · Yellow', at(8, 0)),
+    U('37-56',      'BLS',  'Squad 37', 3, 'transporting', 'To Monmouth Medical', at(17, 20)),
+    U('26-56',      'BLS',  'Squad 26', 2, 'onscene', 'Treatment · Green', at(10, 45)),
+    U('23-57',      'BLS',  'Squad 23', 2, 'staged', '', at(15, 50)),
+    U('MedStar 14', 'BLS',  'Sheriff MedStar', 2, 'staged', '', at(19, 5)),
+    U('47-56',      'BLS',  'Squad 47', 2, 'enroute', '', at(16, 0)),
+    U('MICU 3',     'ALS',  'HMH paramedics', 2, 'enroute', '', at(16, 0)),
+    U('MCR-1',      'MCI',  'County MCI', 2, 'enroute', '', at(6, 0)),
+    U('18-56',      'BLS',  'Squad 18', 2, 'available', '', at(0, 0)),
+    U('29-56',      'BLS',  'Squad 29', 2, 'available', '', at(0, 0)),
+    U('MICU 9',     'ALS',  'RWJBH paramedics', 2, 'available', '', at(0, 0)),
+    U('Engine 41-1','ENG',  'Fire', 4, 'onscene', 'Extrication', at(4, 30)),
+    U('Rescue 41',  'RES',  'Fire', 4, 'onscene', 'Extrication', at(6, 10)),
+    U('Chief 41',   'CHF',  'Fire', 1, 'onscene', 'Command', at(4, 30)),
+    U('Hazmat 1',   'HAZ',  'County hazmat', 4, 'enroute', '', at(9, 0)),
+    U('PD 12',      'PD',   'Police', 1, 'onscene', 'Traffic', at(2, 50)),
+  ];
+  const uidOf = name => st.units.find(u => u.name === name).id;
+
+  st.people = [
+    M('4101', 'Lt. R. Ramos', 'Officer', '41-50', 'Command', at(3, 5)),
+    M('4127', 'K. Shah', 'EMT', '41-56', 'Transport', at(3, 5)),
+    M('4133', 'J. Ortiz', 'EMT', '41-56', 'Triage', at(3, 5)),
+    M('4140', 'M. Chen', 'EMT', '41-57', '', at(3, 30)),
+    M('4152', 'T. Byrne', 'EMR', '', 'Treatment · Green', at(7, 10)),
+    M('4158', 'A. Russo', 'EMT', '', 'Loading', at(8, 40)),
+  ];
+
+  st.transports = [
+    { id: uid(), cat: 'R', n: 1, tags: '402117', age: 'Adult', unit: uidOf('41-57'),   hosp: 'jsumc', t: at(15, 20) },
+    { id: uid(), cat: 'R', n: 1, tags: '402121', age: 'Child', unit: uidOf('MICU 7'),  hosp: 'jsumc', t: at(17, 45) },
+    { id: uid(), cat: 'Y', n: 1, tags: '402130', age: 'Adult', unit: uidOf('37-56'),   hosp: 'mmc',   t: at(20, 5) },
+  ];
+
+  st.requests = [
+    { id: uid(), what: 'BLS ambulances', qty: 10, status: 'enroute', t: at(4, 40), note: '1st alarm · 5 arrived' },
+    { id: uid(), what: 'ALS / MICU units', qty: 2, status: 'enroute', t: at(4, 40), note: '1st alarm' },
+    { id: uid(), what: 'Mass Casualty Response unit', qty: 1, status: 'enroute', t: at(5, 10), note: 'MCR-1' },
+    { id: uid(), what: 'County Hazmat Task Force', qty: 1, status: 'enroute', t: at(8, 30), note: 'Diesel leak from the box truck' },
+    { id: uid(), what: 'Medical Ambulance Bus', qty: 1, status: 'requested', t: at(18, 30), note: 'For 8 Green' },
+    { id: uid(), what: 'Air medical', qty: 1, status: 'ack', t: at(13, 0), note: 'Standby, no launch yet' },
+  ];
+
+  st.hospitals = {
+    jsumc: { cap: { R: 4, Y: 6, G: 10 }, beds: { icu: 3, ms: 12, peds: 4, picu: 1, or: 2 }, ed: 'Open', capAt: at(10, 30), notifiedAt: at(9, 30) },
+    mmc:   { cap: { R: 2, Y: 4, G: 8 },  beds: { icu: 2, ms: 9, peds: 2, or: 1, psych: 1 }, ed: 'Open', capAt: at(11, 0), notifiedAt: at(9, 30) },
+    riverview: { cap: { R: 2, Y: 4, G: 6 }, ed: 'Open', capAt: at(11, 40), notifiedAt: at(9, 30) },
+    bayshore: { ed: 'Critical care divert', capAt: at(12, 10) },
+  };
+
+  st.ics = {
+    'uc-ems': { who: 'Lt. R. Ramos · 41-50', t: at(3, 10) },
+    'uc-fire': { who: 'Chief 41', t: at(4, 30) },
+    'uc-pd': { who: 'Sgt. D. Lee · PD 12', t: at(6, 0) },
+    'triage': { who: 'J. Ortiz · 41-56', t: at(3, 30) },
+    'treat': { who: 'MICU 12', t: at(9, 40) },
+    'tx-yel': { who: '35-56 crew', t: at(10, 0) },
+    'tx-grn': { who: 'T. Byrne', t: at(11, 0) },
+    'transport': { who: 'K. Shah · 41-56', t: at(12, 0) },
+    'staging': { who: '23-57 crew', t: at(16, 0) },
+  };
+
+  st.bench = {
+    command: at(3, 10), sizeup: at(3, 40), mci: at(4, 30), staging: at(6, 5),
+    hospitals: at(9, 30), treatment: at(11, 0), triage: at(14, 20),
+  };
+  st.par = { interval: 20, last: at(10, 0) };
+
+  st.log = [
+    L(at(0, 0), 'note', 'Dispatched: bus vs. box truck, Rt 35 & Deal Rd, Ocean Twp'),
+    L(at(2, 50), 'units', 'PD 12 on scene'),
+    L(at(3, 5), 'units', '41-50, 41-56 on scene'),
+    L(at(3, 10), 'bench', 'Command established: Deal Road Command, Lt. R. Ramos'),
+    L(at(3, 40), 'bench', 'Size-up given to County Communications'),
+    L(at(4, 30), 'bench', 'MCI declared, 1st alarm. County EMS Coordinator notified'),
+    L(at(4, 40), 'request', '1st alarm: 10 BLS ambulances, 2 ALS, 2 rescues'),
+    L(at(5, 10), 'request', 'Requested Mass Casualty Response unit (MCR-1)'),
+    L(at(6, 5), 'bench', 'Staging established: shopping center lot, SW corner'),
+    L(at(8, 30), 'request', 'Requested County Hazmat Task Force: diesel leak from the box truck'),
+    L(at(9, 30), 'bench', 'Hospitals notified through County Communications'),
+    L(at(10, 0), 'par', 'PAR complete: 8 of 8 units accounted for'),
+    L(at(11, 0), 'bench', 'Treatment area set up, north side of the lot'),
+    L(at(12, 10), 'note', 'Bayshore reports critical care divert'),
+    L(at(13, 0), 'request', 'Air medical placed on standby'),
+    L(at(14, 20), 'bench', 'Primary triage complete: 19 patients'),
+    L(at(15, 20), 'transport', '41-57 departed: 1 Immediate → JSUMC (tag 402117)'),
+    L(at(17, 45), 'transport', 'MICU 7 departed: 1 Immediate (child) → JSUMC (tag 402121)'),
+    L(at(18, 30), 'request', 'Requested Medical Ambulance Bus for 8 Green patients'),
+    L(at(20, 5), 'transport', '37-56 departed: 1 Delayed → Monmouth Medical (tag 402130)'),
+  ];
+  return st;
+
+  function U(name, kind, agency, crew, status, task, t) { return { id: uid(), name, kind, agency, crew, status, task, t }; }
+  function M(num, name, cert, unit, task, t) { return { id: uid(), num, name, cert, unit, task, t }; }
+  function L(t, kind, text) { return { t, kind, text }; }
+}
+
+function sampleConfig() {
+  const c = defaultConfig();
+  c.roster = [
+    { name: '41-50', kind: 'SUP', agency: 'Your squad' }, { name: '41-56', kind: 'BLS', agency: 'Your squad' },
+    { name: '41-57', kind: 'BLS', agency: 'Your squad' }, { name: '41-58', kind: 'BLS', agency: 'Your squad' },
+  ];
+  c.members = [
+    { num: '4101', name: 'Lt. R. Ramos', cert: 'Officer' }, { num: '4127', name: 'K. Shah', cert: 'EMT' },
+    { num: '4133', name: 'J. Ortiz', cert: 'EMT' }, { num: '4140', name: 'M. Chen', cert: 'EMT' },
+    { num: '4152', name: 'T. Byrne', cert: 'EMR' }, { num: '4158', name: 'A. Russo', cert: 'EMT' },
+    { num: '4161', name: 'P. Walsh', cert: 'EMT' }, { num: '4170', name: 'S. Okafor', cert: 'Driver' },
+  ];
+  return c;
+}
+
+function read(key) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
+function write(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* in-memory only */ } }
+const save = () => write(KEY, S);
+const saveConfig = () => write(CONFIG_KEY, C);
+function loadUi() { const v = read(KEY + ':ui'); if (v) { if (v.view) UI.view = v.view; if (v.mapLayer) UI.mapLayer = v.mapLayer; } }
+function saveUi() { write(KEY + ':ui', { view: UI.view, mapLayer: UI.mapLayer }); }
+
+/* =====================================================================
+   Derived numbers
+   ===================================================================== */
+const sentCat = k => S.transports.filter(t => t.cat === k).reduce((a, t) => a + t.n, 0);
+const remaining = k => Math.max(0, S.triage[k] - sentCat(k));
+const totalPts = () => PATIENT_KEYS.reduce((a, k) => a + (S.triage[k] || 0), 0);
+const totalSent = () => S.transports.reduce((a, t) => a + t.n, 0);
+const remainingTx = () => TX_CATS.reduce((a, k) => a + remaining(k), 0);
+const hospSent = (id, k) => S.transports.filter(t => t.hosp === id && (!k || t.cat === k)).reduce((a, t) => a + t.n, 0);
+const hospState = id => S.hospitals[id] || {};
+const hospCap = id => hospState(id).cap || null;
+const unitsBy = st => S.units.filter(u => u.status === st);
+const openRequests = () => S.requests.filter(r => r.status !== 'onscene' && r.status !== 'cancelled');
+const sceneLL = () => S.incident.ll || townLL(S.incident.municipality);
+const hospMiles = h => miles(sceneLL(), h.ll);
+const byDistance = list => { const o = sceneLL(); return o ? list.slice().sort((a, b) => miles(o, a.ll) - miles(o, b.ll)) : list.slice(); };
+
+/* NJ Disaster Triage Tag guidance: tag when there are 4+ Red, 6+ mixed, or 8+ Green patients. */
+const tagRuleMet = () => (S.triage.R || 0) >= 4 || Math.max(totalPts(), S.incident.est || 0) >= 6 || (S.triage.G || 0) >= 8;
+const squadsInvolved = () => new Set(S.units.filter(u => kindOf(u.kind).g === 'ems' && !['available', 'released'].includes(u.status)).map(u => (u.agency || u.name).toLowerCase())).size;
+function notices() {
+  const out = [];
+  if (tagRuleMet()) out.push('NJ tag rule met (4+ Red, 6+ patients, or 8+ Green): tag every patient.');
+  const sq = squadsInvolved();
+  if (sq >= 5) out.push(`${sq} EMS agencies on the board. County EMS Coordinator is notified at 5+ squads or 3+ towns.`);
+  if (sq >= 6 && S.incident.mciLevel >= 2) out.push('Field Comm responds automatically to an MCI with 6+ squads.');
+  return out;
+}
+const levelOf = lvl => MCI_LEVELS.find(x => x.level === lvl) || { label: `Level ${lvl}`, say: `level ${lvl}` };
+const levelLabel = lvl => levelOf(lvl).label;
+
+function benchReady(id) {
+  if (S.bench[id]) return false;
+  if (id === 'reds') return S.triage.R > 0 && remaining('R') === 0;
+  if (id === 'allpts') return totalPts() > 0 && remainingTx() === 0;
+  if (id === 'mci') return tagRuleMet();
+  return false;
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+const app = document.getElementById('app');
+const sheetRoot = document.getElementById('sheet-root');
+const toastRoot = document.getElementById('toast-root');
+
+function render() {
+  const scrolls = {};
+  document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = [el.scrollTop, el.scrollLeft]; });
+  document.documentElement.dataset.mode = S.mode;
+  parkMap();
+
+  app.innerHTML = header() + rail() + `<main class="main" data-scroll="main-${UI.view}">${view()}</main>`;
+  sheetRoot.innerHTML = UI.sheet ? sheetHtml() : '';
+
+  document.querySelectorAll('[data-scroll]').forEach(el => {
+    const v = scrolls[el.dataset.scroll];
+    if (v) { el.scrollTop = v[0]; el.scrollLeft = v[1]; }
+  });
+  placeMap();
+  tick();
+}
+
+function header() {
+  const I = S.incident;
+  const lvl = I.mciLevel, nts = notices();
+  const mci = lvl
+    ? `<button class="tag ${lvl >= 2 ? 'mci' : 'suggest'}" data-act="sheet" data-arg="mci">${esc(levelLabel(lvl))}</button>`
+    : `<button class="tag" data-act="sheet" data-arg="mci">No MCI declared</button>`;
+  const suggest = !lvl && tagRuleMet() ? `<button class="tag suggest" data-act="sheet" data-arg="mci">Tag rule met · declare?</button>`
+    : nts.length > 1 ? `<button class="tag suggest" data-act="sheet" data-arg="mci">${nts.length} notices</button>` : '';
+  const sample = S.sample ? `<span class="tag sample">Sample incident</span>` : '';
+  const title = [I.type, I.location].filter(Boolean).join(' · ') || 'New incident';
+  const sub = [
+    I.municipality && esc(I.municipality),
+    I.commandName && `<b>${esc(I.commandName)}</b>`,
+    I.ic && `EMS Command: ${esc(I.ic)}`,
+  ].filter(Boolean).join(' · ');
+  return `<header class="head">
+    <div class="inc">
+      <div class="inc-top">${mci}${suggest}${sample}</div>
+      <h1><button class="titlebtn" data-act="sheet" data-arg="incident">${esc(title)}</button></h1>
+      <div class="inc-sub">${sub || 'Tap the title to fill in incident details'}</div>
+    </div>
+    <div class="clocks">
+      <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
+      <div class="clock"><span class="lbl">Since dispatch</span><span class="v" data-clock="elapsed">--:--</span></div>
+      <button class="par" id="par-btn" data-act="sheet" data-arg="par"><span class="lbl" data-clock="par-lbl">PAR due</span><span class="v" data-clock="par">--:--</span></button>
+      <button class="iconbtn" data-act="mode" aria-label="Switch to ${S.mode === 'day' ? 'night' : 'day'} mode">${icon(S.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${S.mode === 'day' ? 'Night' : 'Day'}</span></button>
+    </div>
+  </header>`;
+}
+
+const VIEWS = [
+  { id: 'board',     label: 'Board',     icon: 'board' },
+  { id: 'map',       label: 'Map',       icon: 'map' },
+  { id: 'transport', label: 'Transport', icon: 'amb' },
+  { id: 'units',     label: 'Units',     icon: 'units' },
+  { id: 'hospitals', label: 'Hospitals', icon: 'hosp' },
+  { id: 'phone',     label: 'Phone',     icon: 'phone' },
+  { id: 'ics',       label: 'ICS',       icon: 'ics' },
+  { id: 'radio',     label: 'Radio',     icon: 'radio' },
+  { id: 'log',       label: 'Log',       icon: 'log' },
+];
+function rail() {
+  const badge = id => {
+    if (id === 'transport') { const r = remaining('R'); return r ? `<span class="badge" aria-label="${r} Immediate awaiting transport">${r}</span>` : ''; }
+    if (id === 'units') { const n = S.requests.filter(r => r.status === 'requested').length; return n ? `<span class="badge" aria-label="${n} requests not acknowledged">${n}</span>` : ''; }
+    return '';
+  };
+  return `<nav class="rail" aria-label="Views">
+    ${VIEWS.map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
+    <span class="spacer"></span>
+    <button data-act="sheet" data-arg="menu">${icon('menu')}Menu</button>
+  </nav>`;
+}
+
+function view() {
+  switch (UI.view) {
+    case 'map': return mapView();
+    case 'transport': return transportView();
+    case 'units': return unitsView();
+    case 'hospitals': return hospitalsView();
+    case 'phone': return phoneView();
+    case 'ics': return icsView();
+    case 'radio': return radioView();
+    case 'log': return logView();
+    default: return boardView();
+  }
+}
+
+/* ---------- Board ---------- */
+function boardView() {
+  return `<div class="board">
+    <div class="col c1" data-scroll="b1">${triagePanel()}</div>
+    <div class="col c2" data-scroll="b2">${scenePanel()}${benchPanel()}${resourcesPanel()}</div>
+    <div class="col c3" data-scroll="b3">${miniMap()}${transportSummary()}${hospLoadPanel()}</div>
+  </div>`;
+}
+
+function triagePanel() {
+  const n = totalPts(), est = S.incident.est || 0;
+  const denom = Math.max(n, est, 1);
+  const seg = catsList().filter(c => c.k !== 'W').map(c => `<span style="width:${((S.triage[c.k] || 0) / denom) * 100}%;background:var(--${COLOR_VAR[c.k]})"></span>`).join('');
+  return `<section class="panel" aria-label="Triage counts">
+    <div class="ph"><h2>Patients · triage</h2><button class="btn small" data-act="sheet" data-arg="menu">${esc(S.method || 'START')}</button></div>
+    <div class="tri-sum">
+      <div class="tri-total num">${n}<small>${n === 1 ? 'patient' : 'patients'}</small></div>
+      <div class="est">Est. <button data-act="est" data-arg="-1" aria-label="Lower estimate">−</button><span class="num">${est}</span><button data-act="est" data-arg="1" aria-label="Raise estimate">+</button></div>
+    </div>
+    <div class="bar" role="img" aria-label="${n} of an estimated ${est} triaged">${seg}</div>
+    ${catsList().map(triRow).join('')}
+  </section>`;
+}
+function triRow(c) {
+  const count = S.triage[c.k] || 0;
+  const sub = c.k === 'B' ? (count ? 'Leave in place unless directed' : 'None')
+    : c.k === 'X' ? (count ? 'Comfort care; move after Red when resources allow' : 'None')
+    : c.k === 'W' ? 'Not counted as patients'
+    : `${sentCat(c.k)} transported · <b>${remaining(c.k)} on scene</b>`;
+  return `<div class="tri tri-${c.k}">
+    <div>
+      <div class="tri-head"><span class="swatch">${c.color}</span><span class="tri-name">${c.name}</span></div>
+      <div class="tri-count num">${count}</div>
+      <div class="tri-sub">${sub}</div>
+    </div>
+    <div class="tri-btns">
+      <button data-act="tri" data-arg="${c.k}-" aria-label="Remove one ${c.name}">−</button>
+      <button class="plus" data-act="tri" data-arg="${c.k}+" aria-label="Add one ${c.name}">+</button>
+    </div>
+  </div>`;
+}
+
+function scenePanel() {
+  const I = S.incident;
+  return `<section class="panel" aria-label="Scene">
+    <div class="ph"><h2>Scene</h2><button class="btn small" data-act="sheet" data-arg="incident">Edit</button></div>
+    <dl class="kv">
+      <dt>Staging</dt><dd>${esc(I.staging) || '<span class="note">Not set</span>'}</dd>
+      <dt>Access</dt><dd>${esc(I.access) || '<span class="note">Not set</span>'}</dd>
+      <dt>Air / LZ</dt><dd>${esc(I.lz)}${I.lzLocation ? ` · ${esc(I.lzLocation)}` : ''}</dd>
+      <dt>Hazards</dt><dd>${I.hazards.length ? `<div class="chips">${I.hazards.map(h => `<span class="hz">${esc(h)}</span>`).join('')}</div>` : '<span class="note">None noted</span>'}</dd>
+    </dl>
+  </section>`;
+}
+
+function benchPanel() {
+  const T0 = S.incident.dispatchAt;
+  const done = BENCHMARKS.filter(b => S.bench[b.id]).length;
+  return `<section class="panel" aria-label="Benchmarks">
+    <div class="ph"><h2>Benchmarks</h2><span class="meta">${done} of ${BENCHMARKS.length} · tap to stamp</span></div>
+    <div class="bench">
+      ${BENCHMARKS.map(b => {
+        const t = S.bench[b.id];
+        const cls = t ? 'done' : benchReady(b.id) ? 'ready' : 'todo';
+        const right = t ? `<span class="b-time">${hhmm(t)}<small>+${dur(t - T0)}</small></span>` : cls === 'ready' ? `<span class="b-ready">READY</span>` : '<span></span>';
+        return `<button class="${cls}" data-act="bench" data-arg="${b.id}" aria-pressed="${t ? 'true' : 'false'}"><span class="tick">${icon('check')}</span><span class="b-label">${b.label}</span>${right}</button>`;
+      }).join('')}
+    </div>
+  </section>`;
+}
+
+function resourcesPanel() {
+  const active = S.units.filter(u => u.status !== 'released' && u.status !== 'available');
+  const ems = active.filter(u => kindOf(u.kind).g === 'ems');
+  const others = active.filter(u => kindOf(u.kind).g !== 'ems' && (u.status === 'onscene' || u.status === 'staged' || u.status === 'enroute'));
+  const amb = s => ems.filter(u => TRANSPORT_KINDS.includes(u.kind) && u.status === s).length;
+  const reqs = openRequests();
+  return `<section class="panel" aria-label="Resources">
+    <div class="ph"><h2>Resources</h2><button class="btn small" data-act="view" data-arg="units">Units</button></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Amb. on scene</span><span class="v num">${amb('onscene')}</span></div>
+      <div class="stat"><span class="lbl">Staged</span><span class="v num">${amb('staged')}</span></div>
+      <div class="stat"><span class="lbl">En route</span><span class="v num">${amb('enroute')}</span></div>
+      <div class="stat"><span class="lbl">Available</span><span class="v num">${unitsBy('available').length}</span></div>
+    </div>
+    <div class="field"><span class="lbl">Fire, special ops & support</span>
+      ${others.length ? `<div class="chips">${others.map(u => `<button class="opt small" data-act="sheet" data-arg="unit:${u.id}">${kindTag(u.kind)} ${esc(u.name)}${u.status !== 'onscene' ? ` <small>${statusName(u.status)}</small>` : ''}</button>`).join('')}</div>` : '<span class="empty">None on the board</span>'}
+    </div>
+    <div class="field"><span class="lbl">Needed · open requests</span>
+      <div class="rows">${reqs.length ? reqs.map(reqRow).join('') : '<div class="empty">No open requests</div>'}</div>
+    </div>
+    <button class="btn block" data-act="sheet" data-arg="request">${icon('plus')} Request resources</button>
+  </section>`;
+}
+function reqRow(r) {
+  return `<button class="row" data-act="req-next" data-arg="${r.id}" aria-label="${esc(r.what)}, ${reqStatusName(r.status)}. Tap to advance status.">
+    <span class="pill ${r.status}">${reqStatusName(r.status)}</span>
+    <div><div class="t1">${r.qty > 1 ? r.qty + ' × ' : ''}${esc(r.what)}</div><div class="t2">${hhmm(r.t)}${r.note ? ' · ' + esc(r.note) : ''}</div></div>
+    <span class="r note">${mins(now() - r.t)}</span>
+  </button>`;
+}
+const REQ_FLOW = ['requested', 'ack', 'enroute', 'onscene'];
+const reqStatusName = k => ({ requested: 'Requested', ack: 'Acknowledged', enroute: 'En route', onscene: 'On scene', cancelled: 'Cancelled' }[k] || k);
+
+function miniMap() {
+  return `<section class="mapcard mini" aria-label="Scene map">
+    <div class="mapslot" data-map-slot="mini"></div>
+    <div class="mapctl tr">
+      <button class="mbtn" data-act="locate" aria-label="Find my location">${icon('locate')}</button>
+      <button class="mbtn" data-act="map-layer" aria-pressed="${UI.mapLayer === 'sat'}" aria-label="Satellite imagery">${icon('layers')}<span>${UI.mapLayer === 'sat' ? 'Satellite' : 'Map'}</span></button>
+      <button class="mbtn" data-act="view" data-arg="map" aria-label="Open the full map">${icon('expand')}</button>
+    </div>
+    <div class="mapctl bl">${mapChips()}</div>
+  </section>`;
+}
+function mapChips() {
+  const ll = S.incident.ll;
+  const chips = [];
+  if (ll) chips.push(`<button class="mchip" data-act="copy-text" data-arg="${esc(fmtLL(ll))}" aria-label="Copy scene coordinates">${esc(fmtLL(ll))}</button>`);
+  else chips.push(`<button class="mchip warn" data-act="view" data-arg="map">Scene not pinned · tap to set</button>`);
+  if (UI.mapLayer === 'sat' && UI.live === 'blocked') chips.push(`<span class="mchip warn">Live imagery off · ${insideSample(ll) ? 'built-in aerial' : 'built-in map'}</span>`);
+  return chips.join('');
+}
+
+function transportSummary() {
+  const recent = S.transports.slice(-3).reverse();
+  return `<section class="panel" aria-label="Transport">
+    <div class="ph"><h2>Awaiting transport</h2><span class="meta">${totalSent()} sent</span></div>
+    <div class="stats">${TX_CATS.map(k => `<div class="stat ${k}"><span class="lbl">${cat(k).name}</span><span class="v num">${remaining(k)}</span></div>`).join('')}</div>
+    <button class="btn primary block" data-act="sheet" data-arg="transport" ${remainingTx() ? '' : 'disabled'}>${icon('amb')} Log a transport</button>
+    <div class="rows">${recent.length ? recent.map(txRow).join('') : '<div class="empty">No transports yet</div>'}</div>
+  </section>`;
+}
+function txRow(t) {
+  const u = unitById(t.unit), h = hosp(t.hosp);
+  return `<div class="row c-${t.cat}">
+    <span class="dot ${t.cat}"></span>
+    <div><div class="t1">${esc(u ? u.name : 'Unit')} → ${esc(h ? h.short : t.hosp)}</div><div class="t2">${t.n > 1 ? `${t.n} × ` : ''}${cat(t.cat).name}${t.age && t.age !== 'Adult' ? ' · ' + esc(t.age.toLowerCase()) : ''}${t.tags ? ` · tag ${esc(t.tags)}` : ''}</div></div>
+    <span class="r num">${hhmm(t.t)}</span>
+  </div>`;
+}
+
+function hospLoadPanel() {
+  const list = byDistance(HOSPITALS).slice(0, 5);
+  return `<section class="panel" aria-label="Nearest hospitals">
+    <div class="ph"><h2>Nearest hospitals</h2><button class="btn small" data-act="view" data-arg="hospitals">All</button></div>
+    <div>${list.map(h => {
+      const cap = hospCap(h.id), hs = hospState(h.id);
+      const capTotal = cap ? cap.R + cap.Y + cap.G : 0;
+      const sent = hospSent(h.id);
+      const pct = capTotal ? Math.min(100, (sent / capTotal) * 100) : 0;
+      const mi = hospMiles(h);
+      return `<button class="load" data-act="sheet" data-arg="hosp:${h.id}">
+        <span class="nm">${esc(h.short)} <span class="note">${esc(h.town)}</span></span>
+        <span class="dist">${mi != null ? `${mi.toFixed(1)} mi · ~${estMin(mi)}′` : ''}</span>
+        <span class="why">${h.trauma ? `<span class="cap trauma">${esc(h.trauma)}</span>` : ''}${isDivert(hs.ed) ? `<span class="pill diversion">${esc(hs.ed)}</span>` : ''}<span class="num">Sent ${TX_CATS.map(k => `${hospSent(h.id, k)}${cap ? '/' + cap[k] : ''}`).join(' · ')}</span></span>
+        <div class="bar"><span style="width:${pct}%;background:${capTotal && sent >= capTotal ? 'var(--crit)' : 'var(--accent)'}"></span></div>
+      </button>`;
+    }).join('')}</div>
+    <div class="note">Straight-line distance from the scene pin, rough drive minutes. Sent / capacity is Red · Yellow · Green.</div>
+  </section>`;
+}
+
+/* ---------- Map view ---------- */
+function mapView() {
+  const I = S.incident;
+  const pins = [
+    { k: 'scene', name: 'Scene', ll: I.ll },
+    { k: 'staging', name: 'Staging', ll: I.stagingLL },
+    { k: 'lz', name: 'LZ', ll: I.lzLL },
+  ];
+  const near = byDistance(filteredHospitals()).slice(0, 8);
+  return `<div class="mapview">
+    <section class="mapcard" aria-label="Map">
+      <div class="mapslot" data-map-slot="full"></div>
+      <div class="mapctl tr">
+        <button class="mbtn" data-act="locate">${icon('locate')}<span>Locate me</span></button>
+        <button class="mbtn" data-act="map-layer" aria-pressed="${UI.mapLayer === 'sat'}">${icon('layers')}<span>${UI.mapLayer === 'sat' ? 'Satellite' : 'Map'}</span></button>
+        <button class="mbtn" data-act="map-fit">${icon('expand')}<span>Fit</span></button>
+      </div>
+      <div class="mapctl bl">${UI.pinMode ? `<span class="mchip warn">Tap the map to place the ${esc(pins.find(p => p.k === UI.pinMode).name)} pin</span>` : ''}${UI.mapLayer === 'sat' && UI.live === 'blocked' ? `<span class="mchip warn">Live imagery is blocked here. Showing the built-in ${insideSample(I.ll) ? 'aerial and ' : ''}map.</span>` : ''}</div>
+    </section>
+    <div class="mapside">
+      <section class="panel">
+        <div class="ph"><h2>Pins</h2><span class="meta">Choose one, then tap the map</span></div>
+        <div class="opt-grid">${pins.map(p => opt('pin-mode', p.k, UI.pinMode === p.k, `${esc(p.name)}<small>${p.ll ? esc(fmtLL(p.ll)) : 'Not set'}</small>`, 'tall')).join('')}</div>
+        ${S.me ? `<button class="btn block" data-act="use-me">${icon('locate')} Use my location as the scene</button>` : ''}
+        ${I.ll ? `<div class="coord">${esc(fmtLL(I.ll))}<small>Scene, decimal degrees</small></div>
+          <div class="coord">${esc(fmtDDM(I.ll))}<small>Degrees and decimal minutes, for air medical</small></div>
+          <div class="toolbar">
+            <button class="btn small" data-act="copy-text" data-arg="${esc(fmtLL(I.ll) + ' (' + fmtDDM(I.ll) + ')')}">${icon('copy')} Copy</button>
+            <a class="btn small" href="https://maps.apple.com/?ll=${I.ll[0]},${I.ll[1]}&q=Scene&t=k&z=18" target="_blank" rel="noopener">${icon('ext')} Apple Maps</a>
+            <a class="btn small" href="https://www.google.com/maps/@${I.ll[0]},${I.ll[1]},200m/data=!3m1!1e3" target="_blank" rel="noopener">${icon('ext')} Google</a>
+          </div>` : `<div class="note">${I.municipality ? `Centered on ${esc(I.municipality)}. ` : ''}Choose Scene, then tap where the incident is. Or use Locate me.</div>`}
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>County staging areas</h2><span class="meta">Activate through County Communications</span></div>
+        <div>${COUNTY_STAGING.map((c, i) => { const mi = miles(sceneLL(), c.ll); return `<div class="load"><span class="nm">${esc(c.name)} <span class="note">${esc(c.note)}</span></span><span class="dist">${mi != null ? mi.toFixed(1) + ' mi' : ''}</span><span class="why"><button class="btn small" data-act="use-cstage" data-arg="${i}">Use as staging</button><button class="btn small" data-act="map-goto" data-arg="${c.ll.join(',')}">Show</button></span></div>`; }).join('')}</div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Nearest hospitals</h2></div>
+        ${hospFilterChips()}
+        <div>${near.map(h => {
+          const mi = hospMiles(h);
+          return `<button class="load" data-act="map-hosp" data-arg="${h.id}"><span class="nm">${esc(h.short)} <span class="note">${esc(h.town)}</span></span><span class="dist">${mi != null ? `${mi.toFixed(1)} mi · ~${estMin(mi)}′` : ''}</span><span class="why">${h.caps.slice(0, 4).map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</span></button>`;
+        }).join('') || '<div class="empty">No hospital matches every filter</div>'}</div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function hospFilterChips() {
+  return `<div class="chips">${SPECIALTIES.map(s => opt('hosp-filter', s.k, UI.hospFilter.includes(s.k), esc(s.name), 'small')).join('')}</div>`;
+}
+const filteredHospitals = () => HOSPITALS.filter(h => UI.hospFilter.every(k => (h.tags || []).includes(k)));
+
+/* ---------- Transport view ---------- */
+const readyUnits = () => S.units.filter(u => TRANSPORT_KINDS.includes(u.kind) && (u.status === 'onscene' || u.status === 'staged'));
+function transportView() {
+  const list = S.transports.slice().reverse();
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Transport</h2><button class="btn primary" data-act="sheet" data-arg="transport" ${remainingTx() ? '' : 'disabled'}>${icon('amb')} Log a transport</button></div>
+    <div class="grid2">
+      <section class="panel">
+        <div class="ph"><h2>On scene, awaiting transport</h2><span class="meta">${remainingTx()} patients</span></div>
+        <div class="stats">${TX_CATS.map(k => `<div class="stat ${k}"><span class="lbl">${cat(k).name}</span><span class="v num">${remaining(k)}</span></div>`).join('')}</div>
+        ${(S.triage.B || 0) + (S.triage.X || 0) ? `<div class="note">${plural((S.triage.B || 0) + (S.triage.X || 0), 'patient')} triaged ${S.method === 'SALT' ? 'Gray or Black' : 'Black'}, not counted for transport.</div>` : ''}
+        <div class="ph"><h2>Ready to load</h2><span class="meta">Ambulances on scene or staged</span></div>
+        <div class="rows">${readyUnits().length ? readyUnits().map(u => `<button class="row" data-act="tx-with" data-arg="${u.id}" ${remainingTx() ? '' : 'disabled'}>${kindTag(u.kind)}<div><div class="t1">${esc(u.name)}</div><div class="t2">${statusName(u.status)}${u.task ? ' · ' + esc(u.task) : ''}</div></div><span class="r note">Load →</span></button>`).join('') : '<div class="empty">No transport units available. Request more from Units.</div>'}</div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Transport log</h2><span class="meta">${plural(totalSent(), 'patient')} · ${plural(S.transports.length, 'departure')}</span></div>
+        <div class="rows">${list.length ? list.map(txRow).join('') : '<div class="empty">Departures you log appear here with tag number, unit, destination and time.</div>'}</div>
+      </section>
+    </div>
+  </div>`;
+}
+
+/* ---------- Units view ---------- */
+function unitsView() {
+  const inGroup = u => UI.unitGroup === 'all' || kindOf(u.kind).g === UI.unitGroup;
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Units & people</h2>
+      <button class="btn" data-act="sheet" data-arg="load-units">${icon('plus')} Load units</button>
+      <button class="btn" data-act="sheet" data-arg="request">${icon('plus')} Request</button>
+      <button class="btn primary" data-act="sheet" data-arg="unit-add">${icon('plus')} Add unit</button></div>
+    <div class="chips">${KIND_GROUPS.map(g => opt('unit-group', g.g, UI.unitGroup === g.g, `${esc(g.name)} <small>${S.units.filter(u => g.g === 'all' || kindOf(u.kind).g === g.g).length}</small>`, 'small')).join('')}</div>
+    <div class="lanes" data-scroll="lanes">
+      ${STATUSES.map(st => {
+        const us = unitsBy(st.k).filter(inGroup);
+        const quick = st.k === 'available' ? ['enroute', 'En route'] : st.k === 'enroute' ? ['onscene', 'Arrived'] : st.k === 'staged' ? ['onscene', 'To scene'] : st.k === 'transporting' ? ['staged', 'Back in service'] : null;
+        return `<section class="lane"><h3><span>${st.name}</span><span class="num">${us.length}</span></h3>
+          ${us.length ? us.map(u => `<div class="unit">
+            <button class="open" data-act="sheet" data-arg="unit:${u.id}">
+              <span class="u1"><span class="uid">${esc(u.name)}</span>${kindTag(u.kind)}</span>
+              ${u.task ? `<span class="task">${esc(u.task)}</span>` : ''}
+              <span class="ut">${esc(u.agency)}${u.crew ? ` · crew ${u.crew}` : ''}${st.k !== 'available' ? ` · ${hhmm(u.t)}` : ''}</span>
+            </button>
+            ${quick ? `<button class="quick" data-act="unit-quick" data-arg="${u.id}=${quick[0]}">${quick[1]}</button>` : ''}
+          </div>`).join('') : '<div class="empty">None</div>'}
+        </section>`;
+      }).join('')}
+    </div>
+    <section class="panel">
+      <div class="ph"><h2>People on scene</h2><span class="meta">${plural(S.people.filter(p => !p.out).length, 'member')} checked in</span><button class="btn small" data-act="sheet" data-arg="person-add">${icon('person')} Check in a member</button></div>
+      <div class="scroll-x">${peopleTable()}</div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Resource requests</h2><span class="meta">Tap to move along: requested → acknowledged → en route → on scene</span></div>
+      <div class="rows">${S.requests.length ? S.requests.slice().reverse().map(reqRow).join('') : '<div class="empty">No requests yet</div>'}</div>
+    </section>
+  </div>`;
+}
+function peopleTable() {
+  const list = S.people.filter(p => !p.out);
+  if (!list.length) return '<div class="empty">Nobody checked in yet. Check members in by their member number.</div>';
+  return `<table class="ppl"><thead><tr><th>#</th><th>Name</th><th>Cert</th><th>Unit</th><th>Assignment</th><th>In</th></tr></thead><tbody>
+    ${list.map(p => { const b = v => `<td><button data-act="sheet" data-arg="person:${p.id}">${v}</button></td>`; return `<tr>${b(`<span class="num">${esc(p.num)}</span>`)}${b(`<strong>${esc(p.name)}</strong>`)}${b(esc(p.cert))}${b(esc(p.unit) || '<span class="note">—</span>')}${b(esc(p.task) || '<span class="note">Unassigned</span>')}${b(`<span class="num">${hhmm(p.t)}</span>`)}</tr>`; }).join('')}
+  </tbody></table>`;
+}
+
+/* ---------- Hospitals view ---------- */
+function hospitalsView() {
+  const list = byDistance(filteredHospitals());
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Hospitals</h2><span class="note">${sceneLL() ? 'Nearest first.' : 'Pin the scene to sort by distance.'} Tap a hospital to enter what it reports.</span></div>
+    ${hospFilterChips()}
+    <div class="grid-hosp">
+      ${list.map(h => {
+        const cap = hospCap(h.id), hs = hospState(h.id), mi = hospMiles(h);
+        return `<button class="panel hosp" data-act="sheet" data-arg="hosp:${h.id}">
+          <div class="ph"><div><h3>${esc(h.name)}</h3><div class="sub">${esc(h.town)} · ${esc(h.sys)}${h.lic ? ` · ${h.lic.beds} licensed beds` : ''}</div></div>${mi != null ? `<span class="dist">${mi.toFixed(1)} mi<br><span class="note">~${estMin(mi)} min</span></span>` : ''}</div>
+          <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
+          <div class="ph"><span class="lbl">MCI capacity · sent / can take</span>${hs.ed ? `<span class="pill ${isDivert(hs.ed) ? 'diversion' : 'open'}">${isDivert(hs.ed) ? esc(hs.ed) : 'ED open'}</span>` : ''}</div>
+          <div class="capgrid">${TX_CATS.map(k => {
+            const s = hospSent(h.id, k), c = cap ? cap[k] : null;
+            return `<div class="capcell c-${k} ${c != null && s > c ? 'over' : ''}"><span class="lbl">${cat(k).color}</span><span class="v">${s}${c != null ? `<span class="note">/${c}</span>` : ''}</span></div>`;
+          }).join('')}</div>
+          <div class="beds">${BED_TYPES.map(b => { const v = hs.beds ? hs.beds[b.k] : null; return `<div class="bedcell"><span class="lbl">${b.name}</span><span class="v ${v == null ? 'none' : ''}">${v == null ? '—' : v}</span></div>`; }).join('')}</div>
+          <div class="note">${hs.notifiedAt ? `<span class="ok-t">Notified ${hhmm(hs.notifiedAt)}</span>` : 'Not notified'}${hs.capAt ? ` · reported ${hhmm(hs.capAt)}` : ' · nothing reported yet'}${h.phones ? ` · ${h.phones.ed ? 'ED' : 'Main'} <span class="num">${esc(h.phones.ed || h.phones.main)}</span>` : ''}</div>
+        </button>`;
+      }).join('') || '<div class="empty">No hospital matches every filter</div>'}
+    </div>
+  </div>`;
+}
+
+/* ---------- Phone view ---------- */
+function allContacts() {
+  const fromHosp = byDistance(HOSPITALS).filter(h => h.phones).map(h => ({
+    group: 'Hospitals · nearest first', name: h.short, num: h.phones.ed || h.phones.main,
+    note: `${h.town} · ${h.phones.ed ? 'Emergency Dept' : 'main line (no published ED number)'}${h.phones.ed && h.phones.main ? ' · main ' + h.phones.main : ''}`,
+  }));
+  return [...fromHosp, ...CONTACTS, ...C.contacts.map(c => ({ ...c, mine: true }))];
+}
+function phoneView() {
+  const list = allContacts();
+  const groups = [...new Set(list.map(c => c.group))];
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Phone directory</h2><button class="btn primary" data-act="sheet" data-arg="contact-add">${icon('plus')} Add a number</button></div>
+    <div class="note">Numbers from each organization's own published listing. Check them against your county's directory before you rely on them, and add the ones only your agency has.</div>
+    <div class="grid2">
+      ${groups.map(g => `<section class="panel"><div class="ph"><h2>${esc(g)}</h2></div><div>
+        ${list.filter(c => c.group === g).map(c => `<div class="phone">
+          <div><div class="pn">${esc(c.name)}</div>${c.note ? `<div class="pnote">${esc(c.note)}</div>` : ''}</div>
+          <div class="pact">${c.num ? `<button class="btn small" data-act="copy-text" data-arg="${esc(c.num)}" aria-label="Copy ${esc(c.name)} number">${icon('copy')}</button><a class="btn small" href="tel:${esc(c.num.replace(/[^0-9+]/g, ''))}">Call</a>` : ''}${c.mine ? `<button class="btn small danger" data-act="contact-del" data-arg="${esc(c.id)}" aria-label="Remove">${icon('x')}</button>` : ''}</div>
+          <div class="pnum ${c.num ? '' : 'missing'}">${c.num ? esc(c.num) : 'No published number found. Add yours.'}</div>
+        </div>`).join('')}
+      </div></section>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* ---------- ICS view ---------- */
+function icsView() {
+  const pos = id => {
+    const p = ICS_POSITIONS.find(x => x.id === id), a = S.ics[id];
+    return `<button class="pos ${a ? '' : 'vacant'} ${p.lead ? 'lead' : ''}" data-act="sheet" data-arg="ics:${id}">
+      <span class="pn">${esc(p.label)}</span>
+      <span class="pw">${a ? esc(a.who) : 'Vacant · Command holds it'}</span>
+    </button>`;
+  };
+  const tier = (label, ids) => `<div class="tier"><span class="lbl">${label}</span><div class="tier-row">${ids.map(pos).join('')}</div></div>`;
+  const med = ICS_POSITIONS.filter(p => p.tier === 'med');
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">ICS organization</h2><span class="note">${Object.keys(S.ics).length} of ${ICS_POSITIONS.length} positions filled. Tap a box to assign it.</span></div>
+    <div class="ics">
+      ${tier('Unified command', ['uc-ems', 'uc-fire', 'uc-pd'])}
+      ${tier('Command staff', ['safety', 'pio', 'liaison'])}
+      ${tier('Operations', ['staging', 'medgrp', 'rehab'])}
+      <div class="tier"><span class="lbl">Medical group</span>
+        <div class="branch">${med.map(m => `<div class="branch-col">${pos(m.id)}${ICS_POSITIONS.some(s => s.parent === m.id) ? `<div class="subs">${ICS_POSITIONS.filter(s => s.parent === m.id).map(s => pos(s.id)).join('')}</div>` : ''}</div>`).join('')}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- Radio view ---------- */
+function radioView() {
+  const scripts = radioScripts();
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Radio reports</h2><span class="note">Written from what's on the board. Read them as they are, or copy them into a message.</span></div>
+    <div class="grid2">
+      ${scripts.map((s, i) => `<section class="panel">
+        <div class="ph"><h2>${esc(s.title)}</h2><button class="btn small" data-act="copy" data-arg="${i}">${icon('copy')} Copy</button></div>
+        <div class="note">${esc(s.when)}</div>
+        <p class="script" id="script-${i}">${s.html}</p>
+      </section>`).join('')}
+      <section class="panel">
+        <div class="ph"><h2>Channel reference</h2></div>
+        <div class="note">As published in the Monmouth County EMS communications plan (2023) and the NJ JEMS plan. Confirm with County Communications before you rely on any of them.</div>
+        <div>${CHANNELS.map(c => `<div class="load"><span class="nm">${esc(c.name)}</span><span class="dist">${esc(c.freq || '')}</span><span class="why">${esc(c.use)}</span></div>`).join('')}</div>
+        <div class="note">Plain English, no 10-codes. Units entering the Parkway contact Monmouth EMS 1.</div>
+      </section>
+    </div>
+  </div>`;
+}
+function listCounts(get, cats = catsList().filter(c => c.k !== 'W')) {
+  const parts = cats.map(c => ({ c, n: get(c.k) })).filter(x => x.n > 0).map(x => `${x.n} ${x.c.name}`);
+  return parts.length ? parts.join(', ') : 'none';
+}
+function radioScripts() {
+  const I = S.incident;
+  const cmd = I.commandName || 'Command';
+  const loc = [I.location, I.municipality].filter(Boolean).join(', ') || '[location]';
+  const n = totalPts();
+  const onScene = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
+  const amb = onScene.filter(u => TRANSPORT_KINDS.includes(u.kind));
+  const fireSpec = onScene.filter(u => ['fire', 'spec'].includes(kindOf(u.kind).g)).map(u => u.name);
+  const reqs = openRequests();
+  const reqText = reqs.length ? reqs.map(r => `${r.qty > 1 ? r.qty + ' ' : ''}${r.what} (${reqStatusName(r.status).toLowerCase()})`).join('; ') : 'nothing further at this time';
+  const counts = n ? `${n} patients: ${listCounts(k => S.triage[k])}` : `estimated ${I.est || 'unknown number of'} patients, triage under way`;
+  const mciLine = I.mciLevel ? `${cmd} is declaring ${levelOf(I.mciLevel).say}.` : 'No MCI declared at this time.';
+  const coords = I.ll ? ` Coordinates ${fmtLL(I.ll)}.` : '';
+
+  const methane = [
+    ['M', 'Major incident', mciLine],
+    ['E', 'Exact location', `${loc}.${coords}`],
+    ['T', 'Type', `${I.type}.`],
+    ['H', 'Hazards', I.hazards.length ? `${I.hazards.join(', ')}.` : 'None noted.'],
+    ['A', 'Access', [I.access, I.staging && `Staging at ${I.staging}`].filter(Boolean).join('. ') + '.'],
+    ['N', 'Number of casualties', `${counts}.`],
+    ['E', 'Emergency services', `On scene: ${amb.length} transport units${fireSpec.length ? ', ' + fireSpec.join(', ') : ''}${onScene.some(u => u.kind === 'PD') ? ', police' : ''}. Requesting: ${reqText}.`],
+  ];
+  const txc = catsList().filter(c => TX_CATS.includes(c.k));
+  const sentList = listCounts(sentCat, txc);
+  const can = [
+    ['C', 'Conditions', `${counts}. ${I.hazards.length ? 'Hazards: ' + I.hazards.join(', ') + '.' : ''}`],
+    ['A', 'Actions', `${BENCHMARKS.filter(b => S.bench[b.id]).slice(-3).map(b => b.label + ' ' + hhmm(S.bench[b.id])).join('; ')}. Transported ${totalSent()} (${sentList}). Remaining on scene: ${listCounts(remaining, txc)}.`],
+    ['N', 'Needs', `${reqText}.`],
+  ];
+  const hospLine = `This is ${cmd}. We have an MCI at ${loc}, ${I.type.toLowerCase()}. ${counts}. First patients are ${totalSent() ? 'already en route' : 'about to leave'}. How many Red, Yellow and Green can you accept right now? Our transport officer will call each unit in with a tag number.`;
+  const handoff = `${cmd} · ${loc}\n${I.type}. Dispatched ${hhmm(I.dispatchAt)}, ${mins(now() - I.dispatchAt)} ago.\nEMS Command: ${I.ic || 'unassigned'}. ${I.mciLevel ? levelLabel(I.mciLevel) + '.' : 'No MCI declared.'}\nPatients: ${counts}. Transported ${totalSent()}; ${remainingTx()} awaiting transport.\nPositions: ${ICS_POSITIONS.filter(p => S.ics[p.id]).map(p => p.label + ' – ' + S.ics[p.id].who).join('; ') || 'none assigned'}.\nUnits: ${S.units.filter(u => !['released', 'available'].includes(u.status)).length} assigned (${unitsBy('onscene').length} on scene, ${unitsBy('staged').length} staged, ${unitsBy('enroute').length} en route, ${unitsBy('transporting').length} transporting). ${S.people.filter(p => !p.out).length} members checked in.\nOpen requests: ${reqText}.\nStaging: ${I.staging || 'not set'}. Hazards: ${I.hazards.join(', ') || 'none noted'}.`;
+
+  const ambOnScene = amb.length + S.units.filter(u => TRANSPORT_KINDS.includes(u.kind) && u.status === 'enroute').length;
+  const ambNeeded = Math.max(0, remainingTx() - ambOnScene);
+  const alsNeeded = Math.max(0, remaining('R') - S.units.filter(u => u.kind === 'ALS' && ['onscene', 'staged', 'enroute'].includes(u.status)).length);
+  const icUnit = (S.units.find(u => u.task === 'Command' && kindOf(u.kind).g === 'ems') || {}).name || '[your unit]';
+  const mutual = [
+    ['', 'From', `${icUnit}, ${cmd}`],
+    ['', 'Location', loc],
+    ['', 'Type', I.type],
+    ['', 'Approximate patients', counts],
+    ['', 'Ambulances needed', String(ambNeeded)],
+    ['', 'MICUs needed', String(alsNeeded)],
+    ['', 'Extrication', S.bench.extrication ? 'Complete' : S.units.some(u => u.task === 'Extrication') ? 'In progress' : 'None'],
+    ['', 'Special services', openRequests().filter(r => !/ambulance|ALS|MICU/i.test(r.what)).map(r => r.what).join(', ') || 'None'],
+    ['', 'Staging area', I.staging || 'Not set'],
+  ];
+  const lz = I.lzLL || I.ll;
+  const air = [
+    ['', 'Patients', `${remaining('R')} Immediate awaiting transport`],
+    ['', 'LZ', `${I.lzLocation || 'Not set'}${lz ? '. ' + fmtDDM(lz) : ''}`],
+    ['', 'Size and surface', 'About 100 × 100 ft, firm and level (some NJ departments use 110 × 110)'],
+    ['', 'Hazards', 'Wires, poles, trees, loose debris. [check and state]'],
+    ['', 'Wind', '[direction and speed]'],
+    ['', 'Ground contact', `${(S.ics['uc-fire'] || {}).who || 'LZ officer'} on Fireground 3 or 4 [confirm]`],
+  ];
+  const triageRpt = `Triage to Command: triage is ${S.bench.triage ? 'complete' : 'in progress'}. ${n} total patients: ${listCounts(k => S.triage[k] || 0)}.`;
+  const fmt = rows => rows.map(([k, label, text]) => `${k ? `<span class="k">${k}</span>` : ''}<b>${esc(label.toUpperCase())}</b> ${esc(text)}`).join('\n');
+  const plain = rows => rows.map(([, label, text]) => `${label}: ${text}`).join('\n');
+  return [
+    { title: 'Initial report · METHANE', when: 'First arriving officer to dispatch. Send again if the picture changes a lot.', html: fmt(methane), text: plain(methane) },
+    { title: 'Progress report · CAN', when: 'Every 10 to 15 minutes, or when asked for an update.', html: fmt(can), text: plain(can) },
+    { title: 'Hospital MCI notification', when: 'Medical Communications to each receiving ED.', html: esc(hospLine), text: hospLine },
+    { title: 'Mutual aid request · County Communications', when: 'The items County Communications asks for on a mutual aid request (county EMS plan). Need is counted from patients awaiting transport.', html: fmt(mutual), text: plain(mutual) },
+    { title: 'Air medical request', when: 'In Monmouth, medevac is requested through County Communications. Fill in the bracketed items.', html: fmt(air), text: plain(air) },
+    { title: 'Triage report', when: 'Triage Unit Leader to Command when the first pass is done.', html: esc(triageRpt), text: triageRpt },
+    { title: 'Command transfer briefing', when: 'Read to the officer taking over command, or paste into the after-action file.', html: esc(handoff), text: handoff },
+  ];
+}
+
+/* ---------- Log view ---------- */
+const LOG_KINDS = [
+  { k: 'all', name: 'All' }, { k: 'triage', name: 'Triage' }, { k: 'transport', name: 'Transport' }, { k: 'units', name: 'Units' },
+  { k: 'people', name: 'People' }, { k: 'request', name: 'Requests' }, { k: 'bench', name: 'Benchmarks' }, { k: 'par', name: 'PAR' }, { k: 'note', name: 'Notes' },
+];
+function logView() {
+  const list = S.log.filter(e => UI.logFilter === 'all' || e.kind === UI.logFilter).slice().reverse();
+  const quick = ['Extrication complete', 'Fire knocked down', 'Road reopened', 'Medical examiner notified', 'Rehab set up', 'Weather changing'];
+  return `<div class="view">
+    <div class="toolbar"><h2 class="view-title grow">Incident log</h2><span class="note">Every tap on the board is stamped here, for the after-action report.</span></div>
+    <section class="panel">
+      <form class="composer" data-form="note">
+        <input id="note-input" type="text" placeholder="Add a note to the log" data-field="note" value="${esc(UI.form.note || '')}" autocomplete="off">
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      <div class="chips">${quick.map(q => `<button class="opt small" data-act="quick-note" data-arg="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    </section>
+    <div class="chips">${LOG_KINDS.map(k => opt('log-filter', k.k, UI.logFilter === k.k, k.name, 'small')).join('')}</div>
+    <section class="panel">
+      <div class="log">${list.length ? list.map(e => `<div class="entry"><span class="lt">${hhmm(e.t)}</span><span class="lk">${esc(e.kind)}</span><span class="lx">${esc(e.text)}</span></div>`).join('') : '<div class="empty">Nothing logged in this category yet</div>'}</div>
+    </section>
+  </div>`;
+}
+
+/* =====================================================================
+   Map (Leaflet). One map instance moves between the board corner and the
+   full Map view, so it never reloads.
+   ===================================================================== */
+let MAP = null, mapKind = null;
+const ML = {};
+const mapBox = document.createElement('div');
+mapBox.className = 'mapbox';
+const mapPark = document.getElementById('map-park');
+mapPark.appendChild(mapBox);
+const NJ_ORTHO = 'https://maps.nj.gov/arcgis/rest/services/Basemap/Orthos_Natural_2020_NJ_WM/MapServer/tile/{z}/{y}/{x}';
+
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const unpack = flat => { const out = []; for (let i = 0; i < flat.length; i += 2) out.push([flat[i] / 1e4, flat[i + 1] / 1e4]); return out; };
+const insideSample = ll => !!(ll && SAMPLE_SCENE && L_ok() && L.latLngBounds(SAMPLE_SCENE.bounds).contains(ll));
+const L_ok = () => typeof window.L !== 'undefined';
+const roadLabel = n => n.replace('Garden State Pkwy', 'Garden State Parkway').replace('New Jersey Tpke', 'NJ Turnpike').replace(/^I- /, 'I-').replace(/^State (Rte|Hwy) /, 'Route ').replace(/^US Hwy /, 'US ');
+
+function ensureMap() {
+  if (MAP || !L_ok()) return;
+  MAP = L.map(mapBox, { preferCanvas: true, zoomControl: true, attributionControl: true, minZoom: 8, maxZoom: 20, zoomSnap: 0.5, center: [40.27, -74.17], zoom: 10 });
+  MAP.attributionControl.setPrefix(false);
+  /* Leaflet draws vectors on a canvas that sits above image layers, so town fills get their own pane under the
+     imagery (tiles are 200) and roads one above it. */
+  MAP.createPane('towns').style.zIndex = 150;
+  MAP.createPane('aerial').style.zIndex = 250;
+  MAP.createPane('roads').style.zIndex = 300;
+  const townCanvas = L.canvas({ padding: 0.3, pane: 'towns' });
+  const roadCanvas = L.canvas({ padding: 0.3, pane: 'roads' });
+
+  ML.vector = L.layerGroup().addTo(MAP);
+  ML.roadLayer = L.layerGroup().addTo(MAP);
+  if (GEO) {
+    ML.towns = GEO.towns.map(t => L.polygon(t.r.map(unpack), { pane: 'towns', renderer: townCanvas, interactive: false, weight: t.m ? 1.2 : 0.6 }).addTo(ML.vector));
+    ML.roads = GEO.roads.map(r => L.polyline(unpack(r.p), { pane: 'roads', renderer: roadCanvas, interactive: false, weight: r.k ? 3 : 1.6 }).addTo(ML.roadLayer));
+    ML.labels = L.layerGroup(TOWNS.filter(t => t.home).map(t => L.marker(t.ll, { interactive: false, keyboard: false, icon: L.divIcon({ className: '', html: `<div class="town-label">${esc(t.name.replace(/ (Township|Borough|City|Village)$/, ''))}</div>`, iconSize: [0, 0] }) })));
+    MAP.attributionControl.addAttribution('Boundaries & roads: US Census 2023');
+  }
+  if (SAMPLE_SCENE) ML.sample = L.imageOverlay(SAMPLE_SCENE.img, SAMPLE_SCENE.bounds, { pane: 'aerial', interactive: false, attribution: 'Aerial: NJ Office of GIS, 2020' });
+
+  ML.live = L.tileLayer(NJ_ORTHO, { maxZoom: 20, maxNativeZoom: 20, attribution: 'Aerial: NJ Office of GIS, 2020', crossOrigin: false });
+  ML.live.on('tileload', () => { if (UI.live !== 'ok') { UI.live = 'ok'; refreshChips(); syncRoads(); } });
+  ML.live.on('tileerror', () => { if (UI.live === 'unknown') { UI.live = 'blocked'; refreshChips(); } });
+
+  ML.pins = L.layerGroup().addTo(MAP);
+  ML.hosp = L.layerGroup().addTo(MAP);
+
+  MAP.on('zoomend', () => { syncLabels(); syncRoads(); });
+  MAP.on('click', e => {
+    if (!UI.pinMode) return;
+    const k = UI.pinMode, ll = [+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)];
+    UI.pinMode = null;
+    const field = k === 'scene' ? 'll' : k === 'staging' ? 'stagingLL' : 'lzLL';
+    commit(`${k === 'scene' ? 'Scene' : k === 'staging' ? 'Staging' : 'LZ'} pinned at ${fmtLL(ll)}`, 'note', () => { S.incident[field] = ll; });
+  });
+  styleMap();
+  syncLayer();
+}
+
+function styleMap() {
+  if (!MAP || !GEO) return;
+  const land = css('--land'), home = css('--land-home'), edge = css('--town-edge'), major = css('--road-major'), road = css('--road');
+  GEO.towns.forEach((t, i) => ML.towns[i].setStyle({ color: edge, fillColor: t.m ? home : land, fillOpacity: 1 }));
+  GEO.roads.forEach((r, i) => ML.roads[i].setStyle({ color: r.k ? major : road, opacity: r.k ? 0.95 : 0.8 }));
+}
+function syncLayer() {
+  if (!MAP) return;
+  const sat = UI.mapLayer === 'sat';
+  if (sat) { ML.live.addTo(MAP); if (ML.sample) ML.sample.addTo(MAP); }
+  else { ML.live.remove(); if (ML.sample) ML.sample.remove(); }
+  syncRoads();
+}
+/* Over imagery the simplified roads only add clutter once you are zoomed in to street level. */
+function syncRoads() {
+  if (!MAP || !ML.roadLayer) return;
+  const show = UI.mapLayer !== 'sat' || MAP.getZoom() < 14;
+  if (show && !MAP.hasLayer(ML.roadLayer)) ML.roadLayer.addTo(MAP);
+  if (!show && MAP.hasLayer(ML.roadLayer)) ML.roadLayer.remove();
+}
+function syncLabels() {
+  if (!MAP || !ML.labels) return;
+  const show = MAP.getZoom() >= 11 && MAP.getZoom() <= 15;
+  if (show && !MAP.hasLayer(ML.labels)) ML.labels.addTo(MAP);
+  if (!show && MAP.hasLayer(ML.labels)) ML.labels.remove();
+}
+function pinIcon(cls, text, size) { return L.divIcon({ className: '', html: `<div class="pin ${cls}">${text}</div>`, iconSize: [size, size], iconAnchor: [size / 2, size / 2] }); }
+function syncMarkers() {
+  if (!MAP) return;
+  const I = S.incident;
+  ML.pins.clearLayers();
+  if (S.me) L.marker(S.me.ll, { icon: pinIcon('me', '', 22), keyboard: false, title: 'You' }).addTo(ML.pins);
+  if (I.lzLL) L.marker(I.lzLL, { icon: pinIcon('lz', 'LZ', 34), title: 'Landing zone' }).addTo(ML.pins);
+  if (I.stagingLL) L.marker(I.stagingLL, { icon: pinIcon('staging', 'S', 34), title: 'Staging' }).addTo(ML.pins);
+  if (I.ll) L.marker(I.ll, { icon: pinIcon('scene', 'SCENE', 40), title: 'Scene', zIndexOffset: 1000 }).addTo(ML.pins);
+  COUNTY_STAGING.forEach(c => L.marker(c.ll, { icon: pinIcon('cstage', 'S', 30), title: c.name }).bindTooltip(`County staging: ${c.name}`, { direction: 'top', offset: [0, -14] }).addTo(ML.pins));
+  ML.hosp.clearLayers();
+  filteredHospitals().forEach(h => L.marker(h.ll, { icon: pinIcon('hosp' + (h.trauma ? ' trauma' : ''), 'H', 28), title: h.name })
+    .bindTooltip(`${h.short}${hospMiles(h) != null ? ' · ' + hospMiles(h).toFixed(1) + ' mi' : ''}`, { direction: 'top', offset: [0, -14] }).addTo(ML.hosp));
+}
+function refreshChips() {
+  document.querySelectorAll('.mapcard.mini .mapctl.bl').forEach(el => { el.innerHTML = mapChips(); });
+  if (UI.view === 'map') render();
+}
+
+function parkMap() { if (mapBox.parentNode !== mapPark) mapPark.appendChild(mapBox); }
+function placeMap() {
+  const slot = document.querySelector('[data-map-slot]');
+  if (!slot) return;
+  if (!L_ok()) { slot.innerHTML = '<div class="map-fallback">The map library did not load. Check the connection; everything else on the board still works.</div>'; return; }
+  ensureMap();
+  slot.appendChild(mapBox);
+  const kind = slot.dataset.mapSlot;
+  MAP.invalidateSize(false);
+  syncMarkers();
+  if (kind !== mapKind) { mapKind = kind; frameMap(kind); }
+}
+function frameMap(kind) {
+  const I = S.incident;
+  const center = sceneLL();
+  if (kind === 'mini') { if (center) MAP.setView(center, I.ll ? 16.5 : 13); else MAP.setView([40.27, -74.17], 10); }
+  else {
+    const pts = [I.ll, I.stagingLL, I.lzLL].filter(Boolean);
+    if (pts.length > 1) MAP.fitBounds(L.latLngBounds(pts).pad(0.6), { maxZoom: 17.5 });
+    else if (center) MAP.setView(center, I.ll ? 17 : 13);
+    else MAP.setView([40.27, -74.17], 10);
+  }
+  syncLabels();
+}
+
+/* =====================================================================
+   Sheets
+   ===================================================================== */
+function sheetHtml() {
+  const i = UI.sheet.indexOf(':');
+  const kind = i < 0 ? UI.sheet : UI.sheet.slice(0, i), arg = i < 0 ? '' : UI.sheet.slice(i + 1);
+  const make = {
+    transport: transportSheet, par: parSheet, unit: unitSheet, 'unit-add': unitAddSheet, 'load-units': loadUnitsSheet, request: requestSheet,
+    ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
+    'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
+  }[kind];
+  const body = make ? make(arg) : { title: '', body: '' };
+  return `<div class="sheet-wrap" data-act="backdrop">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(body.title)}" data-scroll="sheet-${esc(UI.sheet)}">
+      <div class="sheet-h"><h2>${esc(body.title)}</h2><button class="close" data-act="close" aria-label="Close">${icon('x')}</button></div>
+      ${body.body}
+      ${body.foot ? `<div class="sheet-f">${body.foot}</div>` : ''}
+    </div>
+  </div>`;
+}
+const opt = (act, arg, pressed, label, cls = '') => `<button class="opt ${cls}" data-act="${act}" data-arg="${esc(arg)}" aria-pressed="${pressed ? 'true' : 'false'}">${label}</button>`;
+const field = (label, inner) => `<div class="field"><span class="lbl">${label}</span>${inner}</div>`;
+const stepper = (name, value, min = 0, max = 999, cls = '') => `<div class="stepper ${cls}"><button data-act="step" data-arg="${name}:-1:${min}:${max}" aria-label="Decrease">−</button><span class="v">${value}</span><button data-act="step" data-arg="${name}:1:${min}:${max}" aria-label="Increase">+</button></div>`;
+const input = (id, fieldName, value, ph, extra = '') => `<input id="${id}" type="text" placeholder="${esc(ph)}" data-field="${fieldName}" value="${esc(value || '')}" autocomplete="off" ${extra}>`;
+
+function transportSheet() {
+  const f = UI.form, units = readyUnits(), k = f.cat;
+  const o = sceneLL();
+  const hs = HOSPITALS.slice().sort((a, b) => hospRank(a, k, o) - hospRank(b, k, o));
+  const maxN = k ? remaining(k) : 1;
+  return {
+    title: 'Log a transport',
+    body: `
+      ${field('Category', `<div class="opt-grid">${TX_CATS.map(c => opt('f-set', 'cat=' + c, k === c, `${cat(c).color} · ${cat(c).name} <small>${remaining(c)} left</small>`, 'tall cat-' + c)).join('')}</div>`)}
+      <div class="grid2">
+        ${field('Patients on this unit', stepper('n', f.n || 1, 1, Math.max(1, maxN)))}
+        ${field('Triage tag number', input('tx-tag', 'tags', f.tags, 'Optional', 'inputmode="numeric"'))}
+      </div>
+      ${field('Age group · optional', `<div class="chips">${['Adult', 'Child', 'Infant'].map(a => opt('f-set', 'age=' + a, f.age === a, a, 'small')).join('')}</div>`)}
+      ${field('Unit', units.length ? `<div class="opt-grid">${units.map(u => opt('f-set', 'unit=' + u.id, f.unit === u.id, `${kindTag(u.kind)} ${esc(u.name)}`)).join('')}</div>` : '<div class="empty">No transport units are on scene or staged.</div>')}
+      ${field('Destination · nearest and best fit first', `<div class="opt-grid wide">${hs.map(h => {
+        const cap = hospCap(h.id), c = k && cap ? cap[k] : null, s = k ? hospSent(h.id, k) : 0;
+        const left = c != null ? c - s : null, mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed;
+        const exempt = (k === 'R' && h.trauma) || (f.burn && h.tags.includes('burn'));
+        const capTxt = isDivert(ed) && !exempt ? `<span class="crit-t">${esc(ed)}</span>` : left == null ? 'capacity not reported' : left > 0 ? `${left} ${cat(k).color} open` : '<span class="crit-t">at capacity</span>';
+        return opt('f-set', 'hosp=' + h.id, f.hosp === h.id, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${capTxt}${k === 'R' && h.trauma ? ' · ' + esc(h.trauma) : ''}</small>`, 'tall');
+      }).join('')}</div>`)}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="tx-save" ${k && f.unit && f.hosp ? '' : 'disabled'}>Log departure</button>`,
+  };
+}
+function hospRank(h, k, o) {
+  let r = o ? estMin(miles(o, h.ll)) : 60;
+  if (k === 'R' && h.trauma) r -= 30;
+  const cap = hospCap(h.id), ed = hospState(h.id).ed;
+  if (k && cap && hospSent(h.id, k) >= cap[k]) r += 200;
+  if (isDivert(ed) && !(k === 'R' && h.trauma)) r += 300;
+  if ((UI.form.age === 'Child' || UI.form.age === 'Infant') && (h.tags || []).includes('peds')) r -= 15;
+  return r;
+}
+
+function parSheet() {
+  const f = UI.form;
+  const units = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
+  f.par = f.par || {};
+  const checked = units.filter(u => f.par[u.id]).length;
+  return {
+    title: 'PAR check',
+    body: `<div class="note">Tap each unit as its officer reports all crew accounted for. Interval: every ${S.par.interval} minutes (change it in Menu).</div>
+      <div class="opt-grid">${units.map(u => opt('par-toggle', u.id, !!f.par[u.id], `${icon('check')} ${esc(u.name)} <small>crew ${u.crew || '?'}</small>`)).join('') || '<div class="empty">No units on scene</div>'}</div>
+      <div class="toolbar"><button class="btn small" data-act="par-all">Mark all accounted</button><span class="note">${checked} of ${units.length} accounted</span></div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="par-save">Complete PAR</button>`,
+  };
+}
+
+function unitSheet(id) {
+  const u = unitById(id);
+  if (!u) return { title: 'Unit', body: '<div class="empty">This unit is gone.</div>' };
+  const crew = S.people.filter(p => !p.out && p.unit === u.name);
+  return {
+    title: `${u.name} · ${kindOf(u.kind).name}`,
+    body: `<div class="note">${esc(u.agency)}${u.crew ? ` · crew ${u.crew}` : ''} · status since ${hhmm(u.t)}${crew.length ? ` · ${crew.map(p => esc(p.name)).join(', ')}` : ''}</div>
+      ${field('Status', `<div class="opt-grid">${STATUSES.map(s => opt('unit-status', id + '=' + s.k, u.status === s.k, s.name)).join('')}</div>`)}
+      ${field('Assignment', `<div class="opt-grid">${TASKS.map(t => opt('unit-task', id + '=' + t, u.task === t, esc(t))).join('')}${opt('unit-task', id + '=', !u.task, 'None')}</div>`)}
+      ${field('Crew', `<div class="stepper"><button data-act="unit-crew" data-arg="${id}:-1">−</button><span class="v">${u.crew}</span><button data-act="unit-crew" data-arg="${id}:1">+</button></div>`)}`,
+    foot: `<button class="btn danger" data-act="unit-remove" data-arg="${id}">Remove unit</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+
+function unitAddSheet() {
+  const f = UI.form;
+  f.kind = f.kind || 'BLS'; f.status = f.status || 'onscene';
+  const groups = [['ems', 'EMS'], ['fire', 'Fire'], ['spec', 'Special operations'], ['sup', 'Police & support']];
+  return {
+    title: 'Add a unit',
+    body: `${groups.map(([g, name]) => field(name, `<div class="opt-grid">${UNIT_KINDS.filter(k => k.g === g).map(k => opt('f-set', 'kind=' + k.k, f.kind === k.k, `${kindTag(k.k)} ${k.name}`)).join('')}</div>`)).join('')}
+      <div class="grid2">
+        ${field('Unit number', input('unit-name', 'name', f.name, 'e.g. 41-58', 'autocapitalize="characters"'))}
+        ${field('Agency', input('unit-agency', 'agency', f.agency, 'e.g. Wall Twp', 'list="agency-list"'))}
+      </div>
+      <datalist id="agency-list"><option value="Your squad"><option value="Mutual aid"><option value="ALS provider"><option value="County"><option value="NJ EMS Task Force"><option value="Fire"><option value="Police"></datalist>
+      ${field('Crew', stepper('crew', f.crew ?? 2, 0, 12))}
+      ${field('Status', `<div class="opt-grid">${STATUSES.filter(s => s.k !== 'released').map(s => opt('f-set', 'status=' + s.k, f.status === s.k, s.name)).join('')}</div>`)}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="unit-save">Add unit</button>`,
+  };
+}
+
+/* Paste a list of units, one per line: "29-56 BLS Squad 29" or "MICU 9, ALS, RWJBH". */
+function parseUnits(text) {
+  const kinds = UNIT_KINDS.map(k => k.k);
+  const guess = (id, rest) => {
+    const all = (id + ' ' + rest).toUpperCase();
+    const explicit = kinds.find(k => new RegExp(`(^|[\\s,;|])${k}($|[\\s,;|])`).test(all));
+    if (explicit) return explicit;
+    if (/^(M|MEDIC|MICU)[-\s]?\d/.test(id.toUpperCase()) || /^59-/.test(id) || /MEDIC|PARAMEDIC|MICU/.test(all)) return 'ALS';
+    if (/^\d{2}-5[0-4]$/.test(id)) return 'SUP';   // county pattern: 50 captain/chief, 51-54 officers
+    if (/^(E|ENG|ENGINE)[-\s]?\d/.test(id.toUpperCase())) return 'ENG';
+    if (/^(L|T|TRK|TRUCK|LADDER|TOWER)[-\s]?\d/.test(id.toUpperCase())) return 'TRK';
+    if (/^(R|RES|RESCUE)[-\s]?\d/.test(id.toUpperCase())) return 'RES';
+    if (/HAZ/.test(all)) return 'HAZ';
+    return 'BLS';
+  };
+  return text.split(/\n+/).map(l => l.trim()).filter(Boolean).map(line => {
+    const parts = line.split(/[,\t;|]+/).map(s => s.trim()).filter(Boolean);
+    let id, rest;
+    if (parts.length > 1) { id = parts[0]; rest = parts.slice(1).join(' '); }
+    else { const m = line.match(/^(\S+(?:\s\d[\w-]*)?)\s*(.*)$/); id = m[1]; rest = m[2]; }
+    const kind = guess(id, rest);
+    const agency = rest.split(/\s+/).filter(w => w.toUpperCase() !== kind).join(' ').trim();
+    return { name: id.toUpperCase(), kind, agency: agency || 'Mutual aid' };
+  });
+}
+function loadUnitsSheet() {
+  const f = UI.form;
+  if (f.text == null) f.text = '';
+  f.into = f.into || 'available';
+  const parsed = parseUnits(f.text);
+  return {
+    title: 'Load units',
+    body: `<div class="note">Paste the units you expect, one per line: unit number, then type and agency. Paste from CAD, a text message, or your mutual-aid list. Type is guessed when it is left out.</div>
+      ${field('Units', `<textarea id="units-text" data-field="text" data-live="1" placeholder="29-56 BLS Squad 29&#10;MICU 9 ALS RWJBH&#10;Engine 31-1&#10;Hazmat 1 HAZ County">${esc(f.text)}</textarea>`)}
+      ${field('Put them in', `<div class="chips">${opt('f-set', 'into=available', f.into === 'available', 'Available')}${opt('f-set', 'into=enroute', f.into === 'enroute', 'En route')}${opt('f-set', 'into=staged', f.into === 'staged', 'Staged')}</div>`)}
+      <div class="switch"><span>Also save as my agency's roster, loaded into every new incident</span>${opt('f-toggle-bool', 'saveRoster', !!f.saveRoster, f.saveRoster ? 'Yes' : 'No', 'small')}</div>
+      <div class="parse" id="units-preview">${unitsPreview(parsed)}</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="units-load">Add these units</button>`,
+  };
+}
+const unitsPreview = parsed => parsed.length ? `${plural(parsed.length, 'unit')}: ${parsed.map(u => `${esc(u.name)} (${u.kind}${u.agency ? ', ' + esc(u.agency) : ''})`).join(' · ')}` : 'Nothing pasted yet.';
+
+function requestSheet() {
+  const f = UI.form;
+  const groups = [...new Set(REQUEST_CATALOG.map(r => r.group))];
+  return {
+    title: 'Request resources',
+    body: `${groups.map(g => field(g, `<div class="opt-grid wide">${REQUEST_CATALOG.filter(r => r.group === g).map(r => opt('f-set', 'what=' + r.what, f.what === r.what, `${esc(r.what)}${r.hint ? `<small>${esc(r.hint)}</small>` : ''}`, 'tall')).join('')}</div>`)).join('')}
+      <div class="grid2">
+        ${field('How many', stepper('qty', f.qty || 1, 1, 50))}
+        ${field('Note', input('req-note', 'note2', f.note2, 'Optional'))}
+      </div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="req-save" ${f.what ? '' : 'disabled'}>Log request</button>`,
+  };
+}
+
+function icsSheet(id) {
+  const p = ICS_POSITIONS.find(x => x.id === id), a = S.ics[id], f = UI.form;
+  if (f.who == null) f.who = a ? a.who : '';
+  const picks = [
+    ...S.people.filter(x => !x.out).map(x => `${x.name}${x.unit ? ' · ' + x.unit : ''}`),
+    ...S.units.filter(u => u.status === 'onscene' || u.status === 'staged').map(u => `${u.name} crew`),
+  ];
+  return {
+    title: p.label,
+    body: `${field('Assigned to', input('ics-who', 'who', f.who, 'Name and unit'))}
+      ${field('Quick pick', `<div class="opt-grid">${picks.map(x => opt('f-set', 'who=' + x, f.who === x, esc(x))).join('')}</div>`)}
+      <div class="note">${a ? `Assigned ${hhmm(a.t)}.` : 'While vacant, this job belongs to the position above it.'}</div>`,
+    foot: `${a ? `<button class="btn danger" data-act="ics-clear" data-arg="${id}">Vacate</button>` : ''}<span class="grow"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="ics-save" data-arg="${id}">Assign</button>`,
+  };
+}
+
+function hospSheet(id) {
+  const h = hosp(id), hs = hospState(id), f = UI.form;
+  if (!f.cap) f.cap = hs.cap ? { ...hs.cap } : { R: 0, Y: 0, G: 0 };
+  if (!f.beds) f.beds = { ...(hs.beds || {}) };
+  if (f.ed == null) f.ed = hs.ed || '';
+  const mi = hospMiles(h);
+  return {
+    title: h.name,
+    body: `<div class="note">${esc(h.town)} · ${esc(h.sys)}${mi != null ? ` · ${mi.toFixed(1)} mi from the scene, about ${estMin(mi)} min` : ''}</div>
+      <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
+      ${h.note ? `<div class="note">${esc(h.note)}</div>` : ''}
+      ${h.phones ? `<div class="toolbar">${[['ed', 'ED'], ['main', 'Main'], ['burn', 'Burn transfer'], ['psych', 'Psych screening'], ['hbo', 'Hyperbaric']].filter(([k]) => h.phones[k]).map(([k, n]) => `<button class="btn small" data-act="copy-text" data-arg="${esc(h.phones[k])}">${n} <span class="num">${esc(h.phones[k])}</span></button>`).join('')}</div>` : ''}
+      ${h.lic ? `<div class="note">Licensed (NJ DOH): ${[['beds', 'beds'], ['icu', 'ICU/CCU'], ['peds', 'pediatric'], ['picu', 'PICU'], ['burn', 'burn'], ['psych', 'psych']].filter(([k]) => h.lic[k]).map(([k, n]) => `${h.lic[k]} ${n}`).join(' · ')}</div>` : ''}
+      ${field('ED status', `<div class="opt-grid">${ED_STATUS.map(s => opt('f-set', 'ed=' + s, f.ed === s, s)).join('')}</div>`)}
+      <div class="note">ED divert ends after 2 hours, other diverts after 4. Trauma patients are never diverted from a trauma center, or burn patients from a burn center.</div>
+      <div class="ph"><h2>MCI capacity · how many it can take now</h2></div>
+      <div class="grid2">${TX_CATS.map(k => field(`${cat(k).color} · ${cat(k).name} <span class="note">(${hospSent(id, k)} sent)</span>`, stepper('cap.' + k, f.cap[k], 0, 99))).join('')}</div>
+      <div class="ph"><h2>Beds available by type</h2><span class="meta">Leave at zero if it didn't report one</span></div>
+      <div class="grid2">${BED_TYPES.map(b => field(b.name, stepper('beds.' + b.k, f.beds[b.k] ?? 0, 0, 99, 'sm'))).join('')}</div>
+      <div class="switch"><span>${hs.notifiedAt ? `Notified at ${hhmm(hs.notifiedAt)}` : 'Not yet notified'}</span>${hs.notifiedAt ? '' : `<button class="btn" data-act="hosp-notify" data-arg="${id}">Mark notified now</button>`}</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="hosp-save" data-arg="${id}">Save report</button>`,
+  };
+}
+
+function incidentFields(f) {
+  return `${field('Incident type', `<div class="opt-grid">${INCIDENT_TYPES.map(t => opt('f-set', 'type=' + t, f.type === t, esc(t))).join('')}</div>`)}
+    <div class="grid2">
+      ${field('Location', input('inc-loc', 'location', f.location, 'Street, cross street, or mile marker'))}
+      ${field('Municipality', input('inc-muni', 'municipality', f.municipality, 'Monmouth County town', 'list="muni-list"'))}
+      ${field('Command name', input('inc-cmd', 'commandName', f.commandName, 'e.g. Ocean Ave Command'))}
+      ${field('EMS Command (you)', input('inc-ic', 'ic', f.ic, 'Name · unit'))}
+      ${field('Staging location', input('inc-stg', 'staging', f.staging, 'Where incoming units report'))}
+      ${field('Access route', input('inc-acc', 'access', f.access, 'How units get in'))}
+    </div>
+    <datalist id="muni-list">${MUNICIPALITIES.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+    ${field('Hazards', `<div class="chips">${HAZARDS.map(h => opt('f-toggle', 'hazards=' + h, (f.hazards || []).includes(h), esc(h))).join('')}</div>`)}
+    <div class="grid2">
+      ${field('Air medical / LZ', `<div class="chips">${['Not requested', 'Standby', 'Launched', 'LZ set', 'Aircraft on scene'].map(x => opt('f-set', 'lz=' + x, f.lz === x, x)).join('')}</div>`)}
+      ${field('LZ location', input('inc-lz', 'lzLocation', f.lzLocation, 'Field, lot, or coordinates'))}
+    </div>
+    <div class="note">Drop exact pins for the scene, staging and LZ on the Map.</div>`;
+}
+function incidentSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, JSON.parse(JSON.stringify(S.incident)), { _init: true });
+  return { title: 'Incident details', body: incidentFields(f), foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="inc-save">Save</button>` };
+}
+function newIncidentSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { type: 'Motor vehicle crash', hazards: [], lz: 'Not requested', est: 0, ic: S.incident.ic || '', _init: true });
+  return {
+    title: 'Start a new incident',
+    body: `<div class="note">This clears the board on this device and starts the clock now.${C.roster.length ? ` Your roster of ${plural(C.roster.length, 'unit')} loads as Available.` : ''}</div>
+      ${incidentFields(f)}
+      ${field('Estimated patients', stepper('est', f.est || 0, 0, 500))}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="inc-new">Establish command</button>`,
+  };
+}
+
+function mciSheet() {
+  const n = Math.max(totalPts(), S.incident.est || 0), nts = notices();
+  return {
+    title: 'MCI declaration',
+    body: `<div class="note">${n} patients counted or estimated. Declaring is your call; the board only points out the state and county rules.</div>
+      ${nts.length ? `<div class="rows">${nts.map(t => `<div class="row"><span class="pill requested">Notice</span><div>${esc(t)}</div><span></span></div>`).join('')}</div>` : ''}
+      <div class="opt-grid wide">
+        ${opt('mci-set', '0', !S.incident.mciLevel, 'No MCI <small>Routine multi-patient call</small>', 'tall')}
+        ${MCI_LEVELS.map(L => opt('mci-set', String(L.level), S.incident.mciLevel === L.level, `${esc(L.label)} <small>${esc(L.range)}${L.note ? ' · ' + esc(L.note) : ''}</small>`, 'tall')).join('')}
+      </div>
+      ${MCI_NOTE ? `<div class="note">${MCI_NOTE}</div>` : ''}`,
+    foot: `<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+
+function personSheet(id) {
+  const p = id ? S.people.find(x => x.id === id) : null, f = UI.form;
+  if (!f._init) { Object.assign(f, p ? { num: p.num, name: p.name, cert: p.cert, unit: p.unit, task: p.task } : { cert: 'EMT' }); f._init = true; }
+  const q = (f.num || '').trim();
+  const matches = !p && q ? C.members.filter(m => m.num.startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : [];
+  const units = S.units.filter(u => u.status === 'onscene' || u.status === 'staged' || u.status === 'enroute');
+  return {
+    title: p ? `${p.name} · #${p.num}` : 'Check in a member',
+    body: `<div class="grid2">
+        ${field('Member number', input('p-num', 'num', f.num, 'e.g. 4127', 'inputmode="numeric" data-live="1"'))}
+        ${field('Name', input('p-name', 'name', f.name, 'Last name, first initial'))}
+      </div>
+      <div id="member-matches">${memberMatches(matches)}</div>
+      ${field('Certification', `<div class="chips">${CERTS.map(c => opt('f-set', 'cert=' + c, f.cert === c, c)).join('')}</div>`)}
+      ${field('Riding on', `<div class="opt-grid">${opt('f-set', 'unit=', !f.unit, 'No unit')}${units.map(u => opt('f-set', 'unit=' + u.name, f.unit === u.name, `${kindTag(u.kind)} ${esc(u.name)}`)).join('')}</div>`)}
+      ${field('Assignment', `<div class="opt-grid">${opt('f-set', 'task=', !f.task, 'Unassigned')}${TASKS.map(t => opt('f-set', 'task=' + t, f.task === t, esc(t))).join('')}</div>`)}`,
+    foot: `${p ? `<button class="btn danger" data-act="person-out" data-arg="${p.id}">Check out</button>` : `<button class="btn" data-act="sheet" data-arg="load-members">Member roster</button>`}<span class="grow"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="person-save" data-arg="${p ? p.id : ''}">${p ? 'Save' : 'Check in'}</button>`,
+  };
+}
+const memberMatches = list => list.length ? `<div class="chips">${list.map(m => `<button class="opt small" data-act="member-pick" data-arg="${esc(m.num)}"><span class="num">#${esc(m.num)}</span> ${esc(m.name)} <small>${esc(m.cert)}</small></button>`).join('')}</div>` : '';
+
+function loadMembersSheet() {
+  const f = UI.form;
+  if (f.mtext == null) f.mtext = C.members.map(m => `${m.num}, ${m.name}, ${m.cert}`).join('\n');
+  return {
+    title: 'Member roster',
+    body: `<div class="note">One member per line: number, name, certification. This list stays on this device across incidents, so check-in is just the number.</div>
+      ${field('Members', `<textarea id="members-text" data-field="mtext" placeholder="4127, K. Shah, EMT">${esc(f.mtext)}</textarea>`)}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="members-save">Save roster</button>`,
+  };
+}
+
+function contactSheet() {
+  const f = UI.form;
+  return {
+    title: 'Add a phone number',
+    body: `<div class="grid2">
+        ${field('Name', input('c-name', 'cname', f.cname, 'e.g. Wall Twp OEM'))}
+        ${field('Number', input('c-num', 'cnum', f.cnum, '732-555-0100', 'inputmode="tel"'))}
+        ${field('Group', input('c-group', 'cgroup', f.cgroup || 'My agency', 'Group', 'list="group-list"'))}
+        ${field('Note', input('c-note', 'cnote', f.cnote, 'Optional'))}
+      </div>
+      <datalist id="group-list">${[...new Set(allContacts().map(c => c.group)), 'My agency'].map(g => `<option value="${esc(g)}">`).join('')}</datalist>
+      <div class="note">Saved on this device and kept across incidents.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="contact-save">Save number</button>`,
+  };
+}
+
+function menuSheet() {
+  return {
+    title: 'Menu',
+    body: `<div class="switch"><span>Display</span><div class="chips">${opt('mode-set', 'night', S.mode !== 'day', 'Night')}${opt('mode-set', 'day', S.mode === 'day', 'Day · sunlight')}</div></div>
+      <div class="switch"><span>Triage method</span><div class="chips">${opt('method', 'START', S.method !== 'SALT', 'START')}${opt('method', 'SALT', S.method === 'SALT', 'SALT')}${opt('white-toggle', '', !!S.white, 'Count White · uninjured')}</div></div>
+      <div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>
+      <div class="opt-grid wide">
+        <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="load-units">Unit roster<small>${C.roster.length ? plural(C.roster.length, 'unit') + ' saved' : 'Paste your units and mutual aid'}</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>
+        <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
+      </div>
+      <div class="note"><b>Prototype.</b> Data stays on this device only. Nothing is sent to CAD, EMTrack, or anyone else, and two tablets do not share a board yet. Use practice data.</div>`,
+    foot: `<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+
+/* =====================================================================
+   Actions
+   ===================================================================== */
+function commit(msg, kind, fn, { toast = true } = {}) {
+  undoSnap = JSON.stringify(S);
+  fn();
+  if (msg) S.log.push({ t: now(), kind, text: msg });
+  save();
+  render();
+  if (toast && msg) showToast(msg, true);
+}
+function openSheet(name) { UI.sheet = name; UI.form = {}; render(); }
+function closeSheet() { UI.sheet = null; UI.form = {}; render(); }
+function showToast(msg, canUndo) {
+  clearTimeout(toastTimer);
+  toastRoot.innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${canUndo ? '<button data-act="undo">Undo</button>' : ''}</div>`;
+  toastTimer = setTimeout(() => { toastRoot.innerHTML = ''; }, 5000);
+}
+function copyText(text, el) {
+  const ok = () => showToast('Copied', false);
+  const fallback = () => {
+    if (el && el.id && el.id.startsWith('script-')) { const r = document.createRange(); r.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+    showToast(text.length <= 48 ? `Couldn't copy here. ${text}` : "Couldn't copy here. The text is selected; use your copy command.", false);
+  };
+  try { navigator.clipboard.writeText(text).then(ok, fallback); } catch (e) { fallback(); }
+}
+function formPath(name) {
+  const path = name.split('.');
+  let obj = UI.form;
+  for (let i = 0; i < path.length - 1; i++) obj = obj[path[i]] = obj[path[i]] || {};
+  return [obj, path[path.length - 1]];
+}
+
+const A = {
+  view(id) { UI.view = id; UI.pinMode = null; saveUi(); render(); app.querySelector('.main')?.scrollTo?.(0, 0); },
+  sheet(name) { openSheet(name); },
+  close() { closeSheet(); },
+  backdrop(_, el, e) { if (e.target === el) closeSheet(); },
+  mode() { S.mode = S.mode === 'day' ? 'night' : 'day'; save(); render(); styleMap(); },
+  'mode-set'(m) { S.mode = m; save(); render(); styleMap(); },
+  undo() { if (!undoSnap) return; S = JSON.parse(undoSnap); undoSnap = null; save(); render(); showToast('Undone', false); },
+
+  tri(arg) {
+    const k = arg[0], d = arg[1] === '+' ? 1 : -1, c = cat(k);
+    const have = S.triage[k] || 0;
+    if (d < 0 && have <= (TX_CATS.includes(k) ? sentCat(k) : 0)) {
+      showToast(have ? `Can't go below the ${sentCat(k)} already transported` : `No ${c.name} to remove`, false);
+      return;
+    }
+    commit(`Triage ${d > 0 ? '+1' : '−1'} ${c.color} (${c.name}): now ${have + d}`, 'triage', () => { S.triage[k] = have + d; });
+  },
+  est(d) { S.incident.est = Math.max(0, (S.incident.est || 0) + Number(d)); save(); render(); },
+  bench(id) {
+    const b = BENCHMARKS.find(x => x.id === id);
+    if (S.bench[id]) commit(`Benchmark cleared: ${b.label}`, 'bench', () => { delete S.bench[id]; });
+    else commit(b.label, 'bench', () => { S.bench[id] = now(); });
+  },
+  'mci-set'(lvl) {
+    const L = Number(lvl);
+    if (L === S.incident.mciLevel) return;
+    commit(L ? `Declared ${levelOf(L).say}` : 'MCI stood down', 'bench', () => { S.incident.mciLevel = L; if (L >= 2 && !S.bench.mci) S.bench.mci = now(); });
+  },
+
+  'f-set'(arg) {
+    const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
+    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed'];
+    UI.form[k] = UI.form[k] === v && !sticky.includes(k) ? '' : v;
+    if (k === 'cat') UI.form.n = 1;
+    render();
+  },
+  'f-toggle'(arg) {
+    const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
+    const a = UI.form[k] = (UI.form[k] || []).slice();
+    const j = a.indexOf(v); if (j >= 0) a.splice(j, 1); else a.push(v);
+    render();
+  },
+  'f-toggle-bool'(k) { UI.form[k] = !UI.form[k]; render(); },
+  step(arg) {
+    const [name, d, min, max] = arg.split(':');
+    const [obj, key] = formPath(name);
+    const def = name === 'n' || name === 'qty' ? 1 : name === 'crew' ? 2 : 0;
+    obj[key] = Math.min(Number(max), Math.max(Number(min), (obj[key] ?? def) + Number(d)));
+    render();
+  },
+
+  /* map */
+  'map-layer'() { UI.mapLayer = UI.mapLayer === 'sat' ? 'map' : 'sat'; saveUi(); syncLayer(); render(); },
+  'map-fit'() { if (MAP) { mapKind = null; placeMap(); } },
+  'pin-mode'(k) { UI.pinMode = UI.pinMode === k ? null : k; render(); },
+  'map-hosp'(id) { const h = hosp(id); if (MAP && h) MAP.setView(h.ll, 15); },
+  locate() {
+    if (!navigator.geolocation) { showToast("This device can't share its location. Tap the map to place the pin.", false); return; }
+    showToast('Finding your location…', false);
+    navigator.geolocation.getCurrentPosition(pos => {
+      S.me = { ll: [+pos.coords.latitude.toFixed(6), +pos.coords.longitude.toFixed(6)], acc: Math.round(pos.coords.accuracy), t: now() };
+      save();
+      if (UI.view !== 'map') UI.view = 'map';
+      render();
+      if (MAP) MAP.setView(S.me.ll, 17);
+      showToast(`Located within ${S.me.acc} m. Tap "Use my location as the scene" to pin it.`, false);
+    }, () => {
+      showToast("Location isn't available here. Choose Scene on the Map and tap where you are.", false);
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+  },
+  'use-cstage'(i) { const c = COUNTY_STAGING[Number(i)]; commit(`Staging set: ${c.name}`, 'bench', () => { S.incident.staging = `${c.name}, ${c.note}`; S.incident.stagingLL = c.ll; if (!S.bench.staging) S.bench.staging = now(); }); },
+  'map-goto'(ll) { if (MAP) MAP.setView(ll.split(',').map(Number), 15); },
+  'use-me'() { if (!S.me) return; commit(`Scene pinned at my location, ${fmtLL(S.me.ll)} (±${S.me.acc} m)`, 'note', () => { S.incident.ll = S.me.ll; }); },
+  'hosp-filter'(k) { const a = UI.hospFilter; const i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else a.push(k); render(); },
+  'copy-text'(text, el) { copyText(text, el); },
+
+  /* transport */
+  'tx-with'(unitId) { openSheet('transport'); UI.form.unit = unitId; UI.form.cat = TX_CATS.find(k => remaining(k) > 0); UI.form.n = 1; render(); },
+  'tx-save'() {
+    const f = UI.form, u = unitById(f.unit), h = hosp(f.hosp), n = Math.min(f.n || 1, remaining(f.cat));
+    if (!u || !h || !f.cat || n < 1) return;
+    UI.sheet = null;
+    commit(`${u.name} departed: ${n} ${cat(f.cat).name}${f.age && f.age !== 'Adult' ? ' (' + f.age.toLowerCase() + ')' : ''} → ${h.short}${f.tags ? ` (tag ${f.tags})` : ''}`, 'transport', () => {
+      S.transports.push({ id: uid(), cat: f.cat, n, tags: (f.tags || '').trim(), age: f.age || '', unit: u.id, hosp: h.id, t: now() });
+      u.status = 'transporting'; u.task = 'To ' + h.short; u.t = now();
+    });
+    UI.form = {};
+  },
+
+  /* PAR */
+  'par-toggle'(id) { UI.form.par = UI.form.par || {}; UI.form.par[id] = !UI.form.par[id]; render(); },
+  'par-all'() { UI.form.par = {}; S.units.filter(u => u.status === 'onscene' || u.status === 'staged').forEach(u => { UI.form.par[u.id] = true; }); render(); },
+  'par-save'() {
+    const units = S.units.filter(u => u.status === 'onscene' || u.status === 'staged');
+    const ok = units.filter(u => UI.form.par && UI.form.par[u.id]);
+    const missing = units.filter(u => !(UI.form.par && UI.form.par[u.id])).map(u => u.name);
+    UI.sheet = null;
+    commit(`PAR complete: ${ok.length} of ${units.length} units accounted for${missing.length ? '. NOT accounted: ' + missing.join(', ') : ''}`, 'par', () => { S.par.last = now(); });
+    UI.form = {};
+  },
+  'par-int'(m) { S.par.interval = Number(m); save(); render(); },
+  method(m) { if (S.method === m) return; commit(`Triage method: ${m}`, 'triage', () => { S.method = m; if (m !== 'SALT' && S.triage.X) { S.triage.B = (S.triage.B || 0) + S.triage.X; S.triage.X = 0; } }); },
+  'white-toggle'() { S.white = !S.white; save(); render(); },
+
+  /* units */
+  'unit-group'(g) { UI.unitGroup = g; render(); },
+  'unit-quick'(arg) {
+    const [id, st] = arg.split('='), u = unitById(id);
+    if (!u) return;
+    commit(`${u.name}: ${statusName(st)}`, 'units', () => { u.status = st; u.t = now(); if (st !== 'onscene') u.task = ''; });
+  },
+  'unit-status'(arg) {
+    const [id, st] = arg.split('='), u = unitById(id);
+    if (!u || u.status === st) return;
+    commit(`${u.name}: ${statusName(st)}`, 'units', () => { u.status = st; u.t = now(); if (['released', 'staged', 'available', 'enroute'].includes(st)) u.task = ''; });
+  },
+  'unit-task'(arg) {
+    const i = arg.indexOf('='), id = arg.slice(0, i), task = arg.slice(i + 1), u = unitById(id);
+    if (!u || u.task === task) return;
+    commit(task ? `${u.name} assigned: ${task}` : `${u.name}: assignment cleared`, 'units', () => { u.task = task; if (task && u.status !== 'onscene') { u.status = 'onscene'; u.t = now(); } });
+  },
+  'unit-crew'(arg) {
+    const [id, d] = arg.split(':'), u = unitById(id); if (!u) return;
+    u.crew = Math.max(0, Math.min(20, (u.crew || 0) + Number(d))); save(); render();
+  },
+  'unit-remove'(id) {
+    const u = unitById(id); if (!u) return;
+    UI.sheet = null;
+    commit(`${u.name} removed from the board`, 'units', () => { S.units = S.units.filter(x => x.id !== id); });
+  },
+  'unit-save'() {
+    const f = UI.form, name = (f.name || '').trim().toUpperCase();
+    if (!name) { showToast('Give the unit a number first', false); document.getElementById('unit-name')?.focus(); return; }
+    UI.sheet = null;
+    commit(`${name} (${kindOf(f.kind).name}) added: ${statusName(f.status)}`, 'units', () => {
+      S.units.push({ id: uid(), name, kind: f.kind, agency: (f.agency || '').trim() || 'Mutual aid', crew: f.crew ?? 2, status: f.status, task: '', t: now() });
+    });
+    UI.form = {};
+  },
+  'units-load'() {
+    const f = UI.form, parsed = parseUnits(f.text || '');
+    if (!parsed.length) { showToast('Paste at least one unit first', false); return; }
+    const have = new Set(S.units.map(u => u.name));
+    const fresh = parsed.filter(p => !have.has(p.name));
+    if (f.saveRoster) {
+      const names = new Set(C.roster.map(r => r.name));
+      C.roster = C.roster.concat(parsed.filter(p => !names.has(p.name)));
+      saveConfig();
+    }
+    UI.sheet = null;
+    commit(`Loaded ${plural(fresh.length, 'unit')} as ${statusName(f.into)}${parsed.length > fresh.length ? ` (${parsed.length - fresh.length} already on the board)` : ''}`, 'units', () => {
+      fresh.forEach(p => S.units.push({ id: uid(), ...p, crew: 2, status: f.into, task: '', t: now() }));
+    });
+    UI.form = {};
+  },
+
+  /* people */
+  'member-pick'(num) {
+    const m = C.members.find(x => x.num === num); if (!m) return;
+    Object.assign(UI.form, { num: m.num, name: m.name, cert: m.cert || UI.form.cert });
+    render();
+  },
+  'person-save'(id) {
+    const f = UI.form, num = (f.num || '').trim(), name = (f.name || '').trim();
+    if (!num && !name) { showToast('Enter a member number or a name', false); return; }
+    const where = [f.unit, f.task].filter(Boolean).join(' · ');
+    UI.sheet = null;
+    if (id) {
+      commit(`${name || '#' + num}: ${where || 'unassigned'}`, 'people', () => { Object.assign(S.people.find(p => p.id === id), { num, name, cert: f.cert, unit: f.unit || '', task: f.task || '' }); });
+    } else {
+      if (S.people.some(p => !p.out && p.num && p.num === num)) { showToast(`#${num} is already checked in`, false); return; }
+      commit(`Checked in #${num || '?'} ${name} (${f.cert})${where ? ' → ' + where : ''}`, 'people', () => {
+        S.people.push({ id: uid(), num, name, cert: f.cert, unit: f.unit || '', task: f.task || '', t: now() });
+      });
+      if (num && name && !C.members.some(m => m.num === num)) { C.members.push({ num, name, cert: f.cert }); saveConfig(); }
+    }
+    UI.form = {};
+  },
+  'person-out'(id) {
+    const p = S.people.find(x => x.id === id); if (!p) return;
+    UI.sheet = null;
+    commit(`Checked out #${p.num} ${p.name}`, 'people', () => { p.out = now(); });
+    UI.form = {};
+  },
+  'members-save'() {
+    const lines = (UI.form.mtext || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
+    C.members = lines.map(l => { const [num, name, cert] = l.split(/[,\t;|]+/).map(s => s.trim()); return { num: num || '', name: name || '', cert: CERTS.find(c => c.toLowerCase() === (cert || '').toLowerCase()) || cert || 'EMT' }; }).filter(m => m.num || m.name);
+    saveConfig(); UI.sheet = null; UI.form = {}; render();
+    showToast(`Member roster saved: ${plural(C.members.length, 'member')}`, false);
+  },
+
+  /* requests */
+  'req-save'() {
+    const f = UI.form; if (!f.what) return;
+    UI.sheet = null;
+    commit(`Requested ${(f.qty || 1) > 1 ? f.qty + ' × ' : ''}${f.what}${f.note2 ? ' (' + f.note2 + ')' : ''}`, 'request', () => {
+      S.requests.push({ id: uid(), what: f.what, qty: f.qty || 1, status: 'requested', t: now(), note: (f.note2 || '').trim() });
+    });
+    UI.form = {};
+  },
+  'req-next'(id) {
+    const r = S.requests.find(x => x.id === id); if (!r) return;
+    const i = REQ_FLOW.indexOf(r.status); if (i < 0 || i === REQ_FLOW.length - 1) return;
+    const nx = REQ_FLOW[i + 1];
+    commit(`${r.what}: ${reqStatusName(nx)}`, 'request', () => { r.status = nx; });
+  },
+
+  /* ICS */
+  'ics-save'(id) {
+    const who = (UI.form.who || '').trim(), p = ICS_POSITIONS.find(x => x.id === id);
+    if (!who) { showToast('Enter a name or pick someone', false); return; }
+    UI.sheet = null;
+    commit(`${p.label}: ${who}`, 'units', () => { S.ics[id] = { who, t: now() }; });
+    UI.form = {};
+  },
+  'ics-clear'(id) {
+    const p = ICS_POSITIONS.find(x => x.id === id);
+    UI.sheet = null;
+    commit(`${p.label} vacated`, 'units', () => { delete S.ics[id]; });
+    UI.form = {};
+  },
+
+  /* hospitals */
+  'hosp-notify'(id) { const h = hosp(id); commit(`${h.short} notified`, 'note', () => { S.hospitals[id] = { ...hospState(id), notifiedAt: now() }; }); },
+  'hosp-save'(id) {
+    const h = hosp(id), c = UI.form.cap, beds = {};
+    Object.entries(UI.form.beds || {}).forEach(([k, v]) => { if (v) beds[k] = v; });
+    const ed = UI.form.ed || hospState(id).ed;
+    UI.sheet = null;
+    commit(`${h.short} reports${ed ? ' ED ' + ed + ',' : ''} Red ${c.R}, Yellow ${c.Y}, Green ${c.G}${Object.keys(beds).length ? '; beds ' + Object.entries(beds).map(([k, v]) => `${BED_TYPES.find(b => b.k === k).name} ${v}`).join(', ') : ''}`, 'note', () => {
+      S.hospitals[id] = { ...hospState(id), cap: { ...c }, beds, ed, capAt: now() };
+    });
+    UI.form = {};
+  },
+
+  /* phone */
+  'contact-save'() {
+    const f = UI.form, name = (f.cname || '').trim(), num = (f.cnum || '').trim();
+    if (!name || !num) { showToast('Enter a name and a number', false); return; }
+    C.contacts.push({ id: uid(), group: (f.cgroup || 'My agency').trim(), name, num, note: (f.cnote || '').trim() });
+    saveConfig(); UI.sheet = null; UI.form = {}; render(); showToast(`Saved ${name}`, false);
+  },
+  'contact-del'(id) { C.contacts = C.contacts.filter(c => c.id !== id); saveConfig(); render(); },
+
+  /* incident */
+  'inc-save'() {
+    const f = UI.form;
+    UI.sheet = null;
+    commit('Incident details updated', 'note', () => {
+      for (const k of ['type', 'location', 'municipality', 'commandName', 'ic', 'staging', 'access', 'hazards', 'lz', 'lzLocation']) S.incident[k] = typeof f[k] === 'string' ? f[k].trim() : f[k];
+    });
+    UI.form = {}; mapKind = null; placeMap();
+  },
+  'inc-new'() {
+    const f = UI.form;
+    undoSnap = JSON.stringify(S);
+    S = blankState({ ...f, location: (f.location || '').trim(), commandName: (f.commandName || '').trim(), ic: (f.ic || '').trim() });
+    S.log[0].text = `Command established${S.incident.commandName ? ': ' + S.incident.commandName : ''}${S.incident.ic ? ', ' + S.incident.ic : ''}`;
+    UI.sheet = null; UI.form = {}; UI.view = 'board'; mapKind = null;
+    save(); render(); showToast('New incident started. Clock running.', true);
+  },
+  'load-sample'() {
+    undoSnap = JSON.stringify(S);
+    S = sampleState(); UI.sheet = null; UI.form = {}; mapKind = null;
+    save(); render(); showToast('Sample incident loaded', true);
+  },
+
+  'log-filter'(k) { UI.logFilter = k; render(); },
+  'quick-note'(text) { commit(text, 'note', () => {}); },
+  copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const act = el.dataset.act;
+  if (act === 'backdrop' && e.target !== el) return;
+  if (A[act]) { if (el.tagName !== 'A') e.preventDefault(); A[act](el.dataset.arg, el, e); }
+  wake();
+});
+document.addEventListener('input', e => {
+  const t = e.target, f = t.dataset && t.dataset.field;
+  if (!f) return;
+  UI.form[f] = t.value;
+  if (t.id === 'units-text') { const p = document.getElementById('units-preview'); if (p) p.innerHTML = unitsPreview(parseUnits(t.value)); }
+  if (t.id === 'p-num') {
+    const q = t.value.trim(), box = document.getElementById('member-matches');
+    if (box) box.innerHTML = memberMatches(q ? C.members.filter(m => m.num.startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : []);
+    const exact = C.members.find(m => m.num === q);
+    if (exact) { UI.form.name = exact.name; UI.form.cert = exact.cert; const n = document.getElementById('p-name'); if (n) n.value = exact.name; }
+  }
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  if (e.target.dataset.form === 'note') {
+    const text = (UI.form.note || '').trim();
+    if (!text) return;
+    UI.form.note = '';
+    commit(text, 'note', () => {});
+    document.getElementById('note-input')?.focus();
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && UI.sheet) closeSheet(); });
+
+/* =====================================================================
+   Clocks
+   ===================================================================== */
+function tick() {
+  const t = now();
+  const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
+  set('now', hhmm(t));
+  set('elapsed', dur(t - S.incident.dispatchAt));
+  const due = S.par.last + S.par.interval * 60000, left = due - t;
+  set('par', left >= 0 ? dur(left) : '+' + dur(-left));
+  set('par-lbl', left >= 0 ? 'PAR due in' : 'PAR overdue');
+  const b = document.getElementById('par-btn');
+  if (b) { b.classList.toggle('due', left >= 0 && left < 60000); b.classList.toggle('over', left < 0); }
+}
+
+/* Keep the screen awake while the board is open, where the browser allows it. */
+let lock = null;
+async function wake() {
+  try { if (!lock && navigator.wakeLock && document.visibilityState === 'visible') { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (e) { /* not granted */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); } });
+window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); });
+
+/* =====================================================================
+   Boot
+   ===================================================================== */
+C = read(CONFIG_KEY) || sampleConfig();
+const saved = read(KEY);
+S = saved && saved.v === 2 ? saved : sampleState();
+loadUi();
+render();
+setInterval(tick, 1000);
+})();
+</script>
