@@ -140,9 +140,9 @@ Full picture in [../docs/SECURITY-PHI.md](../docs/SECURITY-PHI.md).
 
 ---
 
-## Shared boards for RigBoard
+## Shared boards for OpsBoard
 
-The same relay lets RigBoard, the scene command and supervisor board (`prototypes/scene-command`, served at **https://dmsutton-maker.github.io/PCR911/scene-command/**) share one live incident and one supervisor board between tablets. It uses the squad accounts above, so there is nothing new to set up beyond a deploy that succeeds.
+The same relay lets OpsBoard, the scene command and supervisor board (`prototypes/scene-command`, served at **https://dmsutton-maker.github.io/PCR911/scene-command/**) share one live incident and one supervisor board between tablets. It uses the squad accounts above, so there is nothing new to set up beyond a deploy that succeeds.
 
 **How it works.** Each squad gets one Durable Object, a small document store with live subscriptions. Tablets connect to `/v1/board` over a WebSocket, signed in with the member token their invite gave them. Each tablet writes only its own list of changes and replays everyone's, so two people tapping at once never overwrite each other. A tablet that loses signal keeps working and sends what it did when it reconnects. Durable Objects on SQLite storage are on Cloudflare's free plan, and the deploy creates this one.
 

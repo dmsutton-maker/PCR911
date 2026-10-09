@@ -1,4 +1,6 @@
-# RigBoard (prototype)
+# OpsBoard (prototype)
+
+One shared board for squads and the agencies they work with: MCIs, everyday calls, and planned events. It was called Scene Command, then RigBoard, while it was EMS only.
 
 Served at https://dmsutton-maker.github.io/PCR911/scene-command/ (the address keeps its first name, so links and Home Screen icons already handed out keep working).
 
@@ -31,7 +33,7 @@ This is a clickable prototype for deciding what the real thing should be. It is 
 | **Hospitals** | Favorites the squad stars (listed first everywhere, with a Favorites filter), capabilities, distance, **live ED status, reason and comment** from New Jersey's public ED status board (njdivert.juvare.com, through the relay, every 3 minutes), MCI capacity by color vs. sent, beds available by type. Includes University Hospital, Newark, for the Eye Trauma Center for New Jersey |
 | **Phone** | Directory of published numbers, plus your own |
 | **ICS** | Unified command, command staff, operations and the medical group; tap a box to assign it |
-| **Radio** | METHANE, CAN, triage report, hospital notification, mutual-aid request, air medical request and command transfer, all written from the board. Also a channel reference. **Listen live** at the top: the county's public Broadcastify feeds (they open on Broadcastify, whose terms don't allow playing them inside another app), and feeds the squad adds that it has the right to use, which play right in RigBoard in a bar that stays up across screens |
+| **Radio** | METHANE, CAN, triage report, hospital notification, mutual-aid request, air medical request and command transfer, all written from the board. Also a channel reference. **Listen live** at the top: the county's public Broadcastify feeds (they open on Broadcastify, whose terms don't allow playing them inside another app), and feeds the squad adds that it has the right to use, which play right in OpsBoard in a bar that stays up across screens |
 | **Log** | Every tap, time-stamped and marked with which tablet made it, for the after-action report |
 | **Supervisor** | The supervisor board for everyday calls (see above) |
 | **Event** | For a planned event rather than an emergency (a parade, the fireworks, a concert, a race). Posts on the map (numbered posts, first aid, command post, roaming, ambulance standby, cooling, gates), placed by tapping the map; members and units assigned to each; who's at their post, on break or done; a patient log (seen, released, transported, refused) with no patient names; a copyable briefing. Members' phones show their post with directions and "I'm at my post", and can check in to the event themselves. **Upgrade to MCI** starts an incident with the event's members and units already on scene. |
@@ -53,7 +55,7 @@ node prototypes/scene-command/build.mjs
 | `data/sample-scene.json` | Aerial photo of the sample scene (Route 35 & Deal Road, Ocean Township) from the NJ Office of GIS 2020 orthophotography, with its bounds |
 | `vendor/leaflet-1.9.4.css` | Leaflet's stylesheet (BSD-2-Clause); Leaflet's script loads from cdnjs |
 | `index.html` | The built page; don't edit it by hand |
-| `logo.svg` | The RigBoard mark (option A, the status board). `icon-180.png`, `icon-512.png` and `icon-1024.png` are drawn from it |
+| `logo.svg` | The OpsBoard mark (option A, the status board). `icon-180.png`, `icon-512.png` and `icon-1024.png` are drawn from it |
 
 ## Limits of this prototype
 

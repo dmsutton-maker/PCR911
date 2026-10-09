@@ -1,4 +1,4 @@
-<title>RigBoard</title>
+<title>OpsBoard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -1558,7 +1558,7 @@ const FEEDS_ALL = 'https://www.broadcastify.com/listen/ctid/1783/publicsafety';
 /* In-app listening. Broadcastify's terms don't allow its feeds to play inside another app without its written
    permission, so those open on Broadcastify (the audio keeps playing when you come back). Feeds the squad has the
    right to use (its own scanner stream, or one a feed owner or Broadcastify has licensed) are added here and play
-   right in RigBoard, in a bar that stays put while you move between screens. */
+   right in OpsBoard, in a bar that stays put while you move between screens. */
 const player = typeof Audio === 'function' ? new Audio() : null;
 let PLAYING = null;   // { id, name }
 function playFeed(f) {
@@ -1568,7 +1568,7 @@ function playFeed(f) {
   player.src = url; player.preload = 'none';
   PLAYING = { id: f.id, name: f.name, state: 'loading' };
   player.play().then(() => { if (PLAYING && PLAYING.id === f.id) { PLAYING.state = 'live'; drawPlayer(); } }).catch(() => { stopFeed(); showToast(`Couldn't play ${f.name}. Check the link, or that you're online.`, false); });
-  if ('mediaSession' in navigator && typeof MediaMetadata === 'function') navigator.mediaSession.metadata = new MediaMetadata({ title: f.name, artist: 'RigBoard · live' });
+  if ('mediaSession' in navigator && typeof MediaMetadata === 'function') navigator.mediaSession.metadata = new MediaMetadata({ title: f.name, artist: 'OpsBoard · live' });
   drawPlayer();
 }
 function stopFeed() { if (player) { player.pause(); player.removeAttribute('src'); player.load(); } PLAYING = null; drawPlayer(); }
@@ -1585,7 +1585,7 @@ function listenPanel() {
   return `<section class="panel listen">
     <div class="ph"><h2>Listen live</h2><button class="btn small" data-act="sheet" data-arg="feed-add">${icon('plus')} Add a feed</button></div>
     <div class="feeds">
-      ${own.map(f => `<div class="feed"><button class="fplay" data-act="feed-play" data-arg="${esc(f.id)}" data-feed-btn="${esc(f.id)}" aria-label="Play ${esc(f.name)}" aria-pressed="${PLAYING && PLAYING.id === f.id ? 'true' : 'false'}">${PLAYING && PLAYING.id === f.id ? '■' : '▶'}</button><span class="fname">${esc(f.name)}<small>${esc(f.note || 'Plays in RigBoard')}</small></span><button class="btn small ghost" data-act="feed-del" data-arg="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">${icon('x')}</button></div>`).join('')}
+      ${own.map(f => `<div class="feed"><button class="fplay" data-act="feed-play" data-arg="${esc(f.id)}" data-feed-btn="${esc(f.id)}" aria-label="Play ${esc(f.name)}" aria-pressed="${PLAYING && PLAYING.id === f.id ? 'true' : 'false'}">${PLAYING && PLAYING.id === f.id ? '■' : '▶'}</button><span class="fname">${esc(f.name)}<small>${esc(f.note || 'Plays in OpsBoard')}</small></span><button class="btn small ghost" data-act="feed-del" data-arg="${esc(f.id)}" aria-label="Remove ${esc(f.name)}">${icon('x')}</button></div>`).join('')}
       ${LIVE_FEEDS.map(f => `<div class="feed"><a class="fplay ext" href="https://www.broadcastify.com/listen/feed/${f.id}" target="_blank" rel="noopener" aria-label="Open ${esc(f.name)} on Broadcastify">${icon('ext')}</a><span class="fname">${esc(f.name)}<small>${esc(f.note)}</small></span><span class="ftag">Broadcastify</span></div>`).join('')}
     </div>
     <div class="note">Scanner feeds run 15 to 60 seconds behind and can drop out: for awareness, never in place of your radio. Broadcastify feeds open on Broadcastify; feeds you add play here. <a href="${FEEDS_ALL}" target="_blank" rel="noopener">All county feeds</a></div>
@@ -2218,7 +2218,7 @@ function rail() {
     return '';
   };
   return `<nav class="rail" aria-label="Views">
-    <div class="brand" title="RigBoard">${rbMark(38)}<span>RigBoard</span></div>
+    <div class="brand" title="OpsBoard">${rbMark(38)}<span>OpsBoard</span></div>
     ${(RAILS[DEV.role] || RAILS.command).map(id => VIEWS.find(v => v.id === id)).map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
     <span class="spacer"></span>
     <button data-act="sheet" data-arg="menu">${icon('menu')}Menu</button>
@@ -2897,7 +2897,7 @@ function shrinkLogo(file) {
     img.src = url;
   });
 }
-/* RigBoard's own mark (logo.svg; the Home Screen icons are drawn from it). */
+/* OpsBoard's own mark (logo.svg; the Home Screen icons are drawn from it). */
 const RB_MARK = '<rect width="512" height="512" fill="#0B1B2B"/> <rect x="92" y="92" width="152" height="152" rx="30" fill="#D7373F"/> <rect x="268" y="92" width="152" height="152" rx="30" fill="#F2C230"/> <rect x="92" y="268" width="152" height="152" rx="30" fill="#2DB86A"/> <rect x="268" y="268" width="152" height="152" rx="30" fill="#EAF2F8"/> <rect x="331" y="302" width="26" height="84" rx="5.2" fill="#0B1B2B"/><rect x="302" y="331" width="84" height="26" rx="5.2" fill="#0B1B2B"/>';
 const rbMark = (px, cls = 'rbmark') => `<svg class="${cls}" viewBox="0 0 512 512" width="${px}" height="${px}" aria-hidden="true">${RB_MARK}</svg>`;
 function agencySheet() {
@@ -3399,7 +3399,7 @@ function menuSheet() {
         ${SH.sample ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
         ${S.sample ? '<button class="opt tall" data-act="sheet" data-arg="inc-clear">Clear the sample incident<small>Back to an empty board</small></button>' : '<button class="opt tall" data-act="load-sample">Load the sample incident<small>Practice: bus crash, Ocean Township, 19 patients</small></button>'}
       </div>
-      <div class="rblock">${rbMark(40)}<div><b>RigBoard</b><small>EMS command for squads · prototype</small></div></div>
+      <div class="rblock">${rbMark(40)}<div><b>OpsBoard</b><small>EMS · fire · police · events · prototype</small></div></div>
       <div class="note">${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
@@ -4703,7 +4703,7 @@ const SHIFT_ACTIONS = {
    document store with the same shape as the one Claude provides, so the
    sync code above runs unchanged on either.
    ===================================================================== */
-const BAKED_RELAY_URL = "";
+const BAKED_RELAY_URL = "http://127.0.0.1:8787";
 const RELAY_KEY = 'sc3:relay';
 let RELAY = DEMO ? null : read(RELAY_KEY);   // { url, token, name, org, role } once this tablet has joined
 const relayBase = u => String(u || '').trim().replace(/\/+$/, '');
@@ -4915,7 +4915,7 @@ function connectSheet() {
   // The web build knows its relay; ask only when joining somewhere else, or when setting up a relay.
   const common = BAKED_RELAY_URL && f.rmode !== 'setup' && relayBase(f.rurl) === relayBase(BAKED_RELAY_URL) ? '' : field('Relay address', input('r-url', 'rurl', f.rurl, 'https://pcr-relay.your-name.workers.dev', 'inputmode="url" autocapitalize="off"'));
   const body = f.rmode === 'setup'
-    ? `<div class="note warn-t">Only for whoever runs RigBoard's server, to create a new squad. Joining your squad? Use <b>Join with an invite</b> and the code your squad's admin sent you.</div>
+    ? `<div class="note warn-t">Only for whoever runs OpsBoard's server, to create a new squad. Joining your squad? Use <b>Join with an invite</b> and the code your squad's admin sent you.</div>
        ${common}<div class="grid2">${field("Relay owner's setup code", input('r-boot', 'rboot', f.rboot, 'The private setup code', 'autocapitalize="off" type="password"'))}${field('Agency', input('r-org', 'rorg', f.rorg || C.agency.name, 'Hatzalah Jersey Shore'))}</div>
        ${field('Your name', input('r-name', 'rname2', f.rname2, 'Name, as the log should show it'))}
        ${field('Plan', `<div class="chips">${opt('f-set', 'rplan=trial', f.rplan !== 'comp', `${TRIAL_DAYS}-day free trial`)}${opt('f-set', 'rplan=comp', f.rplan === 'comp', 'No end date · my own squad')}</div>`)}
