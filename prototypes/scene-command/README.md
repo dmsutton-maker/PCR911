@@ -58,4 +58,5 @@ node prototypes/scene-command/build.mjs
 - **Distances are straight-line**, and the drive minutes are a rough estimate from them (1.3× the distance at 40 mph).
 - **Hospital capacity, beds and ED status are typed in** from what each hospital reports. There is no EMResource feed.
 - **Calls are typed in by the supervisor.** There is no CAD or paging feed, and no push alert: a member sees a new call when they open the app.
-- **The sample incident and supervisor day, and their units, people and squad numbers, are made up.** Hospital capabilities, county assets, and published phone numbers are from the sources in the research notes; confirm them locally.
+- **The board starts empty.** Units, members (numbers like JS111) and calls are the squad's own. **Practice mode** — the same address with `?demo` on the end — has a made-up sample incident, day and roster, kept apart from the real board and never shared, for training and showing other squads.
+- **The sample incident and day, and their units, people and numbers, are made up.** Hospital capabilities, county assets, and published phone numbers are from the sources in the research notes; confirm them locally.

@@ -1601,7 +1601,13 @@ const townLL = name => { const n = (name || '').trim().toLowerCase(); const t = 
    Helpers
    ===================================================================== */
 const parOn = () => !!(C && C.features && C.features.par);
-const K = { dev: 'sc3:device', cfg: 'sc3:config', ev: id => 'sc3:events:' + id, ui: 'sc3:ui' };
+/* Practice mode (?demo): the sample incident, a sample day and a sample roster,
+   stored apart from the real board and never shared through the squad relay. */
+const DEMO = /(^|&)demo(=|&|$)/.test(location.search.slice(1));
+/* sc4: the squad's real board. Boards stored before the clean start (sc3:) are
+   left behind; only the squad sign-in carries over. */
+const NS = DEMO ? 'scdemo:' : 'sc4:';
+const K = { dev: NS + 'device', cfg: NS + 'config', ev: id => NS + 'events:' + id, ui: NS + 'ui' };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Math.random().toString(36).slice(2, 9);
 const now = () => Date.now();
@@ -1613,6 +1619,8 @@ const dur = ms => {
   return h ? `${h}:${pad(m)}:${pad(x)}` : `${pad(m)}:${pad(x)}`;
 };
 const mins = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${pad(m % 60)}`; };
+/* Member numbers are letters and digits (JS111); stored in capitals, without spaces. */
+const memNum = v => String(v || '').trim().toUpperCase().replace(/\s+/g, '');
 const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
 const cat = k => ({ k, ...CAT_DEFS[k], name: k === 'B' && !(S && S.method === 'SALT') ? 'Expectant / Deceased' : CAT_DEFS[k].name });
 const catsList = () => { const keys = S.method === 'SALT' ? ['R', 'Y', 'G', 'X', 'B'] : ['R', 'Y', 'G', 'B']; if (S.white) keys.push('W'); return keys.map(cat); };
@@ -1704,6 +1712,7 @@ function defaultConfig() {
   };
 }
 
+function freshIncident() { const st = blankState(); st.incident.type = ''; st.fresh = true; return st; }
 function blankState(opts = {}) {
   const t = now();
   const st = {
@@ -1978,7 +1987,7 @@ function header() {
     <div class="inc">
       <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${mci}${suggest}${sample}</div>
       <h1><button class="titlebtn" data-act="sheet" data-arg="incident">${esc(title)}</button></h1>
-      <div class="inc-sub">${sub || 'Tap the title to fill in incident details'}</div>
+      <div class="inc-sub">${sub || (S.fresh ? 'No incident yet · tap the title to start one' : 'Tap the title to fill in incident details')}</div>
     </div>
     <div class="clocks">
       <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
@@ -2999,13 +3008,13 @@ function mciSheet() {
 function personSheet(id) {
   const p = id ? S.people.find(x => x.id === id) : null, f = UI.form;
   if (!f._init) { Object.assign(f, p ? { num: p.num, name: p.name, cert: p.cert, unit: p.unit, task: p.task } : { cert: 'EMT' }); f._init = true; }
-  const q = (f.num || '').trim();
-  const matches = !p && q ? C.members.filter(m => m.num.startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : [];
+  const q = memNum(f.num);
+  const matches = !p && q ? C.members.filter(m => memNum(m.num).startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : [];
   const units = S.units.filter(u => u.status === 'onscene' || u.status === 'staged' || u.status === 'enroute');
   return {
     title: p ? `${p.name} · #${p.num}` : 'Check in a member',
     body: `<div class="grid2">
-        ${field('Member number', input('p-num', 'num', f.num, 'e.g. 4127', 'inputmode="numeric" data-live="1"'))}
+        ${field('Member number', input('p-num', 'num', f.num, 'e.g. AB123', 'autocapitalize="characters" autocorrect="off" spellcheck="false" data-live="1"'))}
         ${field('Name', input('p-name', 'name', f.name, 'Last name, first initial'))}
       </div>
       <div id="member-matches">${memberMatches(matches)}</div>
@@ -3023,7 +3032,7 @@ function loadMembersSheet() {
   return {
     title: 'Member roster',
     body: `<div class="note">One member per line: number, name, certification. This list stays on this device across incidents, so check-in is just the number.</div>
-      ${field('Members', `<textarea id="members-text" data-field="mtext" placeholder="4127, K. Shah, EMT">${esc(f.mtext)}</textarea>`)}`,
+      ${field('Members', `<textarea id="members-text" data-field="mtext" placeholder="AB123, Last name F., EMT">${esc(f.mtext)}</textarea>`)}`,
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="members-save">Save roster</button>`,
   };
 }
@@ -3052,7 +3061,7 @@ function menuSheet() {
       <div class="switch"><span>PAR checks<br><small class="note">A timed check that every crew on scene is accounted for. Applies to every tablet.</small></span><div class="chips">${opt('par-feature', 'off', !parOn(), 'Hide')}${opt('par-feature', 'on', parOn(), 'Use')}</div></div>
       ${parOn() ? `<div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>` : ''}
       <div class="opt-grid wide">
-        ${IN_CLAUDE ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `${esc(RELAY.org || 'Signed in')}${RELAY.plan ? ' · ' + esc(planWords(RELAY.plan)) : ''}` : `Free on this tablet · share free for ${TRIAL_DAYS} days`}</small></button>`}
+        ${IN_CLAUDE || DEMO ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `${esc(RELAY.org || 'Signed in')}${RELAY.plan ? ' · ' + esc(planWords(RELAY.plan)) : ''}` : `Free on this tablet · share free for ${TRIAL_DAYS} days`}</small></button>`}
         <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="agency">My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
@@ -3132,7 +3141,7 @@ const R = {
   retriage(st, p) { if ((st.triage[p.from] || 0) > 0) { st.triage[p.from]--; st.triage[p.to] = (st.triage[p.to] || 0) + 1; } },
   est(st, p) { st.incident.est = p.v; },
   bench(st, p) { if (p.on) st.bench[p.id] = p.at; else delete st.bench[p.id]; },
-  mci(st, p) { st.incident.mciLevel = p.L; if (p.L >= 2 && !st.bench.mci) st.bench.mci = p.at; },
+  mci(st, p) { st.incident.mciLevel = p.L; if (p.L >= 2 && !st.bench.mci) st.bench.mci = p.at; if (st.fresh && p.L) { st.fresh = false; st.incident.dispatchAt = p.at; } },
   method(st, p) { st.method = p.m; if (p.m !== 'SALT' && st.triage.X) { st.triage.B = (st.triage.B || 0) + st.triage.X; st.triage.X = 0; } },
   white(st, p) { st.white = p.on; },
   pin(st, p) { st.incident[p.field] = p.ll; },
@@ -3158,7 +3167,7 @@ const R = {
   icsClear(st, p) { delete st.ics[p.pos]; },
   hospNotify(st, p) { st.hospitals[p.id] = { ...(st.hospitals[p.id] || {}), notifiedAt: p.at }; },
   hospReport(st, p) { st.hospitals[p.id] = { ...(st.hospitals[p.id] || {}), cap: p.cap, beds: p.beds, ed: p.ed, capAt: p.at }; },
-  incEdit(st, p) { Object.assign(st.incident, p.fields); },
+  incEdit(st, p) { Object.assign(st.incident, p.fields); if (st.fresh && p.at) { st.fresh = false; st.incident.dispatchAt = p.at; } },
   note() {},
 };
 
@@ -3196,8 +3205,8 @@ const RS = {
   note() {},
 };
 
-const INC = new Stream('incident', { root: 'incidents', pointer: 'live/current', key: 'sc3:incident', R, label: 'incident' });
-const SHIFT = new Stream('shift', { root: 'shifts', pointer: 'live/shift', key: 'sc3:shift', R: RS, label: 'supervisor board' });
+const INC = new Stream('incident', { root: 'mci', pointer: 'now/incident', key: NS + 'incident', R, label: 'incident' });
+const SHIFT = new Stream('shift', { root: 'days', pointer: 'now/day', key: NS + 'shift', R: RS, label: 'supervisor board' });
 const STREAMS = [INC, SHIFT];
 const dispatch = (...a) => INC.dispatch(...a);
 const sdispatch = (...a) => SHIFT.dispatch(...a);
@@ -3206,14 +3215,18 @@ const streamOfView = () => (UI.view === 'shift' || UI.view === 'member' ? SHIFT 
 /* =====================================================================
    Sync between tablets, through this page's shared store.
 
-   live/current, live/shift               which incident and which shift every tablet follows
-   incidents/<id>, shifts/<id>            each one's starting state
+   now/incident, now/day                  which incident and which day's board every tablet follows
+   mci/<id>, days/<id>                    each one's starting state
    …/<id>/devices/<tablet>~<n>            that tablet's events, written only by it
-   config/agency                          squad, unit roster, members, settings, extra numbers
+   squad/config                           squad, unit roster, members, settings, extra numbers
+
+   (Before the clean start these were live/…, incidents/…, shifts/… and
+   config/agency; boards stored there are left behind.)
 
    Without the store (signed out, or the page opened somewhere else) the
    boards run on this tablet alone.
    ===================================================================== */
+const CONFIG_DOC = 'squad/config';
 const STOP_CODES = ['revoked', 'not_granted', 'capability_disabled', 'capability_removed'];
 const CHUNK = 300;   // events per document, well under the store's 256 KiB per document
 const Sync = {
@@ -3228,7 +3241,7 @@ const Sync = {
     if (!db) { this.state = 'local'; syncChip(); return; }
     this.db = db; this.state = 'ready';
     STREAMS.forEach(str => db.doc(str.pointer).onSnapshot(s => this.onPointer(str, s), e => this.stop(e)));
-    db.doc('config/agency').onSnapshot(s => this.onConfig(s), () => {});
+    db.doc(CONFIG_DOC).onSnapshot(s => this.onConfig(s), () => {});
     syncChip();
     try {
       const room = await use('room');
@@ -3340,7 +3353,7 @@ const Sync = {
   },
   pushConfig() {
     if (!this.db) return;
-    const go = () => this.db.doc('config/agency').set(JSON.parse(JSON.stringify(C))).catch(() => {});
+    const go = () => this.db.doc(CONFIG_DOC).set(JSON.parse(JSON.stringify(C))).catch(() => {});
     this.cfgWriting = (this.cfgWriting || Promise.resolve()).then(go);
   },
   setRole() { if (this.room) this.room.presence({ role: DEV.role, dev: DEV.id }).catch(() => {}); },
@@ -3348,6 +3361,7 @@ const Sync = {
 };
 
 function syncChipHtml() {
+  if (DEMO && !IN_CLAUDE) return '<span class="tag sample" id="sync-chip">Practice · not shared</span>';
   const str = streamOfView(), n = Sync.tablets().length;
   if (!IN_CLAUDE && Sync.state === 'local') return planEnded()
     ? `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="connect">${RELAY.plan && RELAY.plan.tier === 'trial' ? 'Trial ended' : 'Sharing off'} · this tablet only</button>`
@@ -3728,7 +3742,7 @@ function memberPicker() {
     <div class="note">Pick yourself, so the supervisor sees who is responding. This phone remembers it.</div>
     <div class="opt-grid">${C.members.map(m => opt('m-pick', m.num, false, `${esc(m.name)}<small>#${esc(m.num)} · ${esc(m.cert)}</small>`, 'tall')).join('') || '<div class="empty">No members on the roster yet.</div>'}</div>
     <div class="grid2">
-      ${field('Or your member number', input('m-num', 'mnum', f.mnum, 'e.g. 4127', 'inputmode="numeric"'))}
+      ${field('Or your member number', input('m-num', 'mnum', f.mnum, 'e.g. AB123', 'autocapitalize="characters" autocorrect="off" spellcheck="false"'))}
       ${field('Name', input('m-name', 'mname', f.mname || (RELAY && RELAY.name) || '', 'Last name, first initial'))}
     </div>
     ${field('Certification', `<div class="chips">${['EMT', 'Paramedic', 'EMR', 'Driver'].map(x => opt('f-set', 'mcert=' + x, (f.mcert || 'EMT') === x, x, 'small')).join('')}</div>`)}
@@ -3738,7 +3752,7 @@ function memberPicker() {
 const MEMBER_ACTIONS = {
   'm-pick'(num) { const m = C.members.find(x => x.num === num); if (!m) return; DEV.member = { num: m.num, name: m.name, cert: m.cert }; saveDev(); render(); },
   'm-pick-new'() {
-    const f = UI.form, num = (f.mnum || '').trim(), name = (f.mname || '').trim(), cert = f.mcert || 'EMT';
+    const f = UI.form, num = memNum(f.mnum), name = (f.mname || '').trim(), cert = f.mcert || 'EMT';
     if (!num || !name) { showToast('Enter your member number and name', false); return; }
     DEV.member = { num, name, cert }; saveDev();
     if (!C.members.some(m => m.num === num)) { C.members.push({ num, name, cert }); saveConfig(); }
@@ -3821,12 +3835,12 @@ function sunitSheet(id) {
 function crewSheet(id) {
   const p = id ? SH.crew.find(x => x.id === id) : null, f = UI.form;
   if (!f._init) { Object.assign(f, p ? { num: p.num, name: p.name, cert: p.cert, unit: p.unit } : { cert: 'EMT' }); f._init = true; }
-  const q = (f.num || '').trim();
-  const matches = !p && q ? C.members.filter(m => m.num.startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : [];
+  const q = memNum(f.num);
+  const matches = !p && q ? C.members.filter(m => memNum(m.num).startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : [];
   return {
     title: p ? `${p.name} · #${p.num}` : 'Check in',
     body: `<div class="grid2">
-        ${field('Member number', input('p-num', 'num', f.num, 'e.g. 4127', 'inputmode="numeric"'))}
+        ${field('Member number', input('p-num', 'num', f.num, 'e.g. AB123', 'autocapitalize="characters" autocorrect="off" spellcheck="false" data-live="1"'))}
         ${field('Name', input('p-name', 'name', f.name, 'Last name, first initial'))}
       </div>
       <div id="member-matches">${memberMatches(matches)}</div>
@@ -3920,7 +3934,7 @@ const SHIFT_ACTIONS = {
     sdispatch('unitStatus', { id, st: 'oos', at: now(), note: why }, `${u.name} out of service: ${why.toLowerCase()}`, 'units');
   },
   'crew-save'(id) {
-    const f = UI.form, num = (f.num || '').trim(), name = (f.name || '').trim();
+    const f = UI.form, num = memNum(f.num), name = (f.name || '').trim();
     if (!num && !name) { showToast('Enter a member number or a name', false); return; }
     if (!id && SH.crew.some(p => !p.out && p.num && p.num === num)) { showToast(`#${num} is already on duty`, false); return; }
     UI.sheet = null; UI.form = {};
@@ -3952,7 +3966,7 @@ const SHIFT_ACTIONS = {
    ===================================================================== */
 const BAKED_RELAY_URL = "";
 const RELAY_KEY = 'sc3:relay';
-let RELAY = read(RELAY_KEY);   // { url, token, name, org, role } once this tablet has joined
+let RELAY = DEMO ? null : read(RELAY_KEY);   // { url, token, name, org, role } once this tablet has joined
 const relayBase = u => String(u || '').trim().replace(/\/+$/, '');
 
 function relayClient(url, token) {
@@ -4131,11 +4145,14 @@ function planNotice() {
   const soon = p.tier === 'trial' && daysLeft(p.endsAt) <= 14, due = p.tier === 'squad' && p.grace;
   if (!soon && !due) return;
   const today = new Date().toDateString();
-  if (read('sc3:plan-notice') === today) return;
-  write('sc3:plan-notice', today);
+  if (read(NS + 'plan-notice') === today) return;
+  write(NS + 'plan-notice', today);
   showToast(soon ? `Free trial: ${plural(daysLeft(p.endsAt), 'day')} of sharing left. Menu → Squad sharing.` : `Squad plan payment is due. Sharing stops ${fmtDate(p.endsAt)}.`, false);
 }
 
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const STANDALONE = navigator.standalone === true || !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+const inviteCodeOf = v => { const inv = parseInvite(v); return ((inv ? inv.code : v) || '').trim().toUpperCase(); };
 function connectSheet() {
   const f = UI.form;
   if (!f._init) Object.assign(f, { rmode: 'join', rurl: (RELAY && RELAY.url) || BAKED_RELAY_URL || '', _init: true });
@@ -4156,13 +4173,15 @@ function connectSheet() {
     };
   }
   const tabs = `<div class="chips">${opt('f-set', 'rmode=join', f.rmode === 'join', 'Join with an invite')}${opt('f-set', 'rmode=setup', f.rmode === 'setup', 'Set up the squad · first time')}</div>`;
-  const common = field('Relay address', input('r-url', 'rurl', f.rurl, 'https://pcr-relay.your-name.workers.dev', 'inputmode="url" autocapitalize="off"'));
+  // The web build knows its relay; ask only when joining somewhere else, or when setting up a relay.
+  const common = BAKED_RELAY_URL && f.rmode !== 'setup' && relayBase(f.rurl) === relayBase(BAKED_RELAY_URL) ? '' : field('Relay address', input('r-url', 'rurl', f.rurl, 'https://pcr-relay.your-name.workers.dev', 'inputmode="url" autocapitalize="off"'));
   const body = f.rmode === 'setup'
     ? `${common}<div class="grid2">${field('Setup code', input('r-boot', 'rboot', f.rboot, 'The BOOTSTRAP_CODE from GitHub', 'autocapitalize="off"'))}${field('Agency', input('r-org', 'rorg', f.rorg || C.agency.name, 'Hatzalah Jersey Shore'))}</div>
        ${field('Your name', input('r-name', 'rname2', f.rname2, 'Name, as the log should show it'))}
        ${field('Plan', `<div class="chips">${opt('f-set', 'rplan=trial', f.rplan !== 'comp', `${TRIAL_DAYS}-day free trial`)}${opt('f-set', 'rplan=comp', f.rplan === 'comp', 'No end date · my own squad')}</div>`)}
        <div class="note">Creates the squad on your relay and makes this tablet its admin. Do this once; every other tablet joins with an invite. The trial starts the first time a tablet shares a board.</div>`
-    : `${field('Invite link or code', input('r-invite', 'rinvite', f.rinvite, 'Paste the link, or type the code', 'autocapitalize="characters"'))}
+    : `${IOS && !STANDALONE ? `<div class="note warn-t">On an iPhone or iPad, add this page to your Home Screen first (Share → Add to Home Screen), open it from there, and join in that app: it keeps its own sign-in, apart from Safari.${inviteCodeOf(f.rinvite) ? ` Your invite code is <b class="num">${esc(inviteCodeOf(f.rinvite))}</b>.` : ''}</div>` : ''}
+       ${field('Invite link or code', input('r-invite', 'rinvite', f.rinvite, 'Paste the link, or type the code', 'autocapitalize="characters"'))}
        ${common}
        ${field('Name for this tablet', input('r-name', 'rname2', f.rname2, 'e.g. Triage iPad, or your name'))}`;
   return {
@@ -4260,7 +4279,7 @@ const RELAY_ACTIONS = {
 /* Opening an invite link fills in the join form. The fragment never reaches the web server. */
 function takeInviteFromAddress() {
   const inv = parseInvite(location.href);
-  if (!inv || IN_CLAUDE) return;
+  if (!inv || IN_CLAUDE || DEMO) return;
   try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* not allowed here */ }
   if (RELAY && RELAY.token) { showToast(`This tablet is already signed in to ${RELAY.org || 'the squad'}.`, false); return; }
   UI.sheet = 'connect';
@@ -4504,7 +4523,7 @@ const A = {
     render();
   },
   'person-save'(id) {
-    const f = UI.form, num = (f.num || '').trim(), name = (f.name || '').trim();
+    const f = UI.form, num = memNum(f.num), name = (f.name || '').trim();
     if (!num && !name) { showToast('Enter a member number or a name', false); return; }
     const where = [f.unit, f.task].filter(Boolean).join(' · ');
     if (!id && S.people.some(p => !p.out && p.num && p.num === num)) { showToast(`#${num} is already checked in`, false); return; }
@@ -4524,7 +4543,7 @@ const A = {
   },
   'members-save'() {
     const lines = (UI.form.mtext || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
-    C.members = lines.map(l => { const [num, name, cert] = l.split(/[,\t;|]+/).map(s => s.trim()); return { num: num || '', name: name || '', cert: CERTS.find(c => c.toLowerCase() === (cert || '').toLowerCase()) || cert || 'EMT' }; }).filter(m => m.num || m.name);
+    C.members = lines.map(l => { const [num, name, cert] = l.split(/[,\t;|]+/).map(s => s.trim()); return { num: memNum(num), name: name || '', cert: CERTS.find(c => c.toLowerCase() === (cert || '').toLowerCase()) || cert || 'EMT' }; }).filter(m => m.num || m.name);
     saveConfig(); UI.sheet = null; UI.form = {}; render();
     showToast(`Member roster saved: ${plural(C.members.length, 'member')}`, false);
   },
@@ -4581,7 +4600,7 @@ const A = {
     const f = UI.form, fields = {};
     for (const k of ['type', 'location', 'municipality', 'commandName', 'ic', 'staging', 'access', 'hazards', 'lz', 'lzLocation']) fields[k] = typeof f[k] === 'string' ? f[k].trim() : f[k];
     UI.sheet = null; UI.form = {}; mapKind = null;
-    dispatch('incEdit', { fields }, 'Incident details updated', 'note');
+    dispatch('incEdit', { fields, at: now() }, 'Incident details updated', 'note');
   },
   'inc-new'() {
     const f = UI.form;
@@ -4618,9 +4637,9 @@ document.addEventListener('input', e => {
   UI.form[f] = t.value;
   if (t.id === 'units-text') { const p = document.getElementById('units-preview'); if (p) p.innerHTML = unitsPreview(parseUnits(t.value)); }
   if (t.id === 'p-num') {
-    const q = t.value.trim(), box = document.getElementById('member-matches');
-    if (box) box.innerHTML = memberMatches(q ? C.members.filter(m => m.num.startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : []);
-    const exact = C.members.find(m => m.num === q);
+    const q = memNum(t.value), box = document.getElementById('member-matches');
+    if (box) box.innerHTML = memberMatches(q ? C.members.filter(m => memNum(m.num).startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : []);
+    const exact = C.members.find(m => memNum(m.num) === q);
     if (exact) { UI.form.name = exact.name; UI.form.cert = exact.cert; const n = document.getElementById('p-name'); if (n) n.value = exact.name; }
   }
 });
@@ -4651,7 +4670,7 @@ function tick() {
   set('now', hhmm(t));
   document.querySelectorAll('[data-since]').forEach(el => { const v = dur(t - Number(el.dataset.since)); if (el.textContent !== v) el.textContent = v; });
   if ((UI.view === 'shift' || UI.view === 'member') && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
-  set('elapsed', dur(t - S.incident.dispatchAt));
+  set('elapsed', S.fresh ? '--:--' : dur(t - S.incident.dispatchAt));
   const due = S.par.last + S.par.interval * 60000, left = due - t;
   set('par', left >= 0 ? dur(left) : '+' + dur(-left));
   set('par-lbl', left >= 0 ? 'PAR due in' : 'PAR overdue');
@@ -4671,11 +4690,13 @@ window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); })
 /* =====================================================================
    Boot
    ===================================================================== */
-DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: window.matchMedia && matchMedia('(max-width: 700px)').matches ? 'member' : 'command', mode: 'night', me: null };
+const before = DEMO ? null : read('sc3:device');   // keep this tablet's job and display from before the clean start
+DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: (before && before.role) || (window.matchMedia && matchMedia('(max-width: 700px)').matches ? 'member' : 'command'), mode: (before && before.mode) || 'night', me: null };
 saveDev();
-C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || sampleConfig()) });
-INC.load(sampleState);
-SHIFT.load(sampleShift);
+if (!DEMO) { try { Object.keys(localStorage).filter(k => k.startsWith('sc3:') && k !== RELAY_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ } }
+C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || (DEMO ? sampleConfig() : {})) });
+INC.load(DEMO ? sampleState : freshIncident);
+SHIFT.load(DEMO ? sampleShift : () => blankShift());
 loadUi();
 render();
 setInterval(tick, 1000);
