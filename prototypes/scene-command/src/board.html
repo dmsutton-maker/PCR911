@@ -564,6 +564,25 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .rchip.add { border-style: dashed; border-color: var(--line); flex-direction: row; align-items: center; gap: 6px; color: var(--muted); }
 .rchip.add svg { width: 18px; height: 18px; }
 .pill.pbtn { cursor: pointer; background: transparent; min-height: 32px; }
+.mview { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 680px; margin-inline: auto; }
+.mview .mh { margin: 0; font: 700 15px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mcall { background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.mcall.need { border-color: var(--crit); }
+.mcall .ct { font: 700 24px/1.1 var(--display); }
+.mcall .ca { font-size: 17px; color: var(--fg); }
+.mcall .uid { font: 700 20px/1 var(--display); }
+.mcall .pill { align-self: flex-start; font-size: 13px; }
+.btn.big { min-height: 68px; width: 100%; font-size: 24px; }
+.head.mhead { flex-wrap: nowrap; align-items: flex-start; }
+.mhead .clocks { width: auto; flex: 0 0 auto; }
+.mhead .iconbtn { flex: 0 0 auto; min-width: 56px; padding: 8px; }
+.navrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.navrow .btn { padding: 0 6px; font-size: 15px; min-width: 0; }
+.navrow .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+.mbanner { background: var(--crit); color: var(--on-solid); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.mbanner .lbl { color: inherit; opacity: 0.9; }
+.mbanner .mb1 { font: 700 22px/1.15 var(--display); }
+.mbanner .btn { background: var(--bg); color: var(--fg); border-color: var(--bg); }
 .stat.warnstat { outline: 2px solid var(--warn); outline-offset: -2px; }
 
 /* ---------- responsive ---------- */
@@ -996,6 +1015,7 @@ const ROLES = {
   command:   { name: 'Command',   home: 'board',     note: 'The whole board: triage, units, transport, hospitals, ICS, radio' },
   triage:    { name: 'Triage',    home: 'triage',    note: 'Big counters, re-triage, the triage report' },
   transport: { name: 'Transport', home: 'transport', note: 'Loading units, hospital capacity, the transport log' },
+  member:    { name: 'Member',    home: 'member',    note: 'For a phone: active calls, I\'m responding, on scene, directions' },
   supervisor: { name: 'Supervisor', home: 'shift',   note: 'Everyday calls: units in service, active calls, crew on duty, today\'s numbers' },
 };
 const RAILS = {
@@ -1003,6 +1023,7 @@ const RAILS = {
   triage:    ['triage', 'board', 'units', 'map', 'phone', 'log'],
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
   supervisor: ['shift', 'hospitals', 'phone', 'map', 'board'],
+  member:    ['member', 'shift', 'phone'],
 };
 /* Inside Claude the page can share a board between tablets; as a plain web page it runs on each tablet alone. */
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use === 'function');
@@ -1275,6 +1296,7 @@ function render() {
 
 function header() {
   if (UI.view === 'shift') return shiftHeader();
+  if (UI.view === 'member') return memberHeader();
   const I = S.incident;
   const lvl = I.mciLevel, nts = notices();
   const mci = lvl
@@ -1308,6 +1330,7 @@ const VIEWS = [
   { id: 'board',     label: 'Board',     icon: 'board' },
   { id: 'triage',    label: 'Triage',    icon: 'tag' },
   { id: 'shift',     label: 'Shift',     icon: 'clip' },
+  { id: 'member',    label: 'My calls',  icon: 'person' },
   { id: 'map',       label: 'Map',       icon: 'map' },
   { id: 'transport', label: 'Transport', icon: 'amb' },
   { id: 'units',     label: 'Units',     icon: 'units' },
@@ -1335,6 +1358,7 @@ function view() {
     case 'map': return mapView();
     case 'triage': return triageView();
     case 'shift': return shiftView();
+    case 'member': return memberView();
     case 'transport': return transportView();
     case 'units': return unitsView();
     case 'hospitals': return hospitalsView();
@@ -2481,7 +2505,8 @@ const RS = {
   respAdd(st, p) {
     const c = callIn(st, p.id); if (!c) return;
     c.resp = c.resp || [];
-    if (c.resp.some(r => r.pid === p.r.pid)) return;
+    const again = c.resp.find(r => r.pid === p.r.pid);
+    if (again) { if (again.st === 'clear') { again.st = 'enroute'; again.enroute = p.at; again.via = p.r.via; } return; }
     c.resp.push({ ...p.r, st: 'enroute', t: p.at, enroute: p.at });
     if (!c.times.enroute) c.times.enroute = p.at;
     if (c.status === 'disp') c.status = 'enroute';
@@ -2513,7 +2538,7 @@ const SHIFT = new Stream('shift', { root: 'shifts', pointer: 'live/shift', key: 
 const STREAMS = [INC, SHIFT];
 const dispatch = (...a) => INC.dispatch(...a);
 const sdispatch = (...a) => SHIFT.dispatch(...a);
-const streamOfView = () => (UI.view === 'shift' ? SHIFT : INC);
+const streamOfView = () => (UI.view === 'shift' || UI.view === 'member' ? SHIFT : INC);
 
 /* =====================================================================
    Sync between tablets, through this page's shared store.
@@ -2684,7 +2709,7 @@ const STEPS = ['disp', 'enroute', 'onscene', 'transport', 'hospital', 'clear'];
 const STEP_SHORT = { disp: 'Disp', enroute: 'En rt', onscene: 'Scene', transport: 'Trans', hospital: 'Hosp' };
 const STEP_NAMES = { disp: 'Dispatched', enroute: 'En route', onscene: 'On scene', transport: 'Transporting', hospital: 'At hospital', clear: 'Clear' };
 const CALL_SOURCES = ['Our hotline', 'County Communications', 'Mutual aid request'];
-const CALL_REQS = ['ALS', 'Mutual aid ambulance', 'Police', 'Fire', 'Supervisor'];
+const CALL_REQS = ['ALS', 'Ambulance', 'Mutual aid ambulance', 'Police', 'Fire', 'Supervisor'];
 const OUTCOMES = ['Transported', 'Refusal (RMA)', 'Lift assist / no transport', 'No patient found', 'Cancelled', 'Mutual aid covered'];
 const OOS_REASONS = ['Mechanical', 'Restocking', 'Cleaning', 'No crew', 'Fuel', 'Other'];
 const NO_ENROUTE_WARN = 5 * 60000;   // dispatched with nobody en route
@@ -2917,6 +2942,123 @@ function closedPanel(closed) {
     <button class="btn small" data-act="sheet" data-arg="shift-new">Start a new shift</button>
   </section>`;
 }
+
+/* ---------- Member phone view ---------- */
+const myPid = () => DEV.member ? 'm' + DEV.member.num : '';
+const myResp = c => (c.resp || []).find(r => r.pid === myPid());
+const myDuty = () => DEV.member && SH.crew.find(p => !p.out && p.num === DEV.member.num);
+const navLinks = (dest, label = 'Directions') => {
+  const q = encodeURIComponent(dest);
+  return `<div class="navrow" aria-label="${esc(label)}">
+    <a class="btn small" href="https://maps.apple.com/?daddr=${q}&dirflg=d" target="_blank" rel="noopener">${icon('ext')} Apple Maps</a>
+    <a class="btn small" href="https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving" target="_blank" rel="noopener">${icon('ext')} Google</a>
+    <a class="btn small" href="https://waze.com/ul?q=${q}&navigate=yes" target="_blank" rel="noopener">${icon('ext')} Waze</a>
+  </div>`;
+};
+function memberHeader() {
+  const me = DEV.member, duty = myDuty();
+  // No clock here: the phone's status bar already shows the time, and the calls need the room.
+  return `<header class="head mhead">
+    <div class="inc">
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)}</button>${syncChipHtml()}${SH.sample ? '<span class="tag sample">Sample shift</span>' : ''}</div>
+      <h1>${esc(C.agency.name)}</h1>
+      <div class="inc-sub">${me ? `<b>${esc(me.name)}</b> · ${esc(me.cert)} · ${duty ? `on duty${duty.unit ? ' on ' + esc(duty.unit) : ''}` : 'off duty'}` : 'Member view'}</div>
+    </div>
+    <div class="clocks">
+      <button class="iconbtn" data-act="mode" aria-label="Switch to ${DEV.mode === 'day' ? 'night' : 'day'} mode">${icon(DEV.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${DEV.mode === 'day' ? 'Night' : 'Day'}</span></button>
+    </div>
+  </header>`;
+}
+function mciBanner() {
+  const I = S.incident;
+  if (!(I.mciLevel >= 2) || S.bench.clear) return '';
+  const where = [I.location, I.municipality].filter(Boolean).join(', ');
+  const dest = I.stagingLL ? I.stagingLL.join(',') : I.staging ? `${I.staging}, NJ` : `${where}, NJ`;
+  return `<section class="mbanner" aria-label="MCI">
+    <span class="lbl">${esc(levelLabel(I.mciLevel))} · ${esc(I.commandName || 'Command')}</span>
+    <span class="mb1">${esc(I.type)} · ${esc(where || 'location not set')}</span>
+    <span>Report to staging: <b>${esc(I.staging || 'ask Command on the radio')}</b>. Don't self-dispatch to the scene.</span>
+    ${navLinks(dest, 'Directions to staging')}
+  </section>`;
+}
+function memberView() {
+  const me = DEV.member;
+  if (!me) return memberPicker();
+  const duty = myDuty();
+  const active = SH.calls.filter(c => c.status !== 'clear').sort((a, b) => b.times.disp - a.times.disp);
+  const ownUnits = SH.units.filter(u => u.status === 'in');
+  return `<div class="mview">
+    ${mciBanner()}
+    <section class="panel">
+      <div class="ph"><h2>${duty ? `On duty since ${hhmm(duty.t)}` : 'Off duty'}</h2><button class="btn small" data-act="m-duty">${duty ? 'Go off duty' : 'Go on duty'}</button></div>
+      ${duty ? `<div class="field"><span class="lbl">Riding on</span><div class="chips">${opt('m-unit', '', !duty.unit, 'Own vehicle', 'small')}${ownUnits.map(u => opt('m-unit', u.name, duty.unit === u.name, `${esc(u.name)} <small>${esc(kindOf(u.kind).name)}</small>`, 'small')).join('')}</div></div>` : ''}
+    </section>
+    <div class="ph"><h2 class="mh">Active calls</h2><span class="meta">${active.length ? plural(active.length, 'call') : ''}</span></div>
+    ${active.length ? active.map(memberCallCard).join('') : `<div class="panel"><div class="empty">No active calls right now. New calls appear here as the supervisor logs them.</div></div>`}
+    <button class="btn small" data-act="m-forget">Not ${esc(me.name)}? Change who's using this phone</button>
+  </div>`;
+}
+function memberCallCard(c) {
+  const r = myResp(c), mine = r && r.st !== 'clear';
+  const others = (c.resp || []).filter(x => x !== r && x.st !== 'clear');
+  const dest = [c.address, c.town, 'NJ'].filter(Boolean).join(', ');
+  const big = !mine ? `<button class="btn primary big" data-act="m-respond" data-arg="${c.id}">I'm responding</button>`
+    : r.st === 'enroute' ? `<button class="btn primary big" data-act="m-onscene" data-arg="${c.id}">I'm on scene</button>`
+    : `<button class="btn big" data-act="m-clear" data-arg="${c.id}">I'm clear</button>`;
+  const reqs = (c.reqs || []);
+  const reqd = what => reqs.some(q => q.what === what);
+  return `<section class="mcall ${callAlert(c) && !mine ? 'need' : ''}">
+    <div class="ph"><div><div class="ct">${esc(c.type)}</div><div class="ca">${esc(c.address)}${c.town ? ', ' + esc(c.town) : ''}</div></div>${c.unit ? `<span class="uid">${esc(c.unit)}</span>` : ''}</div>
+    <div class="cline">Dispatched <span class="num" data-since="${c.times.disp}">${dur(now() - c.times.disp)}</span> ago${c.src && c.src !== 'Our hotline' ? ' · ' + esc(c.src) : ''}</div>
+    <div class="cline">${others.length ? others.map(o => `${esc(o.name)} <span class="note">${o.st === 'onscene' ? 'on scene' : 'en route'}</span>`).join(', ') : '<span class="warn-t">Nobody else responding yet</span>'}${alsOnCall(c) ? ' · <span class="ok-t">ALS on scene</span>' : ''}</div>
+    ${mine ? `<div class="pill ${r.st === 'onscene' ? 'onscene' : 'enroute'}">You: ${r.st === 'onscene' ? 'on scene' : 'en route'} · <span class="num" data-since="${r[r.st] || r.t}">${dur(now() - (r[r.st] || r.t))}</span></div>` : ''}
+    ${big}
+    ${mine && r.st === 'onscene' ? `<div class="navrow">
+        <button class="btn small" data-act="call-req" data-arg="${c.id}=ALS" ${alsOnCall(c) || reqd('ALS') ? 'disabled' : ''}>${reqd('ALS') ? 'ALS requested' : 'Request ALS'}</button>
+        <button class="btn small" data-act="call-req" data-arg="${c.id}=Ambulance" ${c.unit || reqd('Ambulance') ? 'disabled' : ''}>${reqd('Ambulance') ? 'Ambulance requested' : 'Need an ambulance'}</button>
+        <button class="btn small" data-act="call-req" data-arg="${c.id}=Police" ${reqd('Police') ? 'disabled' : ''}>${reqd('Police') ? 'Police requested' : 'Need police'}</button>
+      </div>` : ''}
+    ${navLinks(dest)}
+  </section>`;
+}
+function memberPicker() {
+  const f = UI.form;
+  return `<div class="mview"><section class="panel">
+    <div class="ph"><h2>Who's using this phone?</h2></div>
+    <div class="note">Pick yourself, so the supervisor sees who is responding. This phone remembers it.</div>
+    <div class="opt-grid">${C.members.map(m => opt('m-pick', m.num, false, `${esc(m.name)}<small>#${esc(m.num)} · ${esc(m.cert)}</small>`, 'tall')).join('') || '<div class="empty">No members on the roster yet.</div>'}</div>
+    <div class="grid2">
+      ${field('Or your member number', input('m-num', 'mnum', f.mnum, 'e.g. 4127', 'inputmode="numeric"'))}
+      ${field('Name', input('m-name', 'mname', f.mname || (RELAY && RELAY.name) || '', 'Last name, first initial'))}
+    </div>
+    ${field('Certification', `<div class="chips">${['EMT', 'Paramedic', 'EMR', 'Driver'].map(x => opt('f-set', 'mcert=' + x, (f.mcert || 'EMT') === x, x, 'small')).join('')}</div>`)}
+    <button class="btn primary" data-act="m-pick-new">That's me</button>
+  </section></div>`;
+}
+const MEMBER_ACTIONS = {
+  'm-pick'(num) { const m = C.members.find(x => x.num === num); if (!m) return; DEV.member = { num: m.num, name: m.name, cert: m.cert }; saveDev(); render(); },
+  'm-pick-new'() {
+    const f = UI.form, num = (f.mnum || '').trim(), name = (f.mname || '').trim(), cert = f.mcert || 'EMT';
+    if (!num || !name) { showToast('Enter your member number and name', false); return; }
+    DEV.member = { num, name, cert }; saveDev();
+    if (!C.members.some(m => m.num === num)) { C.members.push({ num, name, cert }); saveConfig(); }
+    UI.form = {}; render();
+  },
+  'm-forget'() { DEV.member = null; saveDev(); UI.form = {}; render(); },
+  'm-respond'(id) {
+    const c = SH.calls.find(x => x.id === id), me = DEV.member; if (!c || !me) return;
+    const duty = myDuty();
+    sdispatch('respAdd', { id, r: { pid: myPid(), name: me.name, cert: me.cert, via: duty && duty.unit ? duty.unit : 'own vehicle' }, at: now() }, `${me.name} (${me.cert}) responding to ${c.address}`, 'people');
+  },
+  'm-onscene'(id) { const c = SH.calls.find(x => x.id === id); if (c && myResp(c)) sdispatch('respStep', { id, pid: myPid(), st: 'onscene', at: now() }, `${DEV.member.name} on scene: ${c.address}`, 'people'); },
+  'm-clear'(id) { const c = SH.calls.find(x => x.id === id); if (c && myResp(c)) sdispatch('respStep', { id, pid: myPid(), st: 'clear', at: now() }, `${DEV.member.name} clear: ${c.address}`, 'people'); },
+  'm-duty'() {
+    const me = DEV.member, duty = myDuty(); if (!me) return;
+    if (duty) sdispatch('crewOut', { id: duty.id, at: now() }, `Off duty: #${me.num} ${me.name}`, 'people');
+    else sdispatch('crewIn', { person: { id: uid(), num: me.num, name: me.name, cert: me.cert, unit: '', t: now() } }, `On duty: #${me.num} ${me.name} (${me.cert})`, 'people');
+  },
+  'm-unit'(name) { const duty = myDuty(); if (duty && duty.unit !== name) sdispatch('crewEdit', { id: duty.id, fields: { unit: name } }, `${DEV.member.name}: ${name ? 'on ' + name : 'own vehicle'}`, 'people'); },
+};
 
 /* ---------- shift sheets ---------- */
 function ownFreeUnits() { return SH.units.filter(u => u.status === 'in' && !busyCall(u) && TRANSPORT_KINDS.concat(['RV', 'SUP']).includes(u.kind)); }
@@ -3653,7 +3795,7 @@ const A = {
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
 
-Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS);
+Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS, MEMBER_ACTIONS);
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -3699,7 +3841,7 @@ function tick() {
   const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
   set('now', hhmm(t));
   document.querySelectorAll('[data-since]').forEach(el => { const v = dur(t - Number(el.dataset.since)); if (el.textContent !== v) el.textContent = v; });
-  if (UI.view === 'shift' && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
+  if ((UI.view === 'shift' || UI.view === 'member') && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
   set('elapsed', dur(t - S.incident.dispatchAt));
   const due = S.par.last + S.par.interval * 60000, left = due - t;
   set('par', left >= 0 ? dur(left) : '+' + dur(-left));
@@ -3720,7 +3862,7 @@ window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); })
 /* =====================================================================
    Boot
    ===================================================================== */
-DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: 'command', mode: 'night', me: null };
+DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: window.matchMedia && matchMedia('(max-width: 700px)').matches ? 'member' : 'command', mode: 'night', me: null };
 saveDev();
 C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || sampleConfig()) });
 INC.load(sampleState);

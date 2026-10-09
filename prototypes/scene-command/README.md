@@ -1,6 +1,6 @@
 # Scene Command Board (prototype)
 
-A touch-first EMS command app for iPads in landscape, set up for Hatzalah Jersey Shore (county number 78) in Monmouth County, NJ. It has two boards that any number of tablets share live: a **shift board** for the supervisor on everyday calls, and a **scene board** for an MCI. Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
+A touch-first EMS command app for iPads in landscape, with a phone view for members, set up for Hatzalah Jersey Shore (county number 78) in Monmouth County, NJ. It has two boards that any number of tablets share live: a **shift board** for the supervisor on everyday calls, and a **scene board** for an MCI. Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
 
 ## Tablets and jobs
 
@@ -12,6 +12,7 @@ Each tablet picks a job, and each job has its own home screen. All of them share
 | **Command** | The full scene board below |
 | **Triage** | Big counters, re-triage, the triage report |
 | **Transport** | Units ready to load, hospital grid of sent vs. can-take, transport log |
+| **Member** (phone) | For one member on their own phone: pick yourself once, then every active call with one big button that goes I'm responding → I'm on scene → I'm clear. On scene, request ALS, an ambulance or police. Go on or off duty and pick the unit you're riding. Directions open in Apple Maps, Google Maps or Waze. When an MCI 1st alarm or higher is declared, a red banner sends members to staging instead of the scene. Phones open in this view the first time. |
 
 How sharing works: every change is an event. Each tablet writes only its own events to a shared store and replays every tablet's events over the board's starting state, so two people tapping at once never overwrite each other, counts add up, and undo takes back one change. On the web address the store is the squad's own relay (`server/worker.js`, one Durable Object per squad, reached over a WebSocket and signed in with an invite: Menu → Squad sharing). In the copy hosted in Claude it is that page's store. Without either, the boards run on that tablet alone.
 
@@ -56,5 +57,5 @@ node prototypes/scene-command/build.mjs
 - **The map's live layer** is the NJ Office of GIS 2020 aerial imagery, loaded tile by tile. Where tiles can't load, because the page is sandboxed or offline, it falls back to the built-in map and the sample scene's aerial. Locate me needs a browser that grants location; the sandboxed preview does not.
 - **Distances are straight-line**, and the drive minutes are a rough estimate from them (1.3× the distance at 40 mph).
 - **Hospital capacity, beds and ED status are typed in** from what each hospital reports. There is no EMResource feed.
-- **Calls are typed in by the supervisor.** There is no CAD or paging feed.
+- **Calls are typed in by the supervisor.** There is no CAD or paging feed, and no push alert: a member sees a new call when they open the app.
 - **The sample incident and shift, and their units, people and squad numbers, are made up.** Hospital capabilities, county assets, and published phone numbers are from the sources in the research notes; confirm them locally.
