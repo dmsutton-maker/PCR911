@@ -994,6 +994,8 @@ const RAILS = {
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
   supervisor: ['shift', 'hospitals', 'phone', 'map', 'board'],
 };
+/* Inside Claude the page can share a board between tablets; as a plain web page it runs on each tablet alone. */
+const IN_CLAUDE = !!(window.claude && typeof window.claude.use === 'function');
 const homeView = () => (ROLES[DEV.role] || ROLES.command).home;
 const newIncidentId = () => 'inc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
 
@@ -1878,8 +1880,8 @@ function roleSheet() {
     body: `<div class="opt-grid wide">${Object.entries(ROLES).map(([k, r]) => opt('role', k, DEV.role === k, `${esc(r.name)}<small>${esc(r.note)}</small>`, 'tall')).join('')}</div>
       <div class="ph"><h2>Tablets on this board</h2><span class="meta">${esc(syncWords())}</span></div>
       ${peers.length ? `<div class="rows">${peers.map(pr => `<div class="row"><span class="pill ${pr.sameTab ? 'onscene' : ''}">${pr.sameTab ? 'This one' : 'Tablet'}</span><div class="t1">${esc((ROLES[pr.presence && pr.presence.role] || {}).name || 'Opening…')}</div><span class="note">${pr.updatedAt ? hhmm(pr.updatedAt) : ''}</span></div>`).join('')}</div>`
-        : `<div class="note">${Sync.state === 'local' ? 'This board is running on this tablet alone. Sharing needs the page opened from its link while signed in.' : 'No other tablets have this board open right now.'}</div>`}
-      <div class="note">To add a tablet, open this same link on it, signed in to an account that can edit this page. Each tablet picks its own job; they all share one incident, and every change shows up on the others within a few seconds.</div>
+        : `<div class="note">${!IN_CLAUDE ? 'This web address keeps a separate board on each tablet for now. Sharing one board between tablets works in the copy of this page hosted in Claude; for this address it needs a sync service of the squad\'s own, the next step toward the real app.' : Sync.state === 'local' ? 'This board is running on this tablet alone. Sharing needs the page opened from its link while signed in.' : 'No other tablets have this board open right now.'}</div>`}
+      ${IN_CLAUDE ? '<div class="note">To add a tablet, open this same link on it, signed in to an account that can edit this page. Each tablet picks its own job; they all share one incident, and every change shows up on the others within a few seconds.</div>' : '<div class="note">Each tablet still picks its own job, so you can try the Command, Triage, Transport and Supervisor screens.</div>'}
       ${Sync.state === 'ready' && !streamOfView().shared ? '<button class="btn primary" data-act="share">Share this board now</button>' : ''}`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
@@ -2355,7 +2357,7 @@ function menuSheet() {
         <button class="opt tall" data-act="sheet" data-arg="shift-new">Start a new shift<small>Fresh shift board for everyday calls</small></button>
         <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
       </div>
-      <div class="note"><b>Prototype.</b> Tablets that open this same page share one board through it. Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
+      <div class="note"><b>Prototype.</b> ${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : 'On this web address each tablet keeps its own board, saved in this browser.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
 }
