@@ -3753,6 +3753,15 @@ async function saveReportPdf(kind) {
   try { blob = buildPdf(jsPDF, m).output('blob'); }
   catch (e) { console.warn(e); busy(false); showToast('Couldn\'t make the PDF. Use Print instead.', false); return; }
   busy(false);
+  // Inside Claude the page can't download on its own; the viewer's save prompt hands the file over.
+  if (IN_CLAUDE) {
+    const dl = await window.claude.use('downloads').catch(() => null);
+    if (dl) {
+      try { await dl.save({ filename: name, data: blob }); showToast(`Saved ${name}`, false); }
+      catch (e) { if (!e || e.code !== 'declined') showToast('Couldn\'t save the PDF here. Use Print instead.', false); }
+      return;
+    }
+  }
   const file = typeof File === 'function' ? new File([blob], name, { type: 'application/pdf' }) : null;
   const touch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
   if (touch && file && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -5466,7 +5475,7 @@ const SHIFT_ACTIONS = {
    document store with the same shape as the one Claude provides, so the
    sync code above runs unchanged on either.
    ===================================================================== */
-const BAKED_RELAY_URL = "http://127.0.0.1:8787";
+const BAKED_RELAY_URL = "";
 const RELAY_KEY = 'sc3:relay';
 let RELAY = DEMO ? null : read(RELAY_KEY);   // { url, token, name, org, role } once this tablet has joined
 const relayBase = u => String(u || '').trim().replace(/\/+$/, '');
