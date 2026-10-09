@@ -56,7 +56,8 @@ if (site > -1) {
 <meta name="apple-mobile-web-app-title" content="RigBoard">
 <meta name="robots" content="noindex">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="icon" href="icon-180.png">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="alternate icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
 <style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 ${head}</head>
@@ -68,6 +69,7 @@ ${body}</body>
   writeFileSync(join(dir, 'index.html'), page);
   copyFileSync(join(here, 'icon-180.png'), join(dir, 'icon-180.png'));
   copyFileSync(join(here, 'icon-512.png'), join(dir, 'icon-512.png'));
+  copyFileSync(join(here, 'logo.svg'), join(dir, 'logo.svg'));
   writeFileSync(join(dir, 'manifest.webmanifest'), JSON.stringify({
     name: 'RigBoard',
     short_name: 'RigBoard',

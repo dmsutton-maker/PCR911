@@ -35,7 +35,7 @@ This is a clickable prototype for deciding what the real thing should be. It is 
 | **Log** | Every tap, time-stamped and marked with which tablet made it, for the after-action report |
 | **Supervisor** | The supervisor board for everyday calls (see above) |
 
-Every action can be undone. **My agency** (in Menu) holds the squad's own units, which load into every new day and incident; **PAR checks** are an option, off by default.
+Every action can be undone. **My agency** (in Menu) holds the squad's own logo (shown next to its name on every tablet and phone) and units, which load into every new day and incident; **PAR checks** are an option, off by default.
 
 ## Building
 
@@ -52,6 +52,7 @@ node prototypes/scene-command/build.mjs
 | `data/sample-scene.json` | Aerial photo of the sample scene (Route 35 & Deal Road, Ocean Township) from the NJ Office of GIS 2020 orthophotography, with its bounds |
 | `vendor/leaflet-1.9.4.css` | Leaflet's stylesheet (BSD-2-Clause); Leaflet's script loads from cdnjs |
 | `index.html` | The built page; don't edit it by hand |
+| `logo.svg` | The RigBoard mark (option A, the status board). `icon-180.png`, `icon-512.png` and `icon-1024.png` are drawn from it |
 
 ## Limits of this prototype
 

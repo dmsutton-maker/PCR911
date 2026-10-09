@@ -1257,6 +1257,17 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .mhead .clocks { width: auto; flex: 0 0 auto; }
 .mhead .iconbtn { flex: 0 0 auto; min-width: 56px; padding: 8px; }
 .osq { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
+.alogo { height: 1.15em; width: auto; max-width: 2.4em; vertical-align: -0.2em; margin-right: 0.35em; border-radius: 6px; object-fit: contain; }
+.alogo.sm { height: 22px; float: right; margin: 0 0 0 8px; }
+.alogo.big { height: 72px; max-width: 144px; border-radius: 12px; background: var(--raised); display: inline-grid; place-items: center; }
+.alogo.big.empty { width: 72px; font-size: 12px; color: var(--faint); border: 1.5px dashed var(--line); }
+.logo-pick { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.logo-pick label.btn { cursor: pointer; }
+.rbmark { border-radius: 22%; flex: none; display: block; }
+.rail .brand { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0 10px; font: 700 12px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.rblock { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.rblock b { display: block; font: 700 24px/1 var(--display); }
+.rblock small { color: var(--muted); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
 .navrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .navrow .btn { padding: 0 6px; font-size: 15px; min-width: 0; }
 .navrow .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
@@ -1293,6 +1304,7 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
   .rail button { flex: 1 0 56px; min-height: 56px; font-size: 11px; gap: 3px; }
   .rail button svg { width: 22px; height: 22px; }
   .rail .spacer { display: none; }
+  .rail .brand { display: none; }
   .board, .board .col.c2, .desk, .shift { grid-template-columns: minmax(0, 1fr); }
   .csteps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tri-big .tri-count { font-size: 60px; }
@@ -2086,6 +2098,7 @@ function rail() {
     return '';
   };
   return `<nav class="rail" aria-label="Views">
+    <div class="brand" title="RigBoard">${rbMark(38)}<span>RigBoard</span></div>
     ${(RAILS[DEV.role] || RAILS.command).map(id => VIEWS.find(v => v.id === id)).map(v => `<button data-act="view" data-arg="${v.id}" ${UI.view === v.id ? 'aria-current="page"' : ''}><span class="ico">${icon(v.icon)}${badge(v.id)}</span>${v.label}</button>`).join('')}
     <span class="spacer"></span>
     <button data-act="sheet" data-arg="menu">${icon('menu')}Menu</button>
@@ -2738,13 +2751,46 @@ function roleSheet() {
 }
 
 const OWN_KINDS = ['BLS', 'RV', 'ALS', 'SUP', 'MCI', 'BUS'];
+/* A squad's own logo, shown with its name on the Supervisor board, phones and the menu. It's redrawn on this
+   tablet to at most 256 px and saved in the squad's settings, so every tablet gets it. Only an image this
+   page made is ever shown, whatever the shared settings hold. */
+const LOGO_RE = /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/;
+const logoOk = v => typeof v === 'string' && v.length < 120000 && LOGO_RE.test(v);
+const agencyLogo = (cls = 'alogo') => logoOk(C.agency.logo) ? `<img class="${cls}" src="${C.agency.logo}" alt="">` : '';
+function shrinkLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('Pick a picture file'));
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      for (const size of [256, 192, 128]) {
+        const k = Math.min(1, size / Math.max(img.width, img.height)), w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const webp = cv.toDataURL('image/webp', 0.9), png = cv.toDataURL('image/png');
+        const best = /^data:image\/webp/.test(webp) && webp.length < png.length ? webp : png;
+        if (best.length < 110000) return resolve(best);
+      }
+      reject(new Error('That picture is too detailed to use as a logo'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Couldn't read that picture")); };
+    img.src = url;
+  });
+}
+/* RigBoard's own mark (logo.svg; the Home Screen icons are drawn from it). */
+const RB_MARK = '<rect width="512" height="512" fill="#0B1B2B"/> <rect x="92" y="92" width="152" height="152" rx="30" fill="#D7373F"/> <rect x="268" y="92" width="152" height="152" rx="30" fill="#F2C230"/> <rect x="92" y="268" width="152" height="152" rx="30" fill="#2DB86A"/> <rect x="268" y="268" width="152" height="152" rx="30" fill="#EAF2F8"/> <rect x="331" y="302" width="26" height="84" rx="5.2" fill="#0B1B2B"/><rect x="302" y="331" width="84" height="26" rx="5.2" fill="#0B1B2B"/>';
+const rbMark = (px, cls = 'rbmark') => `<svg class="${cls}" viewBox="0 0 512 512" width="${px}" height="${px}" aria-hidden="true">${RB_MARK}</svg>`;
 function agencySheet() {
   const f = UI.form;
-  if (!f._init) { Object.assign(f, { aname: C.agency.name, anum: C.agency.num || '', roster: C.roster.map(r => ({ ...r })), akind: 'BLS', unum: '', _init: true }); }
+  if (!f._init) { Object.assign(f, { aname: C.agency.name, anum: C.agency.num || '', alogo: logoOk(C.agency.logo) ? C.agency.logo : '', roster: C.roster.map(r => ({ ...r })), akind: 'BLS', unum: '', _init: true }); }
   const missing = f.roster.filter(r => !S.units.some(u => u.name === r.name)).length;
   return {
     title: 'My agency',
     body: `<div class="grid2">${field('Agency', input('ag-name', 'aname', f.aname, 'e.g. Hatzalah Jersey Shore'))}${field('County number', input('ag-num', 'anum', f.anum, 'e.g. 78', 'inputmode="numeric"'))}</div>
+      ${field('Squad logo · optional', `<div class="logo-pick">${logoOk(f.alogo) ? `<img class="alogo big" src="${f.alogo}" alt="Squad logo">` : '<span class="alogo big empty">No logo</span>'}
+        <label class="btn small">${icon('plus')} ${logoOk(f.alogo) ? 'Change' : 'Add a logo'}<input type="file" id="ag-logo" accept="image/*" hidden></label>
+        ${logoOk(f.alogo) ? '<button class="btn small danger" data-act="ag-logo-del">Remove</button>' : ''}</div>
+        <div class="note">A square picture works best, like the patch on your uniform. It shows next to your squad's name on every tablet and phone.</div>`)}
       <div class="field"><span class="lbl">Our units · loaded as Available in every new incident</span>
         ${f.roster.length ? `<div class="rows">${f.roster.map((r, i) => `<div class="row">${kindTag(r.kind)}<div><div class="t1">${esc(r.name)}</div><div class="t2">${esc(kindOf(r.kind).name)}</div></div><button class="btn small danger" data-act="ag-del" data-arg="${i}" aria-label="Remove ${esc(r.name)}">${icon('x')}</button></div>`).join('')}</div>` : '<div class="empty">No units yet. Add your ambulances, response vehicles and paramedic units below.</div>'}
       </div>
@@ -3211,7 +3257,7 @@ function menuSheet() {
       <div class="opt-grid wide">
         ${IN_CLAUDE || DEMO ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `${esc(RELAY.org || 'Signed in')}${RELAY.plan ? ' · ' + esc(planWords(RELAY.plan)) : ''}` : `Free on this tablet · share free for ${TRIAL_DAYS} days`}</small></button>`}
         <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
-        <button class="opt tall" data-act="sheet" data-arg="agency">My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="agency">${agencyLogo('alogo sm')}My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
         <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>
@@ -3219,7 +3265,8 @@ function menuSheet() {
         ${SH.sample ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
         <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
       </div>
-      <div class="note"><b>RigBoard</b> · prototype. ${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
+      <div class="rblock">${rbMark(40)}<div><b>RigBoard</b><small>EMS command for squads · prototype</small></div></div>
+      <div class="note">${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
 }
@@ -3676,7 +3723,7 @@ function shiftHeader() {
   return `<header class="head">
     <div class="inc">
       <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${sampleTag()}</div>
-      <h1>${esc(C.agency.name)} · Supervisor</h1>
+      <h1>${agencyLogo()}${esc(C.agency.name)} · Supervisor</h1>
       <div class="inc-sub">${esc(day)} · <b>${onDuty} on duty</b> · ${plural(avail, 'unit')} available · ${plural(s.active, 'active call')}</div>
     </div>
     <div class="clocks">
@@ -3822,7 +3869,7 @@ function memberHeader() {
   return `<header class="head mhead">
     <div class="inc">
       <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)}</button>${syncChipHtml()}${sampleTag()}</div>
-      <h1>${esc(C.agency.name)}</h1>
+      <h1>${agencyLogo()}${esc(C.agency.name)}</h1>
       <div class="inc-sub">${me ? `<b>${esc(me.name)}</b> · ${esc(me.cert)} · ${duty ? `on duty${duty.unit ? ' on ' + esc(duty.unit) : ''}` : 'off duty'}` : 'Member view'}</div>
     </div>
     <div class="clocks">
@@ -4113,7 +4160,7 @@ const SHIFT_ACTIONS = {
    document store with the same shape as the one Claude provides, so the
    sync code above runs unchanged on either.
    ===================================================================== */
-const BAKED_RELAY_URL = "";
+const BAKED_RELAY_URL = "http://127.0.0.1:8787";
 const RELAY_KEY = 'sc3:relay';
 let RELAY = DEMO ? null : read(RELAY_KEY);   // { url, token, name, org, role } once this tablet has joined
 const relayBase = u => String(u || '').trim().replace(/\/+$/, '');
@@ -4650,9 +4697,10 @@ const A = {
     document.getElementById('ag-unit')?.focus();
   },
   'ag-del'(i) { UI.form.roster.splice(Number(i), 1); render(); },
+  'ag-logo-del'() { UI.form.alogo = ''; render(); },
   'agency-save'(addNow) {
     const f = UI.form;
-    C.agency = { ...C.agency, name: (f.aname || '').trim() || 'My agency', num: (f.anum || '').trim() };
+    C.agency = { ...C.agency, name: (f.aname || '').trim() || 'My agency', num: (f.anum || '').trim(), logo: logoOk(f.alogo) ? f.alogo : '' };
     C.roster = f.roster.slice();
     saveConfig();
     UI.sheet = null; UI.form = {};
@@ -4779,6 +4827,11 @@ document.addEventListener('click', e => {
   if (act === 'backdrop' && e.target !== el) return;
   if (A[act]) { if (el.tagName !== 'A') e.preventDefault(); A[act](el.dataset.arg, el, e); }
   wake();
+});
+document.addEventListener('change', async e => {
+  if (e.target.id !== 'ag-logo') return;
+  const file = e.target.files && e.target.files[0];
+  try { UI.form.alogo = await shrinkLogo(file); render(); } catch (err) { showToast(err.message, false); }
 });
 document.addEventListener('input', e => {
   const t = e.target, f = t.dataset && t.dataset.field;
