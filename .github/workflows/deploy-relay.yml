@@ -108,6 +108,25 @@ jobs:
             printf '\n[[kv_namespaces]]\nbinding = "ORG_DATA"\nid = "%s"\n' "$ID" >> wrangler.toml
           fi
 
+      # wrangler-action stops on a listed secret that has no value, and most of
+      # these are optional, so it is given only the ones this repository has.
+      - name: Choose the secrets to upload
+        if: steps.check.outputs.configured == 'true'
+        id: secrets
+        env:
+          ACCESS_CODES: ${{ secrets.ACCESS_CODES }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BOOTSTRAP_CODE: ${{ secrets.BOOTSTRAP_CODE }}
+        run: |
+          {
+            echo 'names<<NAMES'
+            for name in ACCESS_CODES GEMINI_API_KEY ANTHROPIC_API_KEY BOOTSTRAP_CODE; do
+              if [ -n "${!name:-}" ]; then echo "$name"; fi
+            done
+            echo 'NAMES'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy
         if: steps.check.outputs.configured == 'true'
         uses: cloudflare/wrangler-action@v3
@@ -121,11 +140,7 @@ jobs:
           # Uploads these as Worker secrets, so they are set on the Worker
           # rather than baked into the script or visible in the dashboard's
           # plaintext variables.
-          secrets: |
-            ACCESS_CODES
-            GEMINI_API_KEY
-            ANTHROPIC_API_KEY
-            BOOTSTRAP_CODE
+          secrets: ${{ steps.secrets.outputs.names }}
         env:
           ACCESS_CODES: ${{ secrets.ACCESS_CODES }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
