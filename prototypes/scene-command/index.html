@@ -1291,6 +1291,31 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .star.on { color: var(--yellow); }
 .favmark { color: var(--yellow); }
 .hosp.fav { border-color: color-mix(in srgb, var(--yellow) 55%, var(--line)); }
+.evt { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(340px, 1.25fr) minmax(280px, 1fr); gap: 12px; height: 100%; min-height: 0; }
+.evt .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.evt .mapcard.mini { height: 320px; flex: none; }
+.evstart { max-width: 640px; }
+.posts { display: flex; flex-direction: column; gap: 8px; }
+.post { border: 1.5px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; background: var(--surface); }
+.post.empty { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
+.post .pt { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.post .pt b { display: block; } .post .pt small, .evpost small { display: block; color: var(--muted); font-size: 13px; }
+.pk { flex: none; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; display: inline-grid; place-items: center; font: 700 14px/1 var(--display); background: var(--accent); color: var(--accent-ink); }
+.pk.k-aid { background: var(--crit); color: #fff; } .pk.k-cmd { background: var(--fg); color: var(--bg); } .pk.k-unit { background: var(--green); color: var(--green-ink); }
+.pk.k-roam, .pk.k-gate { background: var(--raised); color: var(--fg); border: 1.5px solid var(--line); } .pk.k-rehab { background: var(--yellow); color: var(--yellow-ink); }
+.schip { display: inline-flex; flex-direction: column; padding: 4px 9px; border-radius: 8px; border: 1.5px solid var(--line); background: transparent; color: var(--fg); font-weight: 600; font-size: 14px; text-align: left; }
+.schip small { font-weight: 400; font-size: 11px; color: var(--muted); }
+.schip.st-atpost { border-color: var(--ok); } .schip.st-atpost small { color: var(--ok); }
+.schip.st-break { border-color: var(--warn); } .schip.st-break small { color: var(--warn); }
+.schip.st-off { opacity: 0.55; } .schip.unit { flex-direction: row; gap: 6px; align-items: center; }
+.row .schip { flex-direction: row; font-size: 12px; padding: 3px 7px; }
+.evcard .evpost { display: flex; gap: 12px; align-items: center; font-size: 18px; }
+.evcard h2 svg { width: 18px; height: 18px; vertical-align: -3px; }
+.pin.post { border-radius: 9px; width: 32px; height: 32px; font-size: 14px; background: var(--accent); color: var(--accent-ink); border: 2.5px solid #fff; }
+.pin.post.k-aid { background: var(--crit); color: #fff; } .pin.post.k-cmd { background: #fff; color: #0B1B2B; border-color: #0B1B2B; }
+.pin.post.k-unit { background: var(--green); color: var(--green-ink); } .pin.post.k-rehab { background: var(--yellow); color: var(--yellow-ink); }
+.pin.post.k-roam, .pin.post.k-gate { background: #0B1B2B; color: #fff; }
+.pin.post.empty { box-shadow: 0 0 0 3px var(--warn); }
 .navrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .navrow .btn { padding: 0 6px; font-size: 15px; min-width: 0; }
 .navrow .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
@@ -1331,7 +1356,8 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
   #playerbar { right: 12px; left: 12px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
   #playerbar .pname { flex: 1; }
   .feeds { grid-template-columns: minmax(0, 1fr); }
-  .board, .board .col.c2, .desk, .shift { grid-template-columns: minmax(0, 1fr); }
+  .board, .board .col.c2, .desk, .shift, .evt { grid-template-columns: minmax(0, 1fr); }
+  .evt { height: auto; } .evt .col { overflow: visible; }
   .csteps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tri-big .tri-count { font-size: 60px; }
   .tri-big .tri-btns button { width: 64px; height: 76px; font-size: 34px; }
@@ -1831,6 +1857,7 @@ const ICON = {
   ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20.5c.9-4 3.6-6 7-6s6.1 2 7 6"/>',
   clip: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+  flag: '<path d="M5 21V3.5"/><path d="M5 4h12l-2.5 4.5L17 13H5"/>',
   tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0l-8-8z"/><circle cx="8" cy="8" r="1.6"/>',
 };
 const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
@@ -1840,6 +1867,7 @@ const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-
    ===================================================================== */
 let S;    // the incident as it stands now: the starting state with every event replayed over it
 let SH;   // today's supervisor board, built the same way
+let EV;   // the event being worked (a parade, the fireworks), built the same way
 let C;    // agency configuration that outlives incidents: squad, unit roster, members, extra numbers
 let DEV;  // this tablet only: its id, its job (role), day/night, last GPS fix
 let UI = { view: '', sheet: null, form: {}, logFilter: 'all', unitGroup: 'all', hospFilter: [], pinMode: null, mapLayer: 'sat', live: 'unknown' };
@@ -1853,10 +1881,10 @@ const ROLES = {
   supervisor: { name: 'Supervisor', home: 'shift',   note: 'Everyday calls: units in service, active calls, crew on duty, today\'s numbers' },
 };
 const RAILS = {
-  command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log', 'shift'],
+  command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log', 'shift', 'event'],
   triage:    ['triage', 'board', 'units', 'map', 'phone', 'log'],
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
-  supervisor: ['shift', 'hospitals', 'map', 'phone', 'radio', 'board'],
+  supervisor: ['shift', 'event', 'hospitals', 'map', 'phone', 'radio', 'board'],
   member:    ['member', 'shift', 'phone'],
 };
 /* Inside Claude the page can share a board between tablets; as a plain web page it runs on each tablet alone. */
@@ -2138,6 +2166,7 @@ function render() {
 function header() {
   if (UI.view === 'shift') return shiftHeader();
   if (UI.view === 'member') return memberHeader();
+  if (UI.view === 'event') return eventHeader();
   const I = S.incident;
   const lvl = I.mciLevel, nts = notices();
   const mci = lvl
@@ -2171,6 +2200,7 @@ const VIEWS = [
   { id: 'board',     label: 'Board',     icon: 'board' },
   { id: 'triage',    label: 'Triage',    icon: 'tag' },
   { id: 'shift',     label: 'Supervisor', icon: 'clip' },
+  { id: 'event',     label: 'Event',     icon: 'flag' },
   { id: 'member',    label: 'My calls',  icon: 'person' },
   { id: 'map',       label: 'Map',       icon: 'map' },
   { id: 'transport', label: 'Transport', icon: 'amb' },
@@ -2201,6 +2231,7 @@ function view() {
     case 'triage': return triageView();
     case 'shift': return shiftView();
     case 'member': return memberView();
+    case 'event': return eventView();
     case 'transport': return transportView();
     case 'units': return unitsView();
     case 'hospitals': return hospitalsView();
@@ -2945,6 +2976,8 @@ function ensureMap() {
     if (!UI.pinMode) return;
     const k = UI.pinMode, ll = [+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)];
     UI.pinMode = null;
+    if (k === 'post') { const keep = UI.pendingPost || { pkind: 'fixed' }; UI.pendingPost = null; openSheet('post-new'); Object.assign(UI.form, keep, { pwhere: 'map', pll: ll, _init: true }); render(); return; }
+    if (k.startsWith('post-move:')) { const id = k.slice(10), po = postIn(EV, id); if (po) edispatch('postEdit', { id, fields: { ll } }, `${po.name} moved on the map`, 'units'); render(); return; }
     const field = k === 'scene' ? 'll' : k === 'staging' ? 'stagingLL' : 'lzLL';
     dispatch('pin', { field, ll }, `${k === 'scene' ? 'Scene' : k === 'staging' ? 'Staging' : 'LZ'} pinned at ${fmtLL(ll)}`, 'note');
   });
@@ -2989,12 +3022,18 @@ function syncMarkers() {
   if (I.ll) L.marker(I.ll, { icon: pinIcon('scene', 'SCENE', 40), title: 'Scene', zIndexOffset: 1000 }).addTo(ML.pins);
   COUNTY_STAGING.forEach(c => L.marker(c.ll, { icon: pinIcon('cstage', 'S', 30), title: c.name }).bindTooltip(`County staging: ${c.name}`, { direction: 'top', offset: [0, -14] }).addTo(ML.pins));
   C.cameras.filter(c => c.ll).forEach(c => L.marker(c.ll, { icon: pinIcon('cam', 'CAM', 30), title: c.name }).bindTooltip(`Camera: ${c.name}`, { direction: 'top', offset: [0, -14] }).on('click', () => openSheet('cam:' + c.id)).addTo(ML.pins));
+  if (eventLive()) EV.posts.filter(po => po.ll).forEach(po => {
+    const staff = postStaff(po);
+    L.marker(po.ll, { icon: pinIcon(`post k-${po.kind}${staff.length ? '' : ' empty'}`, esc(postLabel(po)), 32), title: po.name, zIndexOffset: 500 })
+      .bindTooltip(`${esc(po.name)}${staff.length ? ' · ' + staff.map(x => esc(x.name)).join(', ') : ' · nobody yet'}`, { direction: 'top', offset: [0, -16] })
+      .on('click', () => openSheet('post:' + po.id)).addTo(ML.pins);
+  });
   ML.hosp.clearLayers();
   filteredHospitals().forEach(h => L.marker(h.ll, { icon: pinIcon('hosp' + (h.trauma ? ' trauma' : ''), 'H', 28), title: h.name })
     .bindTooltip(`${h.short}${hospMiles(h) != null ? ' · ' + hospMiles(h).toFixed(1) + ' mi' : ''}`, { direction: 'top', offset: [0, -14] }).addTo(ML.hosp));
 }
 function refreshChips() {
-  document.querySelectorAll('.mapcard.mini .mapctl.bl').forEach(el => { el.innerHTML = mapChips(); });
+  document.querySelectorAll('.mapcard.mini:not(.evmap) .mapctl.bl').forEach(el => { el.innerHTML = mapChips(); });
   if (UI.view === 'map') render();
 }
 
@@ -3013,7 +3052,10 @@ function placeMap() {
 function frameMap(kind) {
   const I = S.incident;
   const center = sceneLL();
-  if (kind === 'mini') { if (center) MAP.setView(center, I.ll ? 16.5 : 13); else MAP.setView([40.27, -74.17], 10); }
+  const evPts = kind === 'event' && eventLive() ? EV.posts.map(po => po.ll).concat([EV.event.ll]).filter(Boolean) : [];
+  if (evPts.length > 1) MAP.fitBounds(L.latLngBounds(evPts).pad(0.25), { maxZoom: 17.5 });
+  else if (evPts.length === 1) MAP.setView(evPts[0], 16.5);
+  else if (kind === 'mini' || kind === 'event') { if (center) MAP.setView(center, I.ll ? 16.5 : 13); else MAP.setView([40.27, -74.17], 10); }
   else {
     const pts = [I.ll, I.stagingLL, I.lzLL].filter(Boolean);
     if (pts.length > 1) MAP.fitBounds(L.latLngBounds(pts).pad(0.6), { maxZoom: 17.5 });
@@ -3034,6 +3076,7 @@ function sheetHtml() {
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
     role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet, 'cam-add': camAddSheet, cam: camSheet, 'feed-add': feedAddSheet, 'inc-clear': incClearSheet,
+    'ev-new': evNewSheet, 'post-new': postNewSheet, post: postSheet, 'ev-person': evPersonSheet, 'ev-unit': evUnitSheet, 'ev-pt': evPtSheet, 'ev-end': evEndSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -3348,6 +3391,7 @@ function menuSheet() {
         ${IN_CLAUDE || DEMO ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `${esc(RELAY.org || 'Signed in')}${RELAY.plan ? ' · ' + esc(planWords(RELAY.plan)) : ''}` : `Free on this tablet · share free for ${TRIAL_DAYS} days`}</small></button>`}
         <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="agency">${agencyLogo('alogo sm')}My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
+        <button class="opt tall" data-act="${eventLive() ? 'view' : 'sheet'}" data-arg="${eventLive() ? 'event' : 'ev-new'}">${eventLive() ? 'Event: ' + esc(EV.event.name || 'running') : 'Start an event'}<small>${eventLive() ? `${plural(EV.posts.length, 'post')} · ${plural(EV.people.filter(x => x.st !== 'off').length, 'member')}` : 'Posts on the map, members, patients'}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
         <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>
@@ -3389,7 +3433,7 @@ Stream.prototype.rebuild = function () {
     if (e.text) st.log.push({ t: e.t, kind: e.kind, text: e.text, role: e.role });
   }
   this.state = st;
-  if (this.name === 'incident') S = st; else SH = st;
+  if (this.name === 'incident') S = st; else if (this.name === 'event') EV = st; else SH = st;
 };
 Stream.prototype.saveLocal = function () { write(this.key, this.base); write(K.ev(this.base.id), [...this.events.values()]); };
 Stream.prototype.load = function (fallback) {
@@ -3490,12 +3534,107 @@ const RS = {
   note() {},
 };
 
+/* =====================================================================
+   Event mode: a planned event rather than an emergency (a parade, the
+   fireworks, a beach day, a race). Posts on the map, members and units
+   assigned to them, who is at their post, and a simple patient log. Its
+   own board, shared like the other two; one tap turns it into an MCI with
+   everyone already placed.
+   ===================================================================== */
+const EVENT_TYPES = ['Parade', 'Fireworks', 'Concert', 'Festival', 'Sports', 'Beach', 'Race / walk', 'Other'];
+const POST_KINDS = [
+  { k: 'fixed', name: 'Post', code: '' },
+  { k: 'aid',   name: 'First aid station', code: '+' },
+  { k: 'cmd',   name: 'Command post', code: 'CP' },
+  { k: 'roam',  name: 'Roaming · foot or bike', code: 'R' },
+  { k: 'unit',  name: 'Ambulance standby', code: 'A' },
+  { k: 'rehab', name: 'Cooling / rehab', code: 'C' },
+  { k: 'gate',  name: 'Gate / entrance', code: 'G' },
+];
+const postKind = k => POST_KINDS.find(x => x.k === k) || POST_KINDS[0];
+const EP_COMPLAINTS = ['Heat / dehydration', 'Fall / injury', 'Cut / bleeding', 'Breathing', 'Chest pain', 'Allergic reaction', 'Intoxication', 'Diabetic', 'Seizure', 'Lost child / person', 'Other'];
+const EP_OUTCOMES = ['Treated & released', 'Transported', 'Refused (RMA)', 'Referred to own doctor'];
+const PERSON_ST = { assigned: 'Assigned', atpost: 'At post', break: 'On break', off: 'Done' };
+
+const newEventId = () => 'evt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+function blankEvent(o = {}) {
+  const t = now();
+  return {
+    v: 1, id: newEventId(), kind: 'event', startedAt: t, sample: false, none: !!o.none, ended: 0,
+    event: { name: o.name || '', type: o.type || 'Other', location: o.location || '', ll: o.ll || null, start: o.start || '', end: o.end || '', channel: o.channel || '', notes: o.notes || '' },
+    posts: [], people: [], units: [], pts: [],
+    log: o.none ? [] : [{ t, kind: 'note', text: `Event started: ${o.name || 'event'}` }],
+  };
+}
+function sampleEvent() {
+  const T = now(), ago = m => T - m * 60000;
+  const ev = blankEvent({ name: 'Summer concert on the beach', type: 'Concert', location: 'Ocean Ave & Laird St, Long Branch', ll: [40.2952, -73.9806], start: '18:00', end: '22:30', channel: 'EMS Countywide' });
+  ev.sample = true; ev.startedAt = ago(95);
+  const P = (id, name, kind, ll, notes = '') => ({ id, name, kind, ll, notes });
+  ev.posts = [
+    P('pcp', 'Command post · boardwalk ramp', 'cmd', [40.2952, -73.9800]),
+    P('paid', 'First aid tent', 'aid', [40.2960, -73.9797], 'Two cots, AED, ice, water'),
+    P('p1', 'Post 1 · stage left', 'fixed', [40.2945, -73.9790]),
+    P('p2', 'Post 2 · stage right', 'fixed', [40.2938, -73.9784]),
+    P('p3', 'Post 3 · Laird St entrance', 'fixed', [40.2966, -73.9815]),
+    P('pr', 'Bike team', 'roam', null, 'Boardwalk between Laird and Morris'),
+    P('pa', 'Ambulance standby', 'unit', [40.2970, -73.9822]),
+  ];
+  const M = (num, name, cert, post, st, m) => ({ id: 'e' + num, num, name, cert, post, st, t: ago(m), at: ago(m) });
+  ev.people = [
+    M('4101', 'Lt. R. Ramos', 'Officer', 'pcp', 'atpost', 90), M('4175', 'D. Patel', 'Paramedic', 'paid', 'atpost', 88),
+    M('4127', 'K. Shah', 'EMT', 'paid', 'atpost', 88), M('4133', 'J. Ortiz', 'EMT', 'p1', 'atpost', 80),
+    M('4140', 'M. Chen', 'EMT', 'p2', 'break', 80), M('4158', 'A. Russo', 'EMT', 'p3', 'assigned', 20),
+    M('4180', 'L. Gomez', 'EMT', 'pr', 'atpost', 70), M('4190', 'Y. Klein', 'EMT', '', 'assigned', 5),
+  ];
+  ev.units = [{ id: 'eu1', name: '78-56', kind: 'BLS', post: 'pa' }, { id: 'eu2', name: '78-55', kind: 'RV', post: 'pcp' }];
+  ev.pts = [
+    { id: 'ep1', t: ago(60), post: 'paid', age: 'Adult', complaint: 'Heat / dehydration', outcome: 'Treated & released', hosp: '', unit: '', note: '' },
+    { id: 'ep2', t: ago(35), post: 'p1', age: 'Child', complaint: 'Cut / bleeding', outcome: 'Treated & released', hosp: '', unit: '', note: '' },
+    { id: 'ep3', t: ago(12), post: 'paid', age: 'Adult', complaint: 'Intoxication', outcome: 'Transported', hosp: 'mmc', unit: '78-56', note: '' },
+  ];
+  ev.log = [{ t: ago(95), kind: 'note', text: 'Event started: Summer concert on the beach (sample)' }];
+  return ev;
+}
+const postIn = (st, id) => st && st.posts.find(po => po.id === id);
+const eventLive = () => !!(EV && !EV.none && !EV.ended);
+const postStaff = po => EV.people.filter(x => x.post === po.id && x.st !== 'off');
+const postUnits = po => EV.units.filter(u => u.post === po.id);
+const postName = id => { const po = postIn(EV, id); return po ? po.name : ''; };
+function postLabel(po) {
+  if (po.kind !== 'fixed') return postKind(po.kind).code;
+  return String(EV.posts.filter(x => x.kind === 'fixed').indexOf(po) + 1);
+}
+/* Reducers for an event. Like the others, they depend only on the event, never on the clock. */
+const RE = {
+  evEdit(st, p) { Object.assign(st.event, p.fields); },
+  evEnd(st, p) { st.ended = p.at; st.people.forEach(x => { if (x.st !== 'off') { x.st = 'off'; x.at = p.at; } }); },
+  postAdd(st, p) { if (!postIn(st, p.post.id)) st.posts.push({ ...p.post }); },
+  postEdit(st, p) { const x = postIn(st, p.id); if (x) Object.assign(x, p.fields); },
+  postDel(st, p) { st.posts = st.posts.filter(x => x.id !== p.id); st.people.forEach(x => { if (x.post === p.id) x.post = ''; }); st.units.forEach(u => { if (u.post === p.id) u.post = ''; }); },
+  personAdd(st, p) {
+    const ex = p.person.num && st.people.find(x => x.num === p.person.num);
+    if (ex) { if (p.person.post !== undefined) ex.post = p.person.post; if (ex.st === 'off') ex.st = 'assigned'; ex.at = p.person.at; return; }
+    if (!st.people.some(x => x.id === p.person.id)) st.people.push({ ...p.person });
+  },
+  personPost(st, p) { const x = st.people.find(y => y.id === p.id); if (x) { x.post = p.post; if (x.st === 'off') x.st = 'assigned'; if (p.post && x.st === 'atpost') x.st = 'assigned'; x.at = p.at; } },
+  personSt(st, p) { const x = st.people.find(y => y.id === p.id); if (x) { x.st = p.st; x.at = p.at; } },
+  unitAdd(st, p) { if (!st.units.some(u => u.name === p.unit.name)) st.units.push({ ...p.unit }); else { const u = st.units.find(x => x.name === p.unit.name); u.post = p.unit.post; } },
+  unitPost(st, p) { const u = st.units.find(x => x.id === p.id); if (u) u.post = p.post; },
+  unitDel(st, p) { st.units = st.units.filter(u => u.id !== p.id); },
+  ptAdd(st, p) { st.pts.push({ ...p.pt }); },
+  ptDel(st, p) { st.pts = st.pts.filter(x => x.id !== p.id); },
+  note() {},
+};
+
 const INC = new Stream('incident', { root: 'mci', pointer: 'now/incident', key: NS + 'incident', R, label: 'incident' });
 const SHIFT = new Stream('shift', { root: 'days', pointer: 'now/day', key: NS + 'shift', R: RS, label: 'supervisor board' });
-const STREAMS = [INC, SHIFT];
+const EVS = new Stream('event', { root: 'evts', pointer: 'now/event', key: NS + 'event', R: RE, label: 'event' });
+const STREAMS = [INC, SHIFT, EVS];
 const dispatch = (...a) => INC.dispatch(...a);
 const sdispatch = (...a) => SHIFT.dispatch(...a);
-const streamOfView = () => (UI.view === 'shift' || UI.view === 'member' ? SHIFT : INC);
+const edispatch = (...a) => EVS.dispatch(...a);
+const streamOfView = () => (UI.view === 'shift' || UI.view === 'member' ? SHIFT : UI.view === 'event' ? EVS : INC);
 
 /* =====================================================================
    Sync between tablets, through this page's shared store.
@@ -3946,6 +4085,307 @@ function closedPanel(closed) {
   </section>`;
 }
 
+/* ---------- Event mode ---------- */
+function eventHeader() {
+  const E = EV.event, staff = EV.people.filter(x => x.st !== 'off');
+  return `<header class="head">
+    <div class="inc">
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${EV.sample ? '<span class="tag sample">Sample event</span>' : ''}${EV.ended ? `<span class="tag">Ended ${hhmm(EV.ended)}</span>` : ''}</div>
+      <h1>${agencyLogo()}${EV.none ? 'Event' : esc(E.name || 'Event')}</h1>
+      <div class="inc-sub">${EV.none ? 'No event running' : [esc(E.type), E.location && esc(E.location), (E.start || E.end) && esc([E.start, E.end].filter(Boolean).join('–')), `<b>${plural(staff.length, 'member')}</b>`, plural(EV.posts.length, 'post')].filter(Boolean).join(' · ')}</div>
+    </div>
+    <div class="clocks">
+      <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
+      ${EV.none ? '' : `<div class="clock"><span class="lbl">Patients</span><span class="v">${EV.pts.length}</span></div>`}
+      <button class="iconbtn" data-act="mode" aria-label="Switch to ${DEV.mode === 'day' ? 'night' : 'day'} mode">${icon(DEV.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${DEV.mode === 'day' ? 'Night' : 'Day'}</span></button>
+    </div>
+  </header>`;
+}
+function eventView() {
+  if (EV.none) return `<div class="view"><section class="panel evstart">
+      <div class="ph"><h2>No event running</h2></div>
+      <div class="note">For a planned event rather than an emergency: a parade, the fireworks, a concert, a beach day, a race. Put posts on the map, assign members and units to each, see who's at their post, and keep a simple patient log. Every tablet and member's phone sees the same event, and one tap turns it into an MCI with everyone already in place.</div>
+      <button class="btn primary" data-act="sheet" data-arg="ev-new">${icon('plus')} Start an event</button>
+    </section></div>`;
+  return `<div class="evt">
+    <div class="col" data-scroll="e1">${postsPanel()}</div>
+    <div class="col" data-scroll="e2">${eventMap()}${staffPanel()}</div>
+    <div class="col" data-scroll="e3">${eventPatientsPanel()}${eventActionsPanel()}</div>
+  </div>`;
+}
+function eventMap() {
+  return `<section class="mapcard mini evmap" aria-label="Event map">
+    <div class="mapslot" data-map-slot="event"></div>
+    <div class="mapctl tr">
+      <button class="mbtn" data-act="locate" aria-label="Find my location">${icon('locate')}</button>
+      <button class="mbtn" data-act="map-layer" aria-pressed="${UI.mapLayer === 'sat'}" aria-label="Satellite imagery">${icon('layers')}<span>${UI.mapLayer === 'sat' ? 'Satellite' : 'Map'}</span></button>
+      <button class="mbtn" data-act="map-fit" aria-label="Show every post">${icon('expand')}</button>
+    </div>
+    <div class="mapctl bl">${UI.pinMode === 'post' ? '<span class="mchip warn">Tap the map where the post is</span>' : /^post-move:/.test(UI.pinMode || '') ? '<span class="mchip warn">Tap the post\'s new spot</span>' : ''}</div>
+  </section>`;
+}
+const stChip = x => `<span class="schip st-${x.st}">${esc(x.name)}<small>${esc(PERSON_ST[x.st] || '')}</small></span>`;
+function postsPanel() {
+  const posts = EV.posts;
+  return `<section class="panel">
+    <div class="ph"><h2>Posts</h2>${EV.ended ? '' : `<button class="btn small" data-act="sheet" data-arg="post-new">${icon('plus')} Add a post</button>`}</div>
+    <div class="posts">${posts.map(po => {
+      const staff = postStaff(po), units = postUnits(po);
+      return `<div class="post ${staff.length ? '' : 'empty'}" role="button" tabindex="0" data-act="sheet" data-arg="post:${po.id}">
+        <div class="ph"><div class="pt"><span class="pk k-${po.kind}">${esc(postLabel(po)) || '·'}</span><div><b>${esc(po.name)}</b><small>${esc(postKind(po.kind).name)}${po.ll ? '' : ' · not on the map'}</small></div></div><span class="meta">${staff.length || ''}</span></div>
+        ${staff.length || units.length ? `<div class="chips">${staff.map(stChip).join('')}${units.map(u => `<span class="schip unit">${kindTag(u.kind)} ${esc(u.name)}</span>`).join('')}</div>` : '<div class="warn-t">Nobody assigned</div>'}
+      </div>`;
+    }).join('') || '<div class="empty">No posts yet. Add one, then tap the map where it is.</div>'}</div>
+  </section>`;
+}
+function staffPanel() {
+  const people = EV.people.slice().sort((a, b) => (a.post ? 1 : 0) - (b.post ? 1 : 0) || a.name.localeCompare(b.name));
+  const on = people.filter(x => x.st !== 'off'), unplaced = on.filter(x => !x.post);
+  return `<section class="panel">
+    <div class="ph"><h2>Members</h2>${EV.ended ? '' : `<button class="btn small" data-act="sheet" data-arg="ev-person">${icon('plus')} Check in</button>`}</div>
+    ${unplaced.length ? `<div class="note warn-t">${plural(unplaced.length, 'member')} waiting for a post</div>` : ''}
+    <div class="rows">${people.map(x => `<button class="row" data-act="sheet" data-arg="ev-person:${x.id}"><span class="schip st-${x.st}">${esc(PERSON_ST[x.st])}</span><div><div class="t1">${esc(x.name)} <span class="note">${esc(x.cert || '')}${x.num ? ' · #' + esc(x.num) : ''}</span></div><div class="t2">${x.post ? esc(postName(x.post)) : '<span class="warn-t">No post</span>'}</div></div><span class="r note">${hhmm(x.at || x.t)}</span></button>`).join('') || '<div class="empty">Members check in here, or from their own phones.</div>'}</div>
+    ${EV.units.length ? `<div class="lbl">Units</div><div class="chips">${EV.units.map(u => `<button class="schip unit" data-act="sheet" data-arg="ev-unit:${u.id}">${kindTag(u.kind)} ${esc(u.name)}<small>${u.post ? esc(postName(u.post)) : 'no post'}</small></button>`).join('')}</div>` : ''}
+    ${EV.ended ? '' : `<button class="btn small" data-act="sheet" data-arg="ev-unit">${icon('plus')} Add a unit</button>`}
+  </section>`;
+}
+function eventPatientsPanel() {
+  const pts = EV.pts, by = o => pts.filter(x => x.outcome === o).length;
+  return `<section class="panel">
+    <div class="ph"><h2>Patients</h2><span class="meta">${pts.length}</span></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Seen</span><span class="v">${pts.length}</span></div>
+      <div class="stat"><span class="lbl">Released</span><span class="v">${by('Treated & released')}</span></div>
+      <div class="stat"><span class="lbl">Transported</span><span class="v">${by('Transported')}</span></div>
+      <div class="stat"><span class="lbl">Refused</span><span class="v">${by('Refused (RMA)')}</span></div>
+    </div>
+    ${EV.ended ? '' : `<button class="btn primary block" data-act="sheet" data-arg="ev-pt">${icon('plus')} Log a patient</button>`}
+    <div class="rows">${pts.slice().reverse().map(x => `<div class="row"><span class="num">${hhmm(x.t)}</span><div><div class="t1">${esc(x.complaint)}${x.age && x.age !== 'Adult' ? ' · ' + esc(x.age) : ''}</div><div class="t2">${esc(x.outcome)}${x.hosp ? ' · ' + esc((hosp(x.hosp) || {}).short || '') : ''}${x.unit ? ' · ' + esc(x.unit) : ''}${x.post ? ' · ' + esc(postName(x.post)) : ''}</div></div>${EV.ended ? '' : `<button class="btn small ghost" data-act="ev-pt-del" data-arg="${x.id}" aria-label="Remove">${icon('x')}</button>`}</div>`).join('') || '<div class="empty">Nobody seen yet.</div>'}</div>
+  </section>`;
+}
+function eventActionsPanel() {
+  return `<section class="panel">
+    <div class="ph"><h2>Event</h2></div>
+    <div class="note">${[EV.event.channel && `Channel: <b>${esc(EV.event.channel)}</b>`, EV.event.notes && esc(EV.event.notes)].filter(Boolean).join(' · ') || 'Add the radio channel and notes under Edit event.'}</div>
+    <div class="toolbar">
+      <button class="btn small" data-act="ev-brief" id="ev-brief">${icon('copy')} Copy briefing</button>
+      ${EV.ended ? '' : `<button class="btn small" data-act="sheet" data-arg="ev-new:edit">Edit event</button>`}
+      ${EV.ended ? '' : `<button class="btn small mci-up" data-act="ev-mci">Upgrade to MCI</button>`}
+      ${EV.ended ? `<button class="btn small primary" data-act="sheet" data-arg="ev-new">Start a new event</button>` : `<button class="btn small danger" data-act="sheet" data-arg="ev-end">End the event</button>`}
+    </div>
+  </section>`;
+}
+function eventBriefing() {
+  const E = EV.event, lines = [];
+  lines.push(`${C.agency.name} · EVENT BRIEFING`, `${E.name}${E.type ? ' (' + E.type + ')' : ''}`);
+  if (E.location) lines.push(`Where: ${E.location}${E.ll ? ' · ' + fmtLL(E.ll) : ''}`);
+  if (E.start || E.end) lines.push(`When: ${[E.start, E.end].filter(Boolean).join('–')}`);
+  if (E.channel) lines.push(`Channel: ${E.channel}`);
+  lines.push('', 'POSTS');
+  EV.posts.forEach(po => {
+    const staff = postStaff(po).map(x => `${x.name} (${x.cert})`), units = postUnits(po).map(u => u.name);
+    lines.push(`${postLabel(po) ? postLabel(po) + ' · ' : ''}${po.name}: ${[staff.join(', '), units.length && 'units ' + units.join(', ')].filter(Boolean).join('; ') || 'nobody assigned'}${po.notes ? ' · ' + po.notes : ''}`);
+  });
+  const favs = favFirst(byDistance(HOSPITALS)).slice(0, 4);
+  lines.push('', 'HOSPITALS', ...favs.map(h => `${h.short}: ${h.phones ? (h.phones.ed || h.phones.main) : ''}${h.trauma ? ' · ' + h.trauma : ''}`));
+  if (E.notes) lines.push('', `Notes: ${E.notes}`);
+  return lines.join('\n');
+}
+function evNewSheet(arg) {
+  const f = UI.form, edit = arg === 'edit' && eventLive();
+  if (!f._init) { Object.assign(f, edit ? { ...EV.event, _init: true } : { type: 'Other', name: '', location: '', start: '', end: '', channel: '', notes: '', _init: true }); }
+  return {
+    title: edit ? 'Edit event' : 'Start an event',
+    body: `${field('Event', input('ev-name', 'name', f.name, 'e.g. July 4th fireworks'))}
+      ${field('Type', `<div class="chips">${EVENT_TYPES.map(t => opt('f-set', 'type=' + t, f.type === t, t, 'small')).join('')}</div>`)}
+      ${field('Where', input('ev-loc', 'location', f.location, 'e.g. Pier Village, Long Branch'))}
+      <div class="grid2">${field('Starts', input('ev-start', 'start', f.start, 'e.g. 18:00'))}${field('Ends', input('ev-end', 'end', f.end, 'e.g. 22:30'))}</div>
+      <div class="grid2">${field('Radio channel', input('ev-ch', 'channel', f.channel, 'e.g. EMS Countywide'))}${field('Notes', input('ev-notes', 'notes', f.notes, 'Optional'))}</div>
+      ${edit ? '' : `<div class="note">${eventLive() ? `This replaces <b>${esc(EV.event.name)}</b> on every tablet. ` : ''}Your units go on the event list; add posts next, then assign people.</div>`}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="${edit ? 'ev-save' : 'ev-start'}">${edit ? 'Save' : 'Start the event'}</button>`,
+  };
+}
+function postNewSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { pkind: 'fixed', pwhere: DEV.me ? 'me' : 'map', _init: true });
+  const n = EV.posts.filter(x => x.kind === 'fixed').length + 1;
+  return {
+    title: 'Add a post',
+    body: `${field('Kind', `<div class="chips">${POST_KINDS.map(k => opt('f-set', 'pkind=' + k.k, f.pkind === k.k, esc(k.name), 'small')).join('')}</div>`)}
+      ${field('Name', input('post-name', 'pname', f.pname, f.pkind === 'fixed' ? `e.g. Post ${n} · Ocean Ave & 5th` : postKind(f.pkind).name))}
+      ${field('Where', f.pll ? `<div class="coord">${esc(fmtLL(f.pll))}<small>Picked on the map</small></div>` : `<div class="chips">${opt('f-set', 'pwhere=map', f.pwhere === 'map', 'Tap it on the map', 'small')}${opt('f-set', 'pwhere=me', f.pwhere === 'me', 'Where I am', 'small')}${opt('f-set', 'pwhere=none', f.pwhere === 'none', 'Not on the map', 'small')}</div>`)}
+      ${field('Notes · optional', input('post-notes', 'pnotes', f.pnotes, 'e.g. Two cots, AED, water'))}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="post-save">${f.pll || f.pwhere !== 'map' ? 'Add the post' : 'Next: tap the map'}</button>`,
+  };
+}
+function postSheet(id) {
+  const po = postIn(EV, id), f = UI.form;
+  if (!po) return { title: 'Post', body: '<div class="empty">This post was removed.</div>' };
+  const staff = postStaff(po), units = postUnits(po);
+  const others = EV.people.filter(x => x.st !== 'off' && x.post !== po.id);
+  const roster = C.members.filter(m => !EV.people.some(x => x.num === m.num && x.st !== 'off'));
+  const freeUnits = C.roster.filter(r => !units.some(u => u.name === r.name));
+  return {
+    title: po.name,
+    body: `<div class="note">${esc(postKind(po.kind).name)}${po.ll ? ' · ' + esc(fmtLL(po.ll)) : ' · not on the map'}${po.notes ? ' · ' + esc(po.notes) : ''}</div>
+      ${field('Here now', staff.length || units.length ? `<div class="rows">${staff.map(x => `<div class="row"><span class="schip st-${x.st}">${esc(PERSON_ST[x.st])}</span><div><div class="t1">${esc(x.name)} <span class="note">${esc(x.cert || '')}</span></div></div><div class="toolbar">${['atpost', 'break', 'off'].map(stv => `<button class="btn small" data-act="ev-st" data-arg="${x.id}=${stv}" aria-pressed="${x.st === stv}">${PERSON_ST[stv]}</button>`).join('')}<button class="btn small ghost" data-act="ev-unassign" data-arg="${x.id}" aria-label="Take off this post">${icon('x')}</button></div></div>`).join('')}${units.map(u => `<div class="row">${kindTag(u.kind)}<div class="t1">${esc(u.name)}</div><button class="btn small ghost" data-act="ev-unit-post" data-arg="${u.id}=" aria-label="Take ${esc(u.name)} off this post">${icon('x')}</button></div>`).join('')}</div>` : '<div class="empty">Nobody here yet.</div>')}
+      ${EV.ended ? '' : `${field('Assign a member', `<div class="opt-grid">${others.map(x => opt('ev-assign', `${x.id}=${po.id}`, false, `${esc(x.name)}<small>${x.post ? 'from ' + esc(postName(x.post)) : 'no post yet'}</small>`, 'tall')).join('')}${roster.map(m => opt('ev-assign-new', `${m.num}=${po.id}`, false, `${esc(m.name)}<small>#${esc(m.num)} · ${esc(m.cert)}</small>`, 'tall')).join('')}</div>${!others.length && !roster.length ? '<div class="note">Everyone on the roster is already placed. Check in someone new under Members.</div>' : ''}`)}
+      ${freeUnits.length ? field('Assign a unit', `<div class="chips">${freeUnits.map(r => opt('ev-unit-assign', `${r.name}=${po.id}`, false, `${kindTag(r.kind)} ${esc(r.name)}`, 'small')).join('')}</div>`) : ''}
+      <div class="toolbar">
+        <button class="btn small" data-act="post-move" data-arg="${po.id}">${po.ll ? 'Move on the map' : 'Put it on the map'}</button>
+        ${po.ll ? navLinks(po.ll.join(','), 'Directions') : ''}
+      </div>`}`,
+    foot: `${EV.ended ? '' : `<button class="btn danger" data-act="post-del" data-arg="${po.id}">Remove post</button>`}<span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+function evPersonSheet(id) {
+  const f = UI.form, x = id ? EV.people.find(y => y.id === id) : null;
+  if (!f._init) Object.assign(f, x ? { epost: x.post, _init: true } : { cert: 'EMT', epost: '', _init: true });
+  const q = memNum(f.num), matches = !x && q ? C.members.filter(m => memNum(m.num).startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 6) : [];
+  return {
+    title: x ? x.name : 'Check in a member',
+    body: `${x ? `<div class="note">${esc(x.cert || '')}${x.num ? ' · #' + esc(x.num) : ''} · ${esc(PERSON_ST[x.st])} since ${hhmm(x.at || x.t)}</div>
+        ${field('Status', `<div class="chips">${Object.entries(PERSON_ST).map(([k, v]) => opt('ev-st', `${x.id}=${k}`, x.st === k, v, 'small')).join('')}</div>`)}` : `
+        <div class="grid2">${field('Member number', input('p-num', 'num', f.num, 'e.g. AB123', 'autocapitalize="characters" autocorrect="off" spellcheck="false" data-live="1"'))}${field('Name', input('p-name', 'name', f.name, 'Last name, first initial'))}</div>
+        <div id="member-matches">${memberMatches(matches)}</div>
+        ${field('Certification', `<div class="chips">${CERTS.map(c => opt('f-set', 'cert=' + c, f.cert === c, c, 'small')).join('')}</div>`)}`}
+      ${field('Post', `<div class="opt-grid">${opt('f-set', 'epost=', !f.epost, 'No post yet', 'tall')}${EV.posts.map(po => opt('f-set', 'epost=' + po.id, f.epost === po.id, `${esc(po.name)}<small>${plural(postStaff(po).length, 'member')}</small>`, 'tall')).join('')}</div>`)}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="ev-person-save" data-arg="${x ? x.id : ''}">${x ? 'Save' : 'Check in'}</button>`,
+  };
+}
+function evUnitSheet(id) {
+  const f = UI.form, u = id ? EV.units.find(x => x.id === id) : null;
+  if (!f._init) Object.assign(f, u ? { upost: u.post, _init: true } : { upost: '', ukind: 'BLS', _init: true });
+  const free = C.roster.filter(r => !EV.units.some(x => x.name === r.name));
+  return {
+    title: u ? u.name : 'Add a unit',
+    body: `${u ? '' : `${free.length ? field('Our units', `<div class="chips">${free.map(r => opt('f-set', 'uname=' + r.name, f.uname === r.name, `${kindTag(r.kind)} ${esc(r.name)}`, 'small')).join('')}</div>`) : ''}
+        ${field('Or another unit', input('ev-unit', 'uname', f.uname, 'e.g. MedStar 14, 29-56', 'autocapitalize="characters"'))}`}
+      ${field('Post', `<div class="opt-grid">${opt('f-set', 'upost=', !f.upost, 'No post yet', 'tall')}${EV.posts.map(po => opt('f-set', 'upost=' + po.id, f.upost === po.id, esc(po.name), 'tall')).join('')}</div>`)}`,
+    foot: `${u ? `<button class="btn danger" data-act="ev-unit-del" data-arg="${u.id}">Remove</button>` : ''}<span class="grow"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="ev-unit-save" data-arg="${u ? u.id : ''}">Save</button>`,
+  };
+}
+function evPtSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { age: 'Adult', outcome: 'Treated & released', _init: true });
+  const hs = favFirst(byDistance(HOSPITALS)).slice(0, 8);
+  return {
+    title: 'Log a patient',
+    body: `${field('Where', `<div class="chips">${opt('f-set', 'ppost=', !f.ppost, 'Not at a post', 'small')}${EV.posts.map(po => opt('f-set', 'ppost=' + po.id, f.ppost === po.id, esc(po.name), 'small')).join('')}</div>`)}
+      ${field('Age group', `<div class="chips">${['Adult', 'Child', 'Infant'].map(a => opt('f-set', 'age=' + a, f.age === a, a, 'small')).join('')}</div>`)}
+      ${field('Problem', `<div class="chips">${EP_COMPLAINTS.map(c => opt('f-set', 'complaint=' + c, f.complaint === c, esc(c), 'small')).join('')}</div>`)}
+      ${field('Outcome', `<div class="chips">${EP_OUTCOMES.map(o => opt('f-set', 'outcome=' + o, f.outcome === o, esc(o), 'small')).join('')}</div>`)}
+      ${f.outcome === 'Transported' ? `${field('Hospital', `<div class="chips">${hs.map(h => opt('f-set', 'phosp=' + h.id, f.phosp === h.id, `${isFav(h) ? '★ ' : ''}${esc(h.short)}`, 'small')).join('')}</div>`)}
+        ${EV.units.length ? field('Unit', `<div class="chips">${EV.units.map(u => opt('f-set', 'punit=' + u.name, f.punit === u.name, esc(u.name), 'small')).join('')}</div>`) : ''}` : ''}
+      ${field('Note · optional', input('pt-note', 'pnote', f.pnote, 'No names: this is a count, not a patient record'))}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="ev-pt-save" ${f.complaint ? '' : 'disabled'}>Log patient</button>`,
+  };
+}
+function evEndSheet() {
+  return {
+    title: 'End the event',
+    body: `<div class="note">Marks ${esc(EV.event.name || 'the event')} as over on every tablet and phone, and takes everyone off their posts. The posts, members and patient log stay here to look back on, and in the briefing.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn danger" data-act="ev-end">End the event</button>`,
+  };
+}
+function memberEventCard() {
+  if (!eventLive()) return '';
+  const me = DEV.member, x = me && EV.people.find(y => y.num === me.num && y.st !== 'off');
+  const po = x && x.post && postIn(EV, x.post);
+  return `<section class="panel evcard">
+    <div class="ph"><h2>${icon('flag')} ${esc(EV.event.name || 'Event')}</h2>${EV.event.channel ? `<span class="meta">${esc(EV.event.channel)}</span>` : ''}</div>
+    ${!x ? `<div class="note">${esc([EV.event.location, [EV.event.start, EV.event.end].filter(Boolean).join('–')].filter(Boolean).join(' · '))}</div><button class="btn primary big" data-act="ev-checkin">I'm working this event</button>`
+      : `${po ? `<div class="evpost"><span class="pk k-${po.kind}">${esc(postLabel(po)) || '·'}</span><div><b>${esc(po.name)}</b><small>${esc(postKind(po.kind).name)}${postStaff(po).length > 1 ? ' · with ' + postStaff(po).filter(y => y !== x).map(y => esc(y.name)).join(', ') : ''}</small></div></div>${po.notes ? `<div class="note">${esc(po.notes)}</div>` : ''}` : '<div class="note warn-t">Checked in. The supervisor will give you a post.</div>'}
+        <div class="chips">${['atpost', 'break', 'off'].map(k => opt('ev-me', k, x.st === k, k === 'atpost' ? "I'm at my post" : k === 'break' ? 'On break' : 'Done for the day', '')).join('')}</div>
+        ${po && po.ll ? navLinks(po.ll.join(','), 'Directions to your post') : ''}`}
+  </section>`;
+}
+const EVENT_ACTIONS = {
+  'ev-start'() {
+    const f = UI.form, name = (f.name || '').trim();
+    if (!name) { showToast('Give the event a name', false); return; }
+    const base = blankEvent({ name, type: f.type, location: (f.location || '').trim(), start: (f.start || '').trim(), end: (f.end || '').trim(), channel: (f.channel || '').trim(), notes: (f.notes || '').trim() });
+    base.units = C.roster.map(r => ({ id: uid(), name: r.name, kind: r.kind, post: '' }));
+    UI.sheet = null; UI.form = {};
+    EVS.start(base); UI.view = 'event'; saveUi(); mapKind = null; render();
+    showToast(`Event started: ${name}. Add posts next.`, false);
+  },
+  'ev-save'() {
+    const f = UI.form, fields = {};
+    for (const k of ['name', 'type', 'location', 'start', 'end', 'channel', 'notes']) fields[k] = typeof f[k] === 'string' ? f[k].trim() : f[k];
+    if (!fields.name) { showToast('Give the event a name', false); return; }
+    UI.sheet = null; UI.form = {};
+    edispatch('evEdit', { fields }, 'Event details updated', 'note');
+  },
+  'post-save'() {
+    const f = UI.form;
+    if (!f.pll && f.pwhere === 'map') { UI.sheet = null; UI.pinMode = 'post'; const keep = { ...f }; UI.form = {}; UI.pendingPost = keep; render(); showToast('Tap the map where the post is', false); return; }
+    const ll = f.pll || (f.pwhere === 'me' && DEV.me ? DEV.me.ll : null);
+    if (f.pwhere === 'me' && !DEV.me) { showToast('Tap Locate me on the map first', false); return; }
+    const n = EV.posts.filter(x => x.kind === 'fixed').length + 1;
+    const name = (f.pname || '').trim() || (f.pkind === 'fixed' ? `Post ${n}` : postKind(f.pkind).name);
+    const post = { id: uid(), name, kind: f.pkind || 'fixed', ll, notes: (f.pnotes || '').trim() };
+    UI.sheet = null; UI.form = {};
+    edispatch('postAdd', { post }, `Post added: ${name}`, 'units');
+  },
+  'post-move'(id) { UI.sheet = null; UI.form = {}; UI.pinMode = 'post-move:' + id; if (UI.view !== 'event' && UI.view !== 'map') UI.view = 'event'; render(); showToast('Tap the map where the post goes', false); },
+  'post-del'(id) { const po = postIn(EV, id); if (!po) return; UI.sheet = null; UI.form = {}; edispatch('postDel', { id }, `Post removed: ${po.name}`, 'units'); },
+  'ev-assign'(arg) { const [pid, post] = arg.split('='), x = EV.people.find(y => y.id === pid); if (!x) return; edispatch('personPost', { id: pid, post, at: now() }, `${x.name} → ${postName(post)}`, 'people'); },
+  'ev-assign-new'(arg) {
+    const [num, post] = arg.split('='), m = C.members.find(y => y.num === num); if (!m) return;
+    edispatch('personAdd', { person: { id: uid(), num: m.num, name: m.name, cert: m.cert, post, st: 'assigned', t: now(), at: now() } }, `${m.name} → ${postName(post)}`, 'people');
+  },
+  'ev-unassign'(id) { const x = EV.people.find(y => y.id === id); if (!x) return; edispatch('personPost', { id, post: '', at: now() }, `${x.name} taken off ${postName(x.post)}`, 'people'); },
+  'ev-st'(arg) { const [id, st] = arg.split('='), x = EV.people.find(y => y.id === id); if (!x || x.st === st) return; edispatch('personSt', { id, st, at: now() }, `${x.name}: ${PERSON_ST[st].toLowerCase()}${x.post ? ' · ' + postName(x.post) : ''}`, 'people'); },
+  'ev-person-save'(id) {
+    const f = UI.form;
+    if (id) {
+      const x = EV.people.find(y => y.id === id); UI.sheet = null; UI.form = {};
+      if (x && (f.epost || '') !== (x.post || '')) edispatch('personPost', { id, post: f.epost || '', at: now() }, `${x.name} → ${f.epost ? postName(f.epost) : 'no post'}`, 'people'); else render();
+      return;
+    }
+    const num = memNum(f.num), name = (f.name || '').trim();
+    if (!name) { showToast('Enter the member\'s name', false); return; }
+    if (num && name && !C.members.some(m => m.num === num)) { C.members.push({ num, name, cert: f.cert || 'EMT' }); saveConfig(); }
+    UI.sheet = null; UI.form = {};
+    edispatch('personAdd', { person: { id: uid(), num, name, cert: f.cert || 'EMT', post: f.epost || '', st: 'assigned', t: now(), at: now() } }, `Checked in for the event: ${name}${f.epost ? ' → ' + postName(f.epost) : ''}`, 'people');
+  },
+  'ev-unit-assign'(arg) { const [name, post] = arg.split('='), r = C.roster.find(x => x.name === name); if (!r) return; edispatch('unitAdd', { unit: { id: uid(), name: r.name, kind: r.kind, post } }, `${r.name} → ${postName(post)}`, 'units'); },
+  'ev-unit-post'(arg) { const [id, post] = arg.split('='), u = EV.units.find(x => x.id === id); if (!u) return; edispatch('unitPost', { id, post }, `${u.name} → ${post ? postName(post) : 'no post'}`, 'units'); },
+  'ev-unit-save'(id) {
+    const f = UI.form;
+    if (id) { const u = EV.units.find(x => x.id === id); UI.sheet = null; UI.form = {}; if (u && (f.upost || '') !== (u.post || '')) edispatch('unitPost', { id, post: f.upost || '' }, `${u.name} → ${f.upost ? postName(f.upost) : 'no post'}`, 'units'); else render(); return; }
+    const name = (f.uname || '').trim().toUpperCase(); if (!name) { showToast('Pick or type a unit', false); return; }
+    const r = C.roster.find(x => x.name === name);
+    UI.sheet = null; UI.form = {};
+    edispatch('unitAdd', { unit: { id: uid(), name, kind: r ? r.kind : 'BLS', post: f.upost || '' } }, `Unit added to the event: ${name}`, 'units');
+  },
+  'ev-unit-del'(id) { const u = EV.units.find(x => x.id === id); if (!u) return; UI.sheet = null; UI.form = {}; edispatch('unitDel', { id }, `${u.name} off the event`, 'units'); },
+  'ev-pt-save'() {
+    const f = UI.form; if (!f.complaint) return;
+    const pt = { id: uid(), t: now(), post: f.ppost || '', age: f.age || 'Adult', complaint: f.complaint, outcome: f.outcome || 'Treated & released', hosp: f.outcome === 'Transported' ? f.phosp || '' : '', unit: f.outcome === 'Transported' ? f.punit || '' : '', note: (f.pnote || '').trim() };
+    UI.sheet = null; UI.form = {};
+    edispatch('ptAdd', { pt }, `Patient: ${pt.complaint}${pt.age !== 'Adult' ? ' (' + pt.age.toLowerCase() + ')' : ''} · ${pt.outcome}${pt.hosp ? ' to ' + ((hosp(pt.hosp) || {}).short || '') : ''}`, 'note');
+  },
+  'ev-pt-del'(id) { edispatch('ptDel', { id }, 'Patient entry removed', 'note'); },
+  'ev-brief'(arg, el) { copyText(eventBriefing(), el); },
+  'ev-end'() { UI.sheet = null; UI.form = {}; edispatch('evEnd', { at: now() }, `Event ended: ${EV.event.name}`, 'note'); },
+  'ev-mci'() {
+    const cmd = EV.people.find(x => x.st !== 'off' && x.cert === 'Officer');
+    UI.sheet = 'newinc';
+    UI.form = { type: 'Other', location: EV.event.location || '', municipality: '', hazards: [], lz: 'Not requested', est: EV.pts.length || 0, ic: cmd ? cmd.name : '', commandName: EV.event.name ? `${EV.event.name} Command` : '', fromEvent: true, _init: true };
+    render();
+  },
+  'ev-checkin'() {
+    const me = DEV.member; if (!me) return;
+    edispatch('personAdd', { person: { id: uid(), num: me.num, name: me.name, cert: me.cert, post: '', st: 'assigned', t: now(), at: now() } }, `Checked in for the event from a phone: ${me.name}`, 'people');
+  },
+  'ev-me'(st) {
+    const me = DEV.member, x = me && EV.people.find(y => y.num === me.num && y.st !== 'off'); if (!x || x.st === st) return;
+    edispatch('personSt', { id: x.id, st, at: now() }, `${x.name}: ${PERSON_ST[st].toLowerCase()}${x.post ? ' · ' + postName(x.post) : ''}`, 'people');
+  },
+};
+
 /* ---------- Member phone view ---------- */
 const myPid = () => DEV.member ? 'm' + DEV.member.num : '';
 const myResp = c => (c.resp || []).find(r => r.pid === myPid());
@@ -3994,6 +4434,7 @@ function memberView() {
   return `<div class="mview">
     ${alone ? `<section class="panel"><div class="note">${planEnded() ? "Your squad's shared board is off right now, so this phone only shows what was on it before." : "This phone isn't connected to your squad yet, so what's below is only on this phone. Open the invite link your supervisor sends you."}</div>${planEnded() ? '' : '<button class="btn small" data-act="sheet" data-arg="connect">Connect to my squad</button>'}</section>` : ''}
     ${mciBanner()}
+    ${memberEventCard()}
     <section class="panel">
       <div class="ph"><h2>${duty ? `On duty since ${hhmm(duty.t)}` : 'Off duty'}</h2><button class="btn small" data-act="m-duty">${duty ? 'Go off duty' : 'Go on duty'}</button></div>
       ${duty ? `<div class="field"><span class="lbl">Riding on</span><div class="chips">${opt('m-unit', '', !duty.unit, 'Own vehicle', 'small')}${ownUnits.map(u => opt('m-unit', u.name, duty.unit === u.name, `${esc(u.name)} <small>${esc(kindOf(u.kind).name)}</small>`, 'small')).join('')}</div></div>` : ''}
@@ -4262,7 +4703,7 @@ const SHIFT_ACTIONS = {
    document store with the same shape as the one Claude provides, so the
    sync code above runs unchanged on either.
    ===================================================================== */
-const BAKED_RELAY_URL = "http://127.0.0.1:8787";
+const BAKED_RELAY_URL = "";
 const RELAY_KEY = 'sc3:relay';
 let RELAY = DEMO ? null : read(RELAY_KEY);   // { url, token, name, org, role } once this tablet has joined
 const relayBase = u => String(u || '').trim().replace(/\/+$/, '');
@@ -4667,7 +5108,7 @@ const A = {
 
   'f-set'(arg) {
     const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
-    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind'];
+    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert'];
     UI.form[k] = UI.form[k] === v && !sticky.includes(k) ? '' : v;
     if (k === 'cat') UI.form.n = 1;
     render();
@@ -4913,6 +5354,12 @@ const A = {
   'inc-new'() {
     const f = UI.form;
     const base = blankState({ ...f, location: (f.location || '').trim(), commandName: (f.commandName || '').trim(), ic: (f.ic || '').trim() });
+    if (f.fromEvent && eventLive()) {
+      const t = now(), cmdPost = EV.posts.find(po => po.kind === 'cmd' && po.ll);
+      base.incident.ll = EV.event.ll || (cmdPost && cmdPost.ll) || null;
+      EV.units.forEach(u => { const have = base.units.find(x => x.name === u.name); if (have) { have.status = 'onscene'; have.t = t; } else base.units.push({ id: uid(), name: u.name, kind: u.kind, agency: C.agency.name, crew: 2, status: 'onscene', task: u.post ? postName(u.post) : '', t }); });
+      base.people = EV.people.filter(x => x.st !== 'off').map(x => ({ id: uid(), num: x.num, name: x.name, cert: x.cert, unit: '', task: x.post ? postName(x.post) : '', t }));
+    }
     base.log[0].text = `Command established${base.incident.commandName ? ': ' + base.incident.commandName : ''}${base.incident.ic ? ', ' + base.incident.ic : ''}`;
     startIncident(base, 'New incident started. Clock running.');
     if (f.fromCall) {
@@ -4920,6 +5367,11 @@ const A = {
       if (c) sdispatch('note', {}, `${c.type} at ${c.address} became an MCI`, 'note', { toast: false });
       DEV.role = 'command'; saveDev(); Sync.setRole(); UI.view = 'board'; saveUi(); render();
       showToast('MCI started from the call. This tablet is now Command.', false);
+    }
+    if (f.fromEvent) {
+      edispatch('note', {}, `The event became an MCI: ${base.incident.type || 'incident'}${base.incident.location ? ' at ' + base.incident.location : ''}`, 'note', { toast: false });
+      DEV.role = 'command'; saveDev(); Sync.setRole(); UI.view = 'board'; saveUi(); render();
+      showToast(`MCI started with ${plural(base.people.length, 'member')} and ${plural(EV.units.length, 'unit')} from the event on scene. This tablet is now Command.`, false);
     }
   },
   'load-sample'() { startIncident(sampleState(), 'Sample incident loaded'); },
@@ -4930,7 +5382,7 @@ const A = {
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
 
-Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS, MEMBER_ACTIONS, CAMERA_ACTIONS, FEED_ACTIONS);
+Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS, MEMBER_ACTIONS, CAMERA_ACTIONS, FEED_ACTIONS, EVENT_ACTIONS);
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -4985,7 +5437,7 @@ function tick() {
   const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
   set('now', hhmm(t));
   document.querySelectorAll('[data-since]').forEach(el => { const v = dur(t - Number(el.dataset.since)); if (el.textContent !== v) el.textContent = v; });
-  if ((UI.view === 'shift' || UI.view === 'member') && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
+  if ((UI.view === 'shift' || UI.view === 'member' || UI.view === 'event') && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
   set('elapsed', S.fresh ? '--:--' : dur(t - S.incident.dispatchAt));
   const due = S.par.last + S.par.interval * 60000, left = due - t;
   set('par', left >= 0 ? dur(left) : '+' + dur(-left));
@@ -5019,6 +5471,7 @@ if (!DEMO) { try { Object.keys(localStorage).filter(k => k.startsWith('sc3:') &&
 C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || (DEMO ? sampleConfig() : {})) });
 INC.load(DEMO ? sampleState : freshIncident);
 SHIFT.load(DEMO ? sampleShift : () => blankShift());
+EVS.load(DEMO ? sampleEvent : () => blankEvent({ none: true }));
 loadUi();
 render();
 setInterval(tick, 1000);

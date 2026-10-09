@@ -34,6 +34,7 @@ This is a clickable prototype for deciding what the real thing should be. It is 
 | **Radio** | METHANE, CAN, triage report, hospital notification, mutual-aid request, air medical request and command transfer, all written from the board. Also a channel reference. **Listen live** at the top: the county's public Broadcastify feeds (they open on Broadcastify, whose terms don't allow playing them inside another app), and feeds the squad adds that it has the right to use, which play right in RigBoard in a bar that stays up across screens |
 | **Log** | Every tap, time-stamped and marked with which tablet made it, for the after-action report |
 | **Supervisor** | The supervisor board for everyday calls (see above) |
+| **Event** | For a planned event rather than an emergency (a parade, the fireworks, a concert, a race). Posts on the map (numbered posts, first aid, command post, roaming, ambulance standby, cooling, gates), placed by tapping the map; members and units assigned to each; who's at their post, on break or done; a patient log (seen, released, transported, refused) with no patient names; a copyable briefing. Members' phones show their post with directions and "I'm at my post", and can check in to the event themselves. **Upgrade to MCI** starts an incident with the event's members and units already on scene. |
 
 Every action can be undone. **My agency** (in Menu) holds the squad's own logo (shown next to its name on every tablet and phone) and units, which load into every new day and incident; **PAR checks** are an option, off by default.
 
