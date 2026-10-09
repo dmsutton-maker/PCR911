@@ -4,7 +4,7 @@ A touch-first EMS command app for iPads in landscape, with a phone view for memb
 
 ## Tablets and jobs
 
-Each tablet picks a job, and each job has its own home screen. All of them share the same incident and the same supervisor board. The supervisor board is one board per day: it turns over by itself at 6 AM, carrying units, crew still on duty and any open call, so there is no shift to start.
+Each tablet picks a job, and each job has its own home screen. Tablets start on the Supervisor board; phones on My calls. All of them share the same incident and the same supervisor board. The supervisor board is one board per day: it turns over by itself at 6 AM, carrying units, crew still on duty and any open call, so there is no shift to start.
 
 | Job | Home screen |
 |---|---|
@@ -23,13 +23,13 @@ This is a clickable prototype for deciding what the real thing should be. It is 
 | View | What it does |
 |---|---|
 | **Board** | Triage counters (START or SALT, plus an optional White · Uninjured count), benchmarks you stamp with a tap, resources on scene and requested, a satellite map in the corner, patients awaiting transport, nearest hospitals with load |
-| **Map** | Pin the scene, staging and LZ by tapping. Locate me, the county staging areas, nearest hospitals with specialty filters, coordinates in decimal and degree-minute form for air medical, and links out to Apple and Google Maps |
-| **Transport** | Log a departure in five taps: category, unit, destination (nearest and best-fit first, with diversion and capacity shown), optional tag number and age group |
+| **Map** | Pin the scene, staging and LZ by tapping. Locate me, the county staging areas, cameras the squad adds (other agencies' or businesses', shared with every tablet; a still-image link refreshes in place) plus a link to 511NJ's traffic cameras, nearest hospitals with specialty filters, coordinates in decimal and degree-minute form for air medical, and links out to Apple and Google Maps |
+| **Transport** | Log a departure in five taps: category, unit, destination (nearest and best-fit first, with live divert status and each hospital's red/yellow/green room shown in color), optional tag number and age group |
 | **Units** | Lanes from Available to Released, with one-tap Arrived and To-scene buttons. Paste a list to load expected units, member check-in by number, and resource requests for EMS, county MCI assets, the NJ EMS Task Force, fire and special operations |
-| **Hospitals** | Capabilities, distance, ED status (Monmouth/Ocean divert terms), MCI capacity by color vs. sent, beds available by type |
+| **Hospitals** | Capabilities, distance, **live ED status, reason and comment** from New Jersey's public ED status board (njdivert.juvare.com, through the relay, every 3 minutes), MCI capacity by color vs. sent, beds available by type. Includes University Hospital, Newark, for the Eye Trauma Center for New Jersey |
 | **Phone** | Directory of published numbers, plus your own |
 | **ICS** | Unified command, command staff, operations and the medical group; tap a box to assign it |
-| **Radio** | METHANE, CAN, triage report, hospital notification, mutual-aid request, air medical request and command transfer, all written from the board. Also a channel reference |
+| **Radio** | METHANE, CAN, triage report, hospital notification, mutual-aid request, air medical request and command transfer, all written from the board. Also a channel reference and links to listen live to the county's public Broadcastify feeds |
 | **Log** | Every tap, time-stamped and marked with which tablet made it, for the after-action report |
 | **Supervisor** | The supervisor board for everyday calls (see above) |
 
@@ -56,7 +56,8 @@ node prototypes/scene-command/build.mjs
 - **Sharing needs the relay deployed** (see server/README.md) and each tablet signed in with an invite. Nothing is sent to CAD, EMTrack or anyone else.
 - **The map's live layer** is the NJ Office of GIS 2020 aerial imagery, loaded tile by tile. Where tiles can't load, because the page is sandboxed or offline, it falls back to the built-in map and the sample scene's aerial. Locate me needs a browser that grants location; the sandboxed preview does not.
 - **Distances are straight-line**, and the drive minutes are a rough estimate from them (1.3× the distance at 40 mph).
-- **Hospital capacity, beds and ED status are typed in** from what each hospital reports. There is no EMResource feed.
+- **Hospital capacity and beds are typed in** from what each hospital reports. ED status comes live from the public NJ ED status board, which isn't an official feed for apps: it can change shape without notice, so confirm diversion by radio or phone.
+- **There's no automatic traffic-camera feed.** New Jersey publishes none; 511NJ shows its cameras on its own site.
 - **Calls are typed in by the supervisor.** There is no CAD or paging feed, and no push alert: a member sees a new call when they open the app.
 - **The board starts empty.** Units, members (numbers like JS111) and calls are the squad's own. **Practice mode** — the same address with `?demo` on the end — has a made-up sample incident, day and roster, kept apart from the real board and never shared, for training and showing other squads.
 - **The sample incident and day, and their units, people and numbers, are made up.** Hospital capabilities, county assets, and published phone numbers are from the sources in the research notes; confirm them locally.

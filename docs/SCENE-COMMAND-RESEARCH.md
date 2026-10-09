@@ -88,3 +88,13 @@ No product puts triage counters, a hospital capacity grid, a transport log, and 
 4. Who is the current County EMS Coordinator, and what is the direct line?
 5. Do you see EMResource during an MCI, or does County Communications relay hospital capacity to you?
 6. Which squads are your usual mutual aid? Their unit numbers become the preloaded roster.
+
+## Added October 2026
+
+- **Live ED status:** New Jersey's public ED status page (https://njdivert.juvare.com/) loads `njdivert.juvare.com.json` every 3 minutes: `edStatus` (Normal, Psychiatric, Specialty, Full/Total, Closed…), `edStatusReason`, `comments`, `colorCode`, county and a resource id per hospital. Not a documented API; the board reads it through the relay.
+- **Eye trauma:** the Eye Trauma Center for New Jersey is at University Hospital, Newark (Rutgers NJMS Institute of Ophthalmology and Visual Science), also the region's Level I trauma center. Main number (973) 972-4300 per uhnj.org. https://njms.rutgers.edu/departments/ophthalmology/pctra.cfm
+- **Sheriff's Office MedStar:** county-run BLS since 2024 (ambulances and quick response vehicles, MedStar Central at Fort Monmouth; covers Wall, Sea Girt, Manasquan, Neptune City, Long Branch from May 2026, with backup elsewhere). https://www.mcsonj.org/monmouth-county-sheriffs-office-launches-ems-operation-amid-volunteer-shortage/
+- **Medical Ambulance Buses:** MAB-2 (Shark River Hills) and MAB-6 (Atlantic Highlands/Keyport), up to 20 stretcher patients each. https://www.mcsonj.org/medical-ambulance-bus-ready-for-use-in-bayshore-area/
+- **Air medical:** requested through County Communications. NJ State Police NorthSTAR (Somerset Airport) and Hackensack Meridian AirMed (AirMed Two at Ocean County Airport, operated with Air Methods). https://hackensackmeridianhealth.org/en/services/emergency-care/ems/airmed-one
+- **Scanner feeds (Broadcastify):** Monmouth County Fire/EMS, feed 40466 (county P25: North/Central/South fire and EMS, MedStar dispatch, Hazmat); Middletown & Bayshore towns Fire/EMS, 5104; Monmouth County Fire Ops 1, 40412 (recorded, about a minute behind). County list: https://www.broadcastify.com/listen/ctid/1783/publicsafety
+- **Traffic cameras:** no public NJDOT or NJ Turnpike Authority camera feed was found; 511NJ shows cameras on its own map, and NJDOT recordings are by request.

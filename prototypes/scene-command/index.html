@@ -1121,6 +1121,24 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .opt[aria-pressed="true"] .kind { background: transparent; color: inherit; border-color: currentColor; }
 .opt small { font: 500 13px/1.2 var(--body); opacity: 0.85; letter-spacing: 0; }
 .opt.tall { min-height: 64px; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; padding: 8px 14px; }
+.opt.cat-R { box-shadow: inset 8px 0 0 var(--red); }
+.opt.cat-Y { box-shadow: inset 8px 0 0 var(--yellow); }
+.opt.cat-G { box-shadow: inset 8px 0 0 var(--green); }
+.cps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.cp { font: 700 12px/1.5 var(--display); letter-spacing: 0.02em; padding: 1px 7px; border-radius: 5px; }
+.cp.c-R { background: var(--red); color: var(--red-ink); }
+.cp.c-Y { background: var(--yellow); color: var(--yellow-ink); }
+.cp.c-G { background: var(--green); color: var(--green-ink); }
+.cp.zero { opacity: 0.4; }
+.cp.sel { outline: 2px solid var(--fg); outline-offset: 1px; }
+.edlive { font-size: 14px; padding: 6px 10px; border-radius: 8px; border-left: 6px solid var(--line); background: var(--raised); text-align: left; }
+.edlive.ed-green { border-left-color: var(--ok); }
+.edlive.ed-red, .edlive.ed-black { border-left-color: var(--crit); }
+.edlive.ed-red b, .edlive.ed-black b { color: var(--crit); }
+.edlive.ed-yellow, .edlive.ed-orange, .edlive.ed-purple, .edlive.ed-blue { border-left-color: var(--warn); }
+.btn.mci-up { border-color: var(--crit); color: var(--crit); }
+.pin.cam { background: var(--surface); color: var(--fg); border: 2.5px solid var(--fg); border-radius: 6px; width: 30px; height: 30px; font-size: 10px; }
+.camimg { width: 100%; border-radius: 10px; background: #000; min-height: 120px; object-fit: contain; }
 .opt.cat-R[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: var(--red-ink); }
 .opt.cat-Y[aria-pressed="true"] { background: var(--yellow); border-color: var(--yellow); color: var(--yellow-ink); }
 .opt.cat-G[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: var(--green-ink); }
@@ -1345,56 +1363,61 @@ const MCI_NOTE = 'Alarm resources are the Parkway run cards in the Monmouth Coun
 
 /* Hospitals. `ll` from OpenStreetMap; phones only where an official source lists them. */
 const HOSPITALS = [
-  { id: 'jsumc', name: 'Jersey Shore University Medical Center', short: 'JSUMC', town: 'Neptune', sys: 'Hackensack Meridian Health', lic: { beds: 584, icu: 62, peds: 44, picu: 10, psych: 30 }, phones: { main: '732-775-5500', psych: '732-776-4555' },
+  { id: 'jsumc', divert: '195202', name: 'Jersey Shore University Medical Center', short: 'JSUMC', town: 'Neptune', sys: 'Hackensack Meridian Health', lic: { beds: 584, icu: 62, peds: 44, picu: 10, psych: 30 }, phones: { main: '732-775-5500', psych: '732-776-4555' },
     ll: [40.20898, -74.04099],
     trauma: 'Trauma · NJ Level II', caps: ['Trauma · NJ Level II', 'ACS Level I adult & peds', 'Comprehensive stroke', 'Cardiac surgery + PCI', "K. Hovnanian Children's", 'L&D'],
     tags: ['trauma', 'peds', 'stroke', 'pci', 'ob', 'psych'],
     note: "Monmouth County's only trauma center. State-designated Level II; verified by the American College of Surgeons as Level I adult (2022) and Level I pediatric (2025)." },
-  { id: 'mmc', name: 'Monmouth Medical Center', short: 'Monmouth Medical', town: 'Long Branch', sys: 'RWJBarnabas Health', lic: { beds: 483, icu: 28, peds: 15, picu: 5, psych: 63 }, phones: { main: '732-222-5200', psych: '732-923-6999' },
+  { id: 'mmc', divert: '195222', name: 'Monmouth Medical Center', short: 'Monmouth Medical', town: 'Long Branch', sys: 'RWJBarnabas Health', lic: { beds: 483, icu: 28, peds: 15, picu: 5, psych: 63 }, phones: { main: '732-222-5200', psych: '732-923-6999' },
     ll: [40.29526, -73.98561],
     caps: ['Primary stroke', 'Primary PCI', "Unterberg Children's", 'L&D · Level III NICU', 'Psych screening center', 'Hyperbaric (wound care)'], tags: ['peds', 'stroke', 'pci', 'ob', 'psych', 'hbo'],
     note: 'Runs the county psychiatric emergency screening service around the clock. Approved to move to Tinton Falls, about 2032; Long Branch keeps an ED.' },
-  { id: 'riverview', name: 'Riverview Medical Center', short: 'Riverview', town: 'Red Bank', sys: 'Hackensack Meridian Health', lic: { beds: 455, icu: 53, psych: 31 }, phones: { main: '732-741-2700', psych: '732-219-5325' },
+  { id: 'riverview', divert: '195210', name: 'Riverview Medical Center', short: 'Riverview', town: 'Red Bank', sys: 'Hackensack Meridian Health', lic: { beds: 455, icu: 53, psych: 31 }, phones: { main: '732-741-2700', psych: '732-219-5325' },
     ll: [40.35367, -74.06318],
     caps: ['Primary stroke', 'Primary PCI', 'L&D · NICU', 'Psych screening'], tags: ['stroke', 'pci', 'ob', 'psych'] },
-  { id: 'bayshore', name: 'Bayshore Medical Center', short: 'Bayshore', town: 'Holmdel', sys: 'Hackensack Meridian Health', lic: { beds: 211, icu: 26 }, phones: { main: '732-739-5900' },
+  { id: 'bayshore', divert: '195201', name: 'Bayshore Medical Center', short: 'Bayshore', town: 'Holmdel', sys: 'Hackensack Meridian Health', lic: { beds: 211, icu: 26 }, phones: { main: '732-739-5900' },
     ll: [40.40659, -74.19177],
     caps: ['Primary stroke', 'Primary PCI'], tags: ['stroke', 'pci'] },
-  { id: 'centrastate', name: 'CentraState Medical Center', short: 'CentraState', town: 'Freehold Twp', sys: 'Atlantic Health', lic: { beds: 276, icu: 26, peds: 12, psych: 19 }, phones: { main: '732-431-2000', psych: '732-294-2595' },
+  { id: 'centrastate', divert: '195190', name: 'CentraState Medical Center', short: 'CentraState', town: 'Freehold Twp', sys: 'Atlantic Health', lic: { beds: 276, icu: 26, peds: 12, psych: 19 }, phones: { main: '732-431-2000', psych: '732-294-2595' },
     ll: [40.23751, -74.31248],
     caps: ['Primary stroke', 'Primary PCI', 'Pediatric ED', 'L&D', 'Psych'], tags: ['peds', 'stroke', 'pci', 'ob', 'psych'],
     note: 'Part of Atlantic Health since 2021. Hersh Pediatric Center: pediatric ED and inpatient unit (2025).' },
-  { id: 'oumc', name: 'Ocean University Medical Center', short: 'Ocean University', town: 'Brick', sys: 'Hackensack Meridian Health', lic: { beds: 311, icu: 24 }, phones: { main: '732-840-2200' },
+  { id: 'oumc', divert: '195205', name: 'Ocean University Medical Center', short: 'Ocean University', town: 'Brick', sys: 'Hackensack Meridian Health', lic: { beds: 311, icu: 24 }, phones: { main: '732-840-2200' },
     ll: [40.07664, -74.13303],
     caps: ['Primary stroke', 'Primary PCI', 'L&D', 'Hyperbaric (wound care)'], tags: ['stroke', 'pci', 'ob', 'hbo'] },
-  { id: 'cmc', name: 'Community Medical Center', short: 'Community', town: 'Toms River', sys: 'RWJBarnabas Health', lic: { beds: 587, icu: 50, peds: 17 }, phones: { main: '732-557-8000', ed: '732-557-8080', hbo: '732-557-2121' },
+  { id: 'cmc', divert: '195192', name: 'Community Medical Center', short: 'Community', town: 'Toms River', sys: 'RWJBarnabas Health', lic: { beds: 587, icu: 50, peds: 17 }, phones: { main: '732-557-8000', ed: '732-557-8080', hbo: '732-557-2121' },
     ll: [39.96254, -74.21462],
     caps: ['Primary stroke', 'Primary PCI', 'L&D', 'Hyperbaric (wound care)'], tags: ['stroke', 'pci', 'ob', 'hbo'],
     note: 'Hyperbaric center is a weekday wound-care program (Mon–Fri 8:00–3:30), not a 24/7 emergency chamber.' },
-  { id: 'mmcsc', name: 'Monmouth Medical Center Southern Campus', short: 'MMC Southern', town: 'Lakewood', sys: 'RWJBarnabas Health', lic: { beds: 241, icu: 20, psych: 60 }, phones: { main: '732-363-1900', ed: '732-886-4525', psych: '732-886-4474' },
+  { id: 'mmcsc', divert: '195223', name: 'Monmouth Medical Center Southern Campus', short: 'MMC Southern', town: 'Lakewood', sys: 'RWJBarnabas Health', lic: { beds: 241, icu: 20, psych: 60 }, phones: { main: '732-363-1900', ed: '732-886-4525', psych: '732-886-4474' },
     ll: [40.07321, -74.21940],
     caps: ['Primary stroke', 'Psych screening center (Ocean Co.)', 'Hyperbaric (wound care)'], tags: ['stroke', 'psych', 'hbo'],
     note: "Ocean County's primary psychiatric screening center." },
-  { id: 'rwjuh', name: 'Robert Wood Johnson University Hospital', short: 'RWJUH', town: 'New Brunswick', sys: 'RWJBarnabas Health', lic: { beds: 603, icu: 97, peds: 54, picu: 14 }, phones: { main: '732-828-3000' },
+  { id: 'rwjuh', divert: '195228', name: 'Robert Wood Johnson University Hospital', short: 'RWJUH', town: 'New Brunswick', sys: 'RWJBarnabas Health', lic: { beds: 603, icu: 97, peds: 54, picu: 14 }, phones: { main: '732-828-3000' },
     ll: [40.49530, -74.44961],
     trauma: 'Trauma · NJ Level I', caps: ['Trauma · NJ Level I', 'ACS Level I adult & peds', 'Comprehensive stroke', 'Cardiac surgery + PCI', "Bristol-Myers Squibb Children's"],
     tags: ['trauma', 'peds', 'stroke', 'pci'], note: 'Nearest state-designated Level I trauma center to Monmouth County.' },
-  { id: 'jfk', name: 'JFK University Medical Center', short: 'JFK', town: 'Edison', sys: 'Hackensack Meridian Health', lic: null, phones: null,
+  { id: 'jfk', divert: '195203', name: 'JFK University Medical Center', short: 'JFK', town: 'Edison', sys: 'Hackensack Meridian Health', lic: null, phones: null,
     ll: [40.55635, -74.35017],
     caps: ['Comprehensive stroke', 'Primary PCI'], tags: ['stroke', 'pci'] },
-  { id: 'obmc', name: 'Old Bridge Medical Center', short: 'Old Bridge', town: 'Old Bridge', sys: 'Hackensack Meridian Health', lic: { beds: 113, icu: 10 }, phones: { main: '732-360-1000' },
+  { id: 'obmc', divert: '195208', name: 'Old Bridge Medical Center', short: 'Old Bridge', town: 'Old Bridge', sys: 'Hackensack Meridian Health', lic: { beds: 113, icu: 10 }, phones: { main: '732-360-1000' },
     ll: [40.38335, -74.32351],
     caps: ['Primary stroke'], tags: ['stroke'], note: 'Formerly Raritan Bay Medical Center, Old Bridge (renamed 2021).' },
-  { id: 'rbmc', name: 'Raritan Bay Medical Center', short: 'Raritan Bay', town: 'Perth Amboy', sys: 'Hackensack Meridian Health', lic: { beds: 340, icu: 25, psych: 26 }, phones: { main: '732-324-5000', psych: '732-324-5289' },
+  { id: 'rbmc', divert: '195209', name: 'Raritan Bay Medical Center', short: 'Raritan Bay', town: 'Perth Amboy', sys: 'Hackensack Meridian Health', lic: { beds: 340, icu: 25, psych: 26 }, phones: { main: '732-324-5000', psych: '732-324-5289' },
     ll: [40.51910, -74.28101],
     caps: ['Primary stroke', 'Primary PCI', 'Psych', 'Hyperbaric (wound care)'], tags: ['stroke', 'pci', 'psych', 'hbo'] },
-  { id: 'somc', name: 'Southern Ocean Medical Center', short: 'Southern Ocean', town: 'Manahawkin', sys: 'Hackensack Meridian Health', lic: { beds: 156, icu: 12 }, phones: { main: '609-597-6011' },
+  { id: 'somc', divert: '195211', name: 'Southern Ocean Medical Center', short: 'Southern Ocean', town: 'Manahawkin', sys: 'Hackensack Meridian Health', lic: { beds: 156, icu: 12 }, phones: { main: '609-597-6011' },
     ll: [39.72105, -74.28469],
     caps: ['Primary stroke', 'L&D', 'Hyperbaric (wound care)'], tags: ['stroke', 'ob', 'hbo'] },
-  { id: 'cbmc', name: 'Cooperman Barnabas Medical Center', short: 'Cooperman Barnabas', town: 'Livingston', sys: 'RWJBarnabas Health', lic: { beds: 529, icu: 44, peds: 35, picu: 10, burn: 18 }, phones: { main: '973-322-5000', ed: '973-322-5180', burn: '973-322-5920' },
+  { id: 'cbmc', divert: '195232', name: 'Cooperman Barnabas Medical Center', short: 'Cooperman Barnabas', town: 'Livingston', sys: 'RWJBarnabas Health', lic: { beds: 529, icu: 44, peds: 35, picu: 10, burn: 18 }, phones: { main: '973-322-5000', ed: '973-322-5180', burn: '973-322-5920' },
     ll: [40.76346, -74.30484],
     caps: ['State burn center', 'Comprehensive stroke', 'Pediatric burns', 'Hyperbaric'], tags: ['burn', 'stroke', 'peds', 'hbo'],
+    divertBurn: '205977',
     note: "New Jersey's only state-certified burn center: 12 burn ICU and 18 step-down beds. Formerly Saint Barnabas. The Crozer (PA) burn center closed in 2025." },
+  { id: 'uh', divert: '195245', name: 'University Hospital', short: 'University Hospital', town: 'Newark', sys: 'State of New Jersey · Rutgers NJMS', phones: { main: '973-972-4300' },
+    ll: [40.74054, -74.19118],
+    trauma: 'Trauma · NJ Level I', caps: ['Trauma · NJ Level I', 'Eye Trauma Center for New Jersey'], tags: ['trauma', 'eye'],
+    note: 'Home of the Eye Trauma Center for New Jersey (Rutgers NJMS Institute of Ophthalmology and Visual Science), with ophthalmology covering the trauma service around the clock. About an hour from Monmouth by ground: for a severe eye injury, ask medical control, and consider air medical.' },
 ];
 
 /* No hospital near Monmouth is verified for 24/7 emergency hyperbaric care; the local chambers are wound-care programs.
@@ -1408,6 +1431,7 @@ const SPECIALTIES = [
   { k: 'ob',     name: 'L&D' },
   { k: 'psych',  name: 'Psych' },
   { k: 'hbo',    name: 'Hyperbaric' },
+  { k: 'eye',    name: 'Eye trauma' },
 ];
 
 const BED_TYPES = [
@@ -1424,11 +1448,48 @@ const BED_TYPES = [
    Trauma patients are never diverted from a trauma center, nor burn patients from a burn center. */
 const ED_STATUS = ['Open', 'ED divert', 'Critical care divert', 'Special services divert', 'Psychiatric divert', 'Full divert', 'Facility divert'];
 const isDivert = s => !!s && s !== 'Open';
+
+/* Live ED status from New Jersey's public Emergency Department Status board (njdivert.juvare.com), passed through the
+   squad relay because the site can't be read from a page elsewhere. Each tablet asks every three minutes; nothing
+   about it is shared or stored. What a hospital tells your team still goes in by hand on the Hospitals screen. */
+let DIVERT = null;   // { at, byId: { id: { status, reason, comment, color } } }
+const liveEd = (h, burn) => (DIVERT && (burn ? h.divertBurn : h.divert) ? DIVERT.byId[burn ? h.divertBurn : h.divert] || null : null);
+const liveDiverted = d => !!d && !!d.status && !/^normal$/i.test(d.status);
+const edAvoid = (h, k, burnPt) => {
+  const d = liveEd(h), exempt = (k === 'R' && h.trauma) || (burnPt && (h.tags || []).includes('burn'));
+  return (liveDiverted(d) && !exempt) || (d && /closed/i.test(d.status)) || (isDivert(hospState(h.id).ed) && !exempt);
+};
+function liveEdHtml(h, compact) {
+  const lines = [[liveEd(h), ''], [liveEd(h, true), 'Burn center: ']].filter(([d]) => d);
+  return lines.map(([d, pre]) => {
+    const more = [d.reason, d.comment].filter(x => x && x !== '.').join(' · ');
+    return `<div class="edlive ed-${esc(d.color || 'none')}"><b>${esc(pre + d.status)}</b>${more ? ` <span>${esc(more)}</span>` : ''}${compact ? '' : ` <span class="note">NJ ED status · ${hhmm(DIVERT.at)}</span>`}</div>`;
+  }).join('');
+}
+async function loadDivert() {
+  const base = relayBase((RELAY && RELAY.url) || BAKED_RELAY_URL);
+  if (IN_CLAUDE || !base || document.visibilityState === 'hidden') return;
+  try {
+    const r = await fetch(base + '/v1/divert');
+    if (!r.ok) return;
+    const d = await r.json();
+    DIVERT = { at: Date.parse(d.updated) || now(), fetched: now(), byId: Object.fromEntries((d.hospitals || []).map(x => [String(x.id), x])) };
+    if (!UI.sheet || UI.sheet === 'transport' || /^call-hosp/.test(UI.sheet)) render();
+  } catch (e) { /* offline, or the relay can't reach the site */ }
+}
 const COUNTY_STAGING = [
   { name: 'Monmouth Executive Airport', note: '1717 Route 34, Wall', ll: [40.18944, -74.12472] },
   { name: 'Parkway Monmouth Rest Area', note: 'Between exits 98 and 100, Wall', ll: [40.19844, -74.09912] },
 ];
 
+/* Public scanner feeds on Broadcastify (checked October 2026). They open in the browser or the Broadcastify app, and
+   run 15 to 60 seconds behind: for awareness only, never in place of a radio. */
+const LIVE_FEEDS = [
+  { name: 'Monmouth County Fire/EMS', id: 40466, note: 'County P25 system: North, Central and South fire and EMS dispatch, MedStar dispatch, Hazmat' },
+  { name: 'Middletown & Bayshore towns Fire/EMS', id: 5104, note: 'Bayshore fire and EMS' },
+  { name: 'Monmouth County Fire Ops 1', id: 40412, note: 'Recorded and uploaded, so about a minute behind' },
+];
+const FEEDS_ALL = 'https://www.broadcastify.com/listen/ctid/1783/publicsafety';
 const CHANNELS = [
   { name: 'EMS Countywide', freq: '153.755', use: 'Interagency EMS' },
   { name: 'Monmouth EMS 2', freq: '155.340', use: 'Ambulance, county and hospital' },
@@ -1526,10 +1587,14 @@ const REQUEST_CATALOG = [
   { group: 'EMS · through County Communications', what: 'ALS / MICU units', hint: 'HMH or RWJBH paramedics' },
   { group: 'EMS · through County Communications', what: 'Ambulance strike team', hint: 'About 5 ambulances and a leader' },
   { group: 'EMS · through County Communications', what: 'EMS supervisor' },
-  { group: 'EMS · through County Communications', what: 'Air medical', hint: 'County Communications coordinates the aircraft' },
+  { group: 'EMS · through County Communications', what: 'Air medical', hint: 'County Communications calls it: NJSP NorthSTAR (Somerset Airport) or HMH AirMed Two (Ocean County Airport)' },
+  { group: "Sheriff's Office · through County Communications", what: 'MedStar BLS ambulance', hint: 'County-run EMS, from MedStar Central at Fort Monmouth' },
+  { group: "Sheriff's Office · through County Communications", what: 'MedStar quick response vehicle' },
+  { group: "Sheriff's Office · through County Communications", what: 'MedStar Mass Casualty Response Unit', hint: 'MedStar Central, Fort Monmouth' },
+  { group: "Sheriff's Office · through County Communications", what: 'Medical Ambulance Bus MAB-2', hint: 'Shark River Hills · up to 20 stretcher patients' },
+  { group: "Sheriff's Office · through County Communications", what: 'Medical Ambulance Bus MAB-6', hint: 'Atlantic Highlands / Keyport · up to 20 stretcher patients' },
   { group: 'County MCI support', what: 'Mass Casualty Trailer 67-MCT-1', hint: 'Marlboro FA' },
   { group: 'County MCI support', what: 'Mass Casualty Response unit', hint: 'MCR-1 Atlantic Highlands · MCR-2 Howell' },
-  { group: 'County MCI support', what: 'Medical Ambulance Bus', hint: 'MAB-2 Shark River Hills · MAB-6 Atl. Highlands/Keyport' },
   { group: 'County MCI support', what: 'Staging Area Management Team', hint: 'SAMT-1 West Long Branch · SAMT-2 Hazlet' },
   { group: 'County MCI support', what: 'Field Comm', hint: 'Mobile communications; automatic at 6+ squads' },
   { group: 'County MCI support', what: 'County EMS Coordinator' },
@@ -1693,7 +1758,7 @@ const RAILS = {
   command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log', 'shift'],
   triage:    ['triage', 'board', 'units', 'map', 'phone', 'log'],
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
-  supervisor: ['shift', 'hospitals', 'phone', 'map', 'board'],
+  supervisor: ['shift', 'hospitals', 'map', 'phone', 'radio', 'board'],
   member:    ['member', 'shift', 'phone'],
 };
 /* Inside Claude the page can share a board between tablets; as a plain web page it runs on each tablet alone. */
@@ -1709,6 +1774,7 @@ function defaultConfig() {
     roster: [],
     members: [],
     contacts: [],
+    cameras: [],   // { id, name, org, url, ll } added by the squad: other agencies' or businesses' cameras
   };
 }
 
@@ -1880,6 +1946,7 @@ function sampleState() {
 
 /* Boards first set up before the squad was named carry the placeholder name. */
 function migrateConfig(c) {
+  if (!Array.isArray(c.cameras)) c.cameras = [];
   if (c.agency && c.agency.name === 'Squad 78') c.agency = { ...c.agency, name: 'Hatzalah Jersey Shore', num: c.agency.num || '78' };
   return c;
 }
@@ -2237,6 +2304,7 @@ function mapView() {
             <a class="btn small" href="https://www.google.com/maps/@${I.ll[0]},${I.ll[1]},200m/data=!3m1!1e3" target="_blank" rel="noopener">${icon('ext')} Google</a>
           </div>` : `<div class="note">${I.municipality ? `Centered on ${esc(I.municipality)}. ` : ''}Choose Scene, then tap where the incident is. Or use Locate me.</div>`}
       </section>
+      ${camerasPanel()}
       <section class="panel">
         <div class="ph"><h2>County staging areas</h2><span class="meta">Activate through County Communications</span></div>
         <div>${COUNTY_STAGING.map((c, i) => { const mi = miles(sceneLL(), c.ll); return `<div class="load"><span class="nm">${esc(c.name)} <span class="note">${esc(c.note)}</span></span><span class="dist">${mi != null ? mi.toFixed(1) + ' mi' : ''}</span><span class="why"><button class="btn small" data-act="use-cstage" data-arg="${i}">Use as staging</button><button class="btn small" data-act="map-goto" data-arg="${c.ll.join(',')}">Show</button></span></div>`; }).join('')}</div>
@@ -2252,6 +2320,68 @@ function mapView() {
     </div>
   </div>`;
 }
+
+/* Cameras. New Jersey publishes no open feed of its traffic cameras, so the board doesn't pull them in by itself;
+   511NJ shows them on its own map. The squad adds the cameras other organizations share with it: a town's, a
+   school's, a business's. A link to a still image shows here and refreshes; anything else opens in a new tab. */
+const CAM_511 = 'https://511nj.org/';
+const camRef = () => S.incident.ll || (DEV.me && DEV.me.ll) || sceneLL();
+const camIsImage = u => /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(u || '');
+const safeUrl = u => (/^https?:\/\//i.test(u || '') ? u : '');
+function camerasPanel() {
+  const ref = camRef();
+  const list = C.cameras.slice().sort((a, b) => (ref && a.ll ? miles(ref, a.ll) : 999) - (ref && b.ll ? miles(ref, b.ll) : 999));
+  return `<section class="panel">
+    <div class="ph"><h2>Cameras</h2><button class="btn small" data-act="sheet" data-arg="cam-add">${icon('plus')} Add</button></div>
+    <div>${list.map(c => { const mi = ref && c.ll ? miles(ref, c.ll) : null; return `<div class="load"><span class="nm">${esc(c.name)} <span class="note">${esc(c.org || '')}</span></span><span class="dist">${mi != null ? mi.toFixed(1) + ' mi' : ''}</span><span class="why"><button class="btn small" data-act="sheet" data-arg="cam:${esc(c.id)}">View</button>${c.ll ? `<button class="btn small" data-act="map-goto" data-arg="${c.ll.join(',')}">Show</button>` : ''}</span></div>`; }).join('') || `<div class="note">No cameras added yet. Add ones other organizations share with your squad; every tablet sees them.</div>`}</div>
+    <a class="btn small" href="${CAM_511}" target="_blank" rel="noopener">${icon('ext')} Traffic cameras on 511NJ</a>
+  </section>`;
+}
+function camAddSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { cwhere: S.incident.ll ? 'scene' : DEV.me ? 'me' : 'coords', _init: true });
+  return {
+    title: 'Add a camera',
+    body: `<div class="grid2">
+        ${field('Name', input('cam-name', 'camname', f.camname, 'e.g. Main St & Ocean Ave'))}
+        ${field('Whose camera', input('cam-org', 'camorg', f.camorg, 'e.g. Long Branch PD, a school, a business'))}
+      </div>
+      ${field('Link', input('cam-url', 'camurl', f.camurl, 'https://…', 'inputmode="url" autocapitalize="off"'))}
+      <div class="note">A link to a still image (ending in .jpg or .png) shows here and refreshes every few seconds. Any other link (a stream or the camera's own page) opens in a new tab.</div>
+      ${field('Where it is', `<div class="chips">${opt('f-set', 'cwhere=scene', f.cwhere === 'scene', 'At the scene pin', 'small')}${opt('f-set', 'cwhere=me', f.cwhere === 'me', 'Where I am', 'small')}${opt('f-set', 'cwhere=coords', f.cwhere === 'coords', 'Coordinates', 'small')}</div>`)}
+      ${f.cwhere === 'coords' ? field('Coordinates', input('cam-ll', 'camll', f.camll, '40.2205, -74.0121', 'inputmode="decimal"')) : ''}
+      <div class="note">Only add cameras you're allowed to use. Everyone signed in to the squad sees the list.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="cam-save">Save camera</button>`,
+  };
+}
+function camSheet(id) {
+  const c = C.cameras.find(x => x.id === id);
+  if (!c) return { title: 'Camera', body: '<div class="empty">This camera was removed.</div>' };
+  const url = safeUrl(c.url), ref = camRef(), mi = ref && c.ll ? miles(ref, c.ll) : null;
+  return {
+    title: c.name,
+    body: `<div class="note">${esc(c.org || 'Camera')}${mi != null ? ` · ${mi.toFixed(1)} mi from ${S.incident.ll ? 'the scene' : 'here'}` : ''}${c.ll ? ` · ${esc(fmtLL(c.ll))}` : ''}</div>
+      ${url && camIsImage(url) ? `<img class="camimg" alt="${esc(c.name)}" src="${esc(url)}" data-cam="${esc(url)}">` : ''}
+      ${url ? `<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${icon('ext')} Open the camera</a>` : '<div class="note crit-t">This camera has no usable link.</div>'}`,
+    foot: `<button class="btn danger" data-act="cam-del" data-arg="${esc(c.id)}">Remove</button><span class="grow"></span>${c.ll ? `<button class="btn" data-act="cam-show" data-arg="${c.ll.join(',')}">Show on map</button>` : ''}<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+const CAMERA_ACTIONS = {
+  'cam-save'() {
+    const f = UI.form, name = (f.camname || '').trim(), url = (f.camurl || '').trim();
+    if (!name) { showToast('Give the camera a name', false); return; }
+    if (!safeUrl(url)) { showToast('The link has to start with https://', false); return; }
+    let ll = null;
+    if (f.cwhere === 'scene') ll = S.incident.ll;
+    else if (f.cwhere === 'me') ll = DEV.me && DEV.me.ll;
+    else { const m = String(f.camll || '').match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/); if (m) ll = [Number(m[1]), Number(m[2])]; }
+    if (!ll || !(Math.abs(ll[0]) <= 90 && Math.abs(ll[1]) <= 180)) { showToast(f.cwhere === 'me' ? 'Tap Locate me on the map first' : f.cwhere === 'scene' ? 'Pin the scene first, or enter coordinates' : 'Enter coordinates like 40.2205, -74.0121', false); return; }
+    C.cameras.push({ id: uid(), name, org: (f.camorg || '').trim(), url, ll });
+    saveConfig(); UI.sheet = null; UI.form = {}; render(); showToast(`Camera added: ${name}`, false);
+  },
+  'cam-del'(id) { C.cameras = C.cameras.filter(c => c.id !== id); saveConfig(); UI.sheet = null; UI.form = {}; render(); },
+  'cam-show'(ll) { UI.sheet = null; UI.form = {}; UI.view = 'map'; render(); setTimeout(() => { if (MAP) MAP.setView(ll.split(',').map(Number), 16); }, 50); },
+};
 
 function hospFilterChips() {
   return `<div class="chips">${SPECIALTIES.map(s => opt('hosp-filter', s.k, UI.hospFilter.includes(s.k), esc(s.name), 'small')).join('')}</div>`;
@@ -2316,6 +2446,7 @@ function hospitalsView() {
         return `<button class="panel hosp" data-act="sheet" data-arg="hosp:${h.id}">
           <div class="ph"><div><h3>${esc(h.name)}</h3><div class="sub">${esc(h.town)} · ${esc(h.sys)}${h.lic ? ` · ${h.lic.beds} licensed beds` : ''}</div></div>${mi != null ? `<span class="dist">${mi.toFixed(1)} mi<br><span class="note">~${estMin(mi)} min</span></span>` : ''}</div>
           <div class="caps">${h.caps.map(c => `<span class="cap ${/trauma/i.test(c) ? 'trauma' : ''}">${esc(c)}</span>`).join('')}</div>
+          ${liveEdHtml(h)}
           <div class="ph"><span class="lbl">MCI capacity · sent / can take</span>${hs.ed ? `<span class="pill ${isDivert(hs.ed) ? 'diversion' : 'open'}">${isDivert(hs.ed) ? esc(hs.ed) : 'ED open'}</span>` : ''}</div>
           <div class="capgrid">${TX_CATS.map(k => {
             const s = hospSent(h.id, k), c = cap ? cap[k] : null;
@@ -2390,6 +2521,12 @@ function radioView() {
         <div class="note">${esc(s.when)}</div>
         <p class="script" id="script-${i}">${s.html}</p>
       </section>`).join('')}
+      <section class="panel">
+        <div class="ph"><h2>Listen live</h2><span class="meta">Broadcastify</span></div>
+        <div class="note">Public scanner feeds. They run 15 to 60 seconds behind and can drop out: for awareness, never in place of your radio.</div>
+        <div>${LIVE_FEEDS.map(f => `<a class="load" href="https://www.broadcastify.com/listen/feed/${f.id}" target="_blank" rel="noopener"><span class="nm">${esc(f.name)} <span class="note">${esc(f.note)}</span></span><span class="why">${icon('ext')} Listen</span></a>`).join('')}</div>
+        <a class="btn small" href="${FEEDS_ALL}" target="_blank" rel="noopener">${icon('ext')} All Monmouth County feeds</a>
+      </section>
       <section class="panel">
         <div class="ph"><h2>Channel reference</h2></div>
         <div class="note">As published in the Monmouth County EMS communications plan (2023) and the NJ JEMS plan. Confirm with County Communications before you rely on any of them.</div>
@@ -2716,6 +2853,7 @@ function syncMarkers() {
   if (I.stagingLL) L.marker(I.stagingLL, { icon: pinIcon('staging', 'S', 34), title: 'Staging' }).addTo(ML.pins);
   if (I.ll) L.marker(I.ll, { icon: pinIcon('scene', 'SCENE', 40), title: 'Scene', zIndexOffset: 1000 }).addTo(ML.pins);
   COUNTY_STAGING.forEach(c => L.marker(c.ll, { icon: pinIcon('cstage', 'S', 30), title: c.name }).bindTooltip(`County staging: ${c.name}`, { direction: 'top', offset: [0, -14] }).addTo(ML.pins));
+  C.cameras.filter(c => c.ll).forEach(c => L.marker(c.ll, { icon: pinIcon('cam', 'CAM', 30), title: c.name }).bindTooltip(`Camera: ${c.name}`, { direction: 'top', offset: [0, -14] }).on('click', () => openSheet('cam:' + c.id)).addTo(ML.pins));
   ML.hosp.clearLayers();
   filteredHospitals().forEach(h => L.marker(h.ll, { icon: pinIcon('hosp' + (h.trauma ? ' trauma' : ''), 'H', 28), title: h.name })
     .bindTooltip(`${h.short}${hospMiles(h) != null ? ' · ' + hospMiles(h).toFixed(1) + ' mi' : ''}`, { direction: 'top', offset: [0, -14] }).addTo(ML.hosp));
@@ -2760,7 +2898,7 @@ function sheetHtml() {
     transport: transportSheet, par: parSheet, unit: unitSheet, 'unit-add': unitAddSheet, 'load-units': loadUnitsSheet, request: requestSheet,
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
-    role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet,
+    role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet, 'cam-add': camAddSheet, cam: camSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -2795,12 +2933,20 @@ function transportSheet() {
       ${field('Destination · nearest and best fit first', `<div class="opt-grid wide">${hs.map(h => {
         const cap = hospCap(h.id), c = k && cap ? cap[k] : null, s = k ? hospSent(h.id, k) : 0;
         const left = c != null ? c - s : null, mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed;
-        const exempt = (k === 'R' && h.trauma) || (f.burn && h.tags.includes('burn'));
-        const capTxt = isDivert(ed) && !exempt ? `<span class="crit-t">${esc(ed)}</span>` : left == null ? 'capacity not reported' : left > 0 ? `${left} ${cat(k).color} open` : '<span class="crit-t">at capacity</span>';
-        return opt('f-set', 'hosp=' + h.id, f.hosp === h.id, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${capTxt}${k === 'R' && h.trauma ? ' · ' + esc(h.trauma) : ''}</small>`, 'tall');
+        const exempt = (k === 'R' && h.trauma) || (f.burn && h.tags.includes('burn')), live = liveEd(h);
+        const capTxt = liveDiverted(live) && !exempt ? `<span class="crit-t">${esc(live.status)}${live.reason ? ' · ' + esc(live.reason) : ''}</span>` : isDivert(ed) && !exempt ? `<span class="crit-t">${esc(ed)}</span>` : left == null ? (live ? `ED ${esc(live.status.toLowerCase())}` : 'capacity not reported') : left > 0 ? `${left} ${cat(k).color} open` : '<span class="crit-t">at capacity</span>';
+        return opt('f-set', 'hosp=' + h.id, f.hosp === h.id, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${capTxt}${k === 'R' && h.trauma ? ' · ' + esc(h.trauma) : ''}</small>${capPills(h, k)}`, 'tall');
       }).join('')}</div>`)}`,
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="tx-save" ${k && f.unit && f.hosp ? '' : 'disabled'}>Log departure</button>`,
   };
+}
+/* Red, yellow and green at a glance: what each hospital can still take, in its triage color. */
+function capPills(h, k) {
+  const cap = hospCap(h.id);
+  return `<span class="cps">${TX_CATS.map(c => {
+    const s = hospSent(h.id, c), m = cap ? cap[c] : null, left = m != null ? Math.max(0, m - s) : null;
+    return `<span class="cp c-${c}${k === c ? ' sel' : ''}${left === 0 ? ' zero' : ''}">${cat(c).color} ${left == null ? (s ? s + ' sent' : '—') : left + ' open'}</span>`;
+  }).join('')}</span>`;
 }
 function hospRank(h, k, o) {
   let r = o ? estMin(miles(o, h.ll)) : 60;
@@ -2808,6 +2954,8 @@ function hospRank(h, k, o) {
   const cap = hospCap(h.id), ed = hospState(h.id).ed;
   if (k && cap && hospSent(h.id, k) >= cap[k]) r += 200;
   if (isDivert(ed) && !(k === 'R' && h.trauma)) r += 300;
+  if (edAvoid(h, k, UI.form.burn)) r += 300;
+  if (liveEd(h) && /closed/i.test(liveEd(h).status)) r += 1000;
   if ((UI.form.age === 'Child' || UI.form.age === 'Infant') && (h.tags || []).includes('peds')) r -= 15;
   return r;
 }
@@ -3390,7 +3538,7 @@ const STEPS = ['disp', 'enroute', 'onscene', 'transport', 'hospital', 'clear'];
 const STEP_SHORT = { disp: 'Disp', enroute: 'En rt', onscene: 'Scene', transport: 'Trans', hospital: 'Hosp' };
 const STEP_NAMES = { disp: 'Dispatched', enroute: 'En route', onscene: 'On scene', transport: 'Transporting', hospital: 'At hospital', clear: 'Clear' };
 const CALL_SOURCES = ['Our hotline', 'County Communications', 'Mutual aid request'];
-const CALL_REQS = ['ALS', 'Ambulance', 'Mutual aid ambulance', 'Police', 'Fire', 'Supervisor'];
+const CALL_REQS = ['ALS', 'Ambulance', 'Mutual aid ambulance', 'Sheriff MedStar', 'Police', 'Fire', 'Supervisor'];
 const OUTCOMES = ['Transported', 'Refusal (RMA)', 'Lift assist / no transport', 'No patient found', 'Cancelled', 'Mutual aid covered'];
 const OOS_REASONS = ['Mechanical', 'Restocking', 'Cleaning', 'No crew', 'Fuel', 'Other'];
 const NO_ENROUTE_WARN = 5 * 60000;   // dispatched with nobody en route
@@ -3424,7 +3572,8 @@ function nextDay(prev, t = now()) {
 let turningDay = false;
 function maybeNewDay() {
   const t = now();
-  if (!SH || SH.sample || turningDay || (SH.day || dayKey(SH.startedAt)) === dayKey(t)) return;
+  // Only ever forward: a tablet whose clock is behind must not drag the squad back to an older day's board.
+  if (!SH || SH.sample || turningDay || dayKey(t) <= (SH.day || dayKey(SH.startedAt))) return;
   // A tablet that was closed for days must not turn yesterday's stale copy
   // into today's board; wait to hear what the other tablets have.
   if (Sync.state === 'connecting' || (Sync.state === 'ready' && (!SHIFT.booted || (SHIFT.id && !SHIFT.shared)))) return;
@@ -3598,7 +3747,7 @@ function callCard(c) {
     ${respLine(c)}
     <div class="cline">${STEP_NAMES[c.status]} for <span class="num" data-since="${c.times[c.status]}">${dur(now() - c.times[c.status])}</span>${h ? ` · to ${esc(h.short)}` : ''} · <span class="note">dispatched ${hhmm(c.times.disp)}</span></div>
     ${a ? `<div class="calert ${a.cls}">${esc(a.text)} · <span class="num" data-since="${a.since}">${dur(now() - a.since)}</span></div>` : ''}
-    <div class="toolbar">${nextBtn}${needsAls(c) ? `<button class="btn" data-act="call-req" data-arg="${c.id}=ALS">Request ALS</button>` : ''}<button class="btn" data-act="sheet" data-arg="call:${c.id}">More</button></div>
+    <div class="toolbar">${nextBtn}${needsAls(c) ? `<button class="btn" data-act="call-req" data-arg="${c.id}=ALS">Request ALS</button>` : ''}<button class="btn mci-up" data-act="call-mci" data-arg="${c.id}">Upgrade to MCI</button><button class="btn" data-act="sheet" data-arg="call:${c.id}">More</button></div>
   </div>`;
 }
 
@@ -3805,7 +3954,7 @@ function callSheet(id) {
       ${field('Request', `<div class="chips">${CALL_REQS.map(q => opt('call-req', `${c.id}=${q}`, (c.reqs || []).some(x => x.what === q), esc(q))).join('')}</div>`)}
       ${field('Finish the call', `<div class="opt-grid wide">${OUTCOMES.map(o => opt('call-close', `${c.id}=${o}`, false, esc(o), o === 'Mutual aid covered' ? 'tall' : '')).join('')}</div>`)}
       ${field('Covered by · for mutual aid', input('call-ma', 'cma', f.cma, 'e.g. Sheriff MedStar, Squad 35', 'list="ma-list"'))}
-      <datalist id="ma-list"><option value="Sheriff MedStar"><option value="Mutual aid squad"><option value="HMH paramedics"><option value="RWJBH paramedics"></datalist>` : ''}`,
+      <datalist id="ma-list"><option value="Sheriff MedStar"><option value="Sheriff MAB"><option value="Mutual aid squad"><option value="HMH paramedics"><option value="RWJBH paramedics"></datalist>` : ''}`,
     foot: `${open ? `<button class="btn danger" data-act="call-mci" data-arg="${c.id}">Make this an MCI</button>` : ''}<span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
   };
 }
@@ -3815,7 +3964,7 @@ function callHospSheet(id) {
   const list = o ? HOSPITALS.slice().sort((a, b) => miles(o, a.ll) - miles(o, b.ll)) : HOSPITALS;
   return {
     title: 'Transporting to',
-    body: `<div class="opt-grid wide">${list.slice(0, 10).map(h => { const mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed; return opt('call-hosp', `${id}=${h.id}`, false, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${h.trauma ? esc(h.trauma) + ' · ' : ''}${isDivert(ed) ? esc(ed) : esc(h.town)}</small>`, 'tall'); }).join('')}</div>`,
+    body: `<div class="opt-grid wide">${list.slice(0, 10).map(h => { const mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed; return opt('call-hosp', `${id}=${h.id}`, false, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${h.trauma ? esc(h.trauma) + ' · ' : ''}${liveDiverted(liveEd(h)) ? `<span class="crit-t">${esc(liveEd(h).status)}${liveEd(h).reason ? ' · ' + esc(liveEd(h).reason) : ''}</span>` : isDivert(ed) ? esc(ed) : esc(h.town)}</small>`, 'tall'); }).join('')}</div>`,
     foot: `<button class="btn" data-act="close">Cancel</button>`,
   };
 }
@@ -4621,7 +4770,7 @@ const A = {
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
 
-Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS, MEMBER_ACTIONS);
+Object.assign(A, SHIFT_ACTIONS, RELAY_ACTIONS, MEMBER_ACTIONS, CAMERA_ACTIONS);
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -4665,6 +4814,7 @@ let lastShiftDraw = 0;
 let lastDayCheck = 0;
 function tick() {
   const t = now();
+  if (t % 5000 < 1000) document.querySelectorAll('img[data-cam]').forEach(img => { const u = img.dataset.cam; img.src = u + (u.includes('?') ? '&' : '?') + '_t=' + t; });
   if (t - lastDayCheck > 60000) { lastDayCheck = t; maybeNewDay(); }
   const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
   set('now', hhmm(t));
@@ -4683,7 +4833,7 @@ let lock = null;
 async function wake() {
   try { if (!lock && navigator.wakeLock && document.visibilityState === 'visible') { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (e) { /* not granted */ }
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); Sync.flushAll(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); Sync.flushAll(); if (!DIVERT || now() - DIVERT.fetched > 120000) loadDivert(); } });
 window.addEventListener('online', () => Sync.flushAll());
 window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); });
 
@@ -4691,7 +4841,13 @@ window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); })
    Boot
    ===================================================================== */
 const before = DEMO ? null : read('sc3:device');   // keep this tablet's job and display from before the clean start
-DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: (before && before.role) || (window.matchMedia && matchMedia('(max-width: 700px)').matches ? 'member' : 'command'), mode: (before && before.mode) || 'night', me: null };
+const phone = !!(window.matchMedia && matchMedia('(max-width: 700px)').matches);
+DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: (before && before.role !== 'command' && before.role) || (phone ? 'member' : 'supervisor'), mode: (before && before.mode) || 'night', me: null, v: 2 };
+// Tablets used to open as Command; the Supervisor board is now where every tablet starts. Once, for tablets set up before.
+if ((DEV.v || 1) < 2) {
+  if (DEV.role === 'command') { DEV.role = 'supervisor'; const u = read(K.ui) || {}; u.view = 'shift'; write(K.ui, u); }
+  DEV.v = 2;
+}
 saveDev();
 if (!DEMO) { try { Object.keys(localStorage).filter(k => k.startsWith('sc3:') && k !== RELAY_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ } }
 C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || (DEMO ? sampleConfig() : {})) });
@@ -4700,6 +4856,7 @@ SHIFT.load(DEMO ? sampleShift : () => blankShift());
 loadUi();
 render();
 setInterval(tick, 1000);
+loadDivert(); setInterval(loadDivert, 180000);
 Sync.start();
 takeInviteFromAddress();
 })();

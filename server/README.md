@@ -163,4 +163,6 @@ When a plan ends, the board refuses the connection with code 4402 and each table
 
 **Running it for other squads.** On the board: Menu → Squad sharing → **Relay owner: squads and plans**. Enter the `BOOTSTRAP_CODE` (it isn't saved on the tablet) to see every squad and its plan, and to mark one paid through a date, give it no end date, restart its trial, or turn sharing off. The same two endpoints, for scripts: `POST /v1/owner/squads` and `POST /v1/owner/plan` with `{ orgId, tier, paidThrough }`, both with the header `x-bootstrap-code`. The setup code is yours alone as the relay owner: create a squad for a customer and send them an admin invite, rather than giving them the code.
 
+**ED status.** `GET /v1/divert` passes on New Jersey's public Emergency Department Status board (njdivert.juvare.com): each hospital's status, reason, comment and color. Browsers can't read that site from another page, so the relay fetches it and keeps it for 90 seconds. No sign-in needed; it's public data.
+
 **If the deploy fails creating storage** with `Authentication error [code: 10000]`, the API token cannot manage Workers KV on this account: recreate it from the **Edit Cloudflare Workers** template (step 3 above), check that `CLOUDFLARE_ACCOUNT_ID` is the same account, and save the new token over `CLOUDFLARE_API_TOKEN`.

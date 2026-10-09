@@ -846,6 +846,55 @@ export class Board extends DurableObject {
 }
 
 /* ------------------------------------------------------------------ *
+ * Hospital ED status
+ * ------------------------------------------------------------------ */
+
+/**
+ * New Jersey's public Emergency Department Status board (njdivert.juvare.com)
+ * publishes every hospital's status, reason and comment as one file, which
+ * its own page reads every three minutes. Pages elsewhere can't read it from
+ * a browser, so the relay fetches it and passes on just those fields. Kept in
+ * memory for 90 seconds, so however many tablets ask, the source sees about
+ * one request a minute from each relay instance.
+ */
+const DIVERT_SOURCE = 'https://njdivert.juvare.com/njdivert.juvare.com.json';
+const DIVERT_TTL_MS = 90 * 1000;
+let divertMemo = { at: 0, body: null };
+
+async function divertStatus(request, env) {
+  if (request.method !== 'GET') return fail(405, 'Method not allowed.', request, env);
+  if (!divertMemo.body || Date.now() - divertMemo.at > DIVERT_TTL_MS) {
+    let data;
+    try {
+      const upstream = await fetch(DIVERT_SOURCE, { headers: { accept: 'application/json' } });
+      if (!upstream.ok) throw new Error(String(upstream.status));
+      data = await upstream.json();
+    } catch {
+      if (divertMemo.body) return json({ ...divertMemo.body, stale: true }, 200, request, env);
+      return fail(502, 'The NJ ED status site is not answering right now.', request, env);
+    }
+    const text = (v, max) => String(v ?? '').trim().slice(0, max);
+    divertMemo = {
+      at: Date.now(),
+      body: {
+        source: 'njdivert.juvare.com',
+        updated: text(data?.updateDateTime, 40),
+        hospitals: (Array.isArray(data?.statuses) ? data.statuses : []).slice(0, 400).map((h) => ({
+          id: text(h.id, 20),
+          name: text(h.resourceName, 120),
+          county: text(h.county, 40),
+          status: text(h.edStatus, 40),
+          reason: text(h.edStatusReason, 80),
+          comment: text(h.comments, 300),
+          color: text(h.colorCode, 16).toLowerCase(),
+        })),
+      },
+    };
+  }
+  return json(divertMemo.body, 200, request, env);
+}
+
+/* ------------------------------------------------------------------ *
  * Handler
  * ------------------------------------------------------------------ */
 
@@ -870,7 +919,7 @@ export default {
           // Lets the app tell an org-capable relay from an older one and offer
           // the right screens, rather than failing on an endpoint that is not
           // there yet.
-          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans'] : [])],
+          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans'] : []), 'divert'],
         },
         200,
         request,
@@ -890,6 +939,9 @@ export default {
     // not counted against the daily AI request limit: a tablet reconnecting
     // after a dropped signal should not eat into anyone's narratives.
     if (path === '/v1/board') return openBoard(request, env);
+
+    // Public data, passed through: hospital ED status for the board.
+    if (path === '/v1/divert') return divertStatus(request, env);
 
     const auth = await authenticate(request, env);
 
