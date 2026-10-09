@@ -25,6 +25,7 @@
  *                            never stored, so a dump of KV grants nobody access
  *   mem:<orgId>:<memberId>   member record (name, role, status, usage)
  *   aud:<orgId>:<ts>:<rand>  audit entries, newest sorting last
+ *   plan:<orgId>             the squad's plan for shared boards (see boardPlan)
  *
  * Setup is in server/README.md.
  *
@@ -275,6 +276,12 @@ async function createOrg(request, env) {
   );
   await store.put(`tok:${await sha256(token)}`, JSON.stringify({ orgId, memberId }));
 
+  // Only the relay owner holds the setup code, so whoever sets up a squad can
+  // also say it is their own and should never hit the shared boards' trial.
+  if (body?.plan === 'comp') {
+    await store.put(`plan:${orgId}`, JSON.stringify({ tier: 'comp', setAt: now }));
+  }
+
   await audit(env, orgId, { action: 'org_created', memberId, name: adminName });
 
   return json({ orgId, orgName, memberId, inviteCode, token, role: 'admin' }, 200, request, env);
@@ -337,8 +344,11 @@ async function join(request, env) {
 async function me(auth, request, env) {
   const store = kv(env);
   const org = store ? await store.get(`org:${auth.orgId}`, 'json') : null;
+  // So a tablet the board turned away can say why, and until when.
+  const record = store ? await store.get(`plan:${auth.orgId}`, 'json') : null;
   return json(
     {
+      boardPlan: record ? boardPlan(record) : null,
       member: {
         id: auth.member.id,
         name: auth.member.name,
@@ -545,6 +555,124 @@ const BOARD_PROTOCOL = 'pcr-board';
 const BOARD_PATH = /^[A-Za-z0-9_.~:@+-]{1,200}(\/[A-Za-z0-9_.~:@+-]{1,200}){0,9}$/;
 const BOARD_MAX_DOC = 256 * 1024;
 const BOARD_MAX_SUBS = 24;
+const BOARD_TRIAL_DAYS = 60;
+const BOARD_GRACE_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const PLAN_TIERS = ['trial', 'squad', 'comp', 'off'];
+
+const trialDays = (env) => {
+  const n = Number(env.BOARD_TRIAL_DAYS);
+  return env.BOARD_TRIAL_DAYS !== undefined && env.BOARD_TRIAL_DAYS !== '' && Number.isFinite(n) && n >= 0 ? n : BOARD_TRIAL_DAYS;
+};
+
+/**
+ * Whether a squad's tablets may share a board, and what to tell them about it.
+ * Sharing is the paid part of the scene command board; any tablet runs the
+ * whole board on its own for free. So this gates the shared board only, never
+ * the narratives the rest of this relay serves.
+ *
+ *   trial  free, from the first time the squad shares a board, BOARD_TRIAL_DAYS long
+ *   squad  paid through `paidThrough` (a date), then BOARD_GRACE_DAYS more, so a
+ *          late invoice never stops a squad's tablets in the middle of a call
+ *   comp   no end date: the relay owner's own squad, a pilot, a county agency
+ *   off    sharing turned off by the relay owner
+ *
+ * A tablet already connected when a plan ends keeps sharing until it next
+ * reconnects, for the same reason.
+ */
+function boardPlan(record, now = Date.now()) {
+  const p = record || {};
+  if (p.tier === 'comp') return { tier: 'comp', active: true };
+  if (p.tier === 'off') return { tier: 'off', active: false };
+  if (p.tier === 'squad') {
+    const through = Date.parse(p.paidThrough || '');
+    if (!Number.isFinite(through)) return { tier: 'squad', active: true };
+    const end = through + DAY_MS;
+    const graceEnd = end + BOARD_GRACE_DAYS * DAY_MS;
+    return { tier: 'squad', active: now < graceEnd, grace: now >= end, paidThrough: p.paidThrough, endsAt: new Date(graceEnd).toISOString() };
+  }
+  const ends = Date.parse(p.trialEndsAt || '');
+  return { tier: 'trial', active: Number.isFinite(ends) && now < ends, endsAt: p.trialEndsAt || null };
+}
+
+function newTrial(env, by) {
+  const start = Date.now();
+  return {
+    tier: 'trial',
+    trialStartedAt: new Date(start).toISOString(),
+    trialEndsAt: new Date(start + trialDays(env) * DAY_MS).toISOString(),
+    setAt: new Date(start).toISOString(),
+    by,
+  };
+}
+
+const PLAN_REFUSALS = {
+  trial: "Your squad's free trial of shared boards has ended. Each tablet still works on its own.",
+  squad: "Your squad's plan has lapsed. Each tablet still works on its own.",
+  off: 'Shared boards are turned off for this squad. Each tablet still works on its own.',
+};
+
+/**
+ * The relay owner's view of every squad and its plan. Guarded by the same
+ * setup code that creates squads: both are the owner's, and only the owner's.
+ */
+function ownerGuard(request, env) {
+  const bootstrap = (env.BOOTSTRAP_CODE || '').trim();
+  if (!kv(env)) return fail(503, 'This relay has no storage bound.', request, env);
+  if (!bootstrap) return fail(503, 'This relay has no BOOTSTRAP_CODE set.', request, env);
+  if (!safeEqual(bootstrap, request.headers.get('x-bootstrap-code') || '')) {
+    return fail(401, 'That setup code was not recognised.', request, env);
+  }
+  return null;
+}
+
+async function ownerSquads(request, env) {
+  const refused = ownerGuard(request, env);
+  if (refused) return refused;
+  const store = kv(env);
+  const squads = [];
+  let cursor;
+  do {
+    const page = await store.list({ prefix: 'org:', cursor });
+    for (const { name } of page.keys) {
+      const org = await store.get(name, 'json');
+      if (!org) continue;
+      const record = await store.get(`plan:${org.id}`, 'json');
+      squads.push({ id: org.id, name: org.name, createdAt: org.createdAt, plan: record ? boardPlan(record) : null });
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor && squads.length < 2000);
+  squads.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  return json({ squads, trialDays: trialDays(env), graceDays: BOARD_GRACE_DAYS }, 200, request, env);
+}
+
+async function ownerSetPlan(request, env) {
+  const refused = ownerGuard(request, env);
+  if (refused) return refused;
+  const store = kv(env);
+  const body = await request.json().catch(() => null);
+  const orgId = String(body?.orgId || '');
+  const tier = String(body?.tier || '');
+  if (!PLAN_TIERS.includes(tier)) return fail(400, `The plan is one of: ${PLAN_TIERS.join(', ')}.`, request, env);
+  const org = orgId ? await store.get(`org:${orgId}`, 'json') : null;
+  if (!org) return fail(404, 'No squad with that ID on this relay.', request, env);
+
+  let record;
+  if (tier === 'trial') {
+    record = newTrial(env, 'owner');
+  } else if (tier === 'squad') {
+    const paidThrough = String(body?.paidThrough || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(paidThrough) || !Number.isFinite(Date.parse(paidThrough))) {
+      return fail(400, 'A squad plan needs the date it is paid through, as YYYY-MM-DD.', request, env);
+    }
+    record = { tier, paidThrough, setAt: new Date().toISOString(), by: 'owner' };
+  } else {
+    record = { tier, setAt: new Date().toISOString(), by: 'owner' };
+  }
+  await store.put(`plan:${org.id}`, JSON.stringify(record));
+  await audit(env, org.id, { action: 'plan_set', tier, paidThrough: record.paidThrough || null });
+  return json({ id: org.id, name: org.name, plan: boardPlan(record) }, 200, request, env);
+}
 
 /**
  * Refusals on a WebSocket have to be a WebSocket: a browser that gets a plain
@@ -575,10 +703,23 @@ async function openBoard(request, env) {
   if (auth.kind === 'revoked') return refuseSocket(4403, 'Your access to this organization has been withdrawn.');
   if (auth.kind !== 'member') return refuseSocket(4401, 'This tablet is not signed in to the squad.');
 
+  // The trial starts the first time a squad shares a board, not when it was set
+  // up, so a squad that has used narratives for a year still gets its 60 days.
+  const store = kv(env);
+  let record = await store.get(`plan:${auth.orgId}`, 'json');
+  if (!record) {
+    record = newTrial(env, auth.member.id);
+    await store.put(`plan:${auth.orgId}`, JSON.stringify(record));
+    await audit(env, auth.orgId, { action: 'board_trial_started', memberId: auth.member.id, name: auth.member.name });
+  }
+  const plan = boardPlan(record);
+  if (!plan.active) return refuseSocket(4402, PLAN_REFUSALS[plan.tier] || PLAN_REFUSALS.off);
+
   const stub = env.BOARD.get(env.BOARD.idFromName(auth.orgId));
   const headers = new Headers(request.headers);
   headers.set('x-member-id', auth.member.id);
   headers.set('x-member-name', auth.member.name || '');
+  headers.set('x-plan', JSON.stringify(plan));
   return stub.fetch(new Request(request, { headers }));
 }
 
@@ -600,6 +741,7 @@ export class Board extends DurableObject {
     server.serializeAttachment({
       member: request.headers.get('x-member-id') || '',
       name: request.headers.get('x-member-name') || '',
+      plan: JSON.parse(request.headers.get('x-plan') || 'null'),
       peer: '', dev: '', role: '', at: Date.now(), subs: [],
     });
     return new Response(null, { status: 101, webSocket: client, headers: { 'sec-websocket-protocol': BOARD_PROTOCOL } });
@@ -650,7 +792,7 @@ export class Board extends DurableObject {
         if (m.role !== undefined) a.role = String(m.role).slice(0, 20);
         a.at = Date.now();
         ws.serializeAttachment(a);
-        if (m.type === 'hello') this.send(ws, { type: 'welcome', name: a.name });
+        if (m.type === 'hello') this.send(ws, { type: 'welcome', name: a.name, plan: a.plan || null });
         this.broadcastPeers();
         return;
       }
@@ -728,7 +870,7 @@ export default {
           // Lets the app tell an org-capable relay from an older one and offer
           // the right screens, rather than failing on an endpoint that is not
           // there yet.
-          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : [])],
+          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans'] : [])],
         },
         200,
         request,
@@ -740,6 +882,9 @@ export default {
     // invite code. Both are checked inside.
     if (path === '/v1/orgs' && request.method === 'POST') return createOrg(request, env);
     if (path === '/v1/join' && request.method === 'POST') return join(request, env);
+    // The relay owner's screens: also the setup code, checked inside.
+    if (path === '/v1/owner/squads' && request.method === 'POST') return ownerSquads(request, env);
+    if (path === '/v1/owner/plan' && request.method === 'POST') return ownerSetPlan(request, env);
 
     // The board authenticates inside, from the WebSocket subprotocol, and is
     // not counted against the daily AI request limit: a tablet reconnecting

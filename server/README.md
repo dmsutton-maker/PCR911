@@ -142,12 +142,25 @@ Full picture in [../docs/SECURITY-PHI.md](../docs/SECURITY-PHI.md).
 
 ## Shared boards for the scene command board
 
-The same relay lets the scene command board (`prototypes/scene-command`, served at **https://dmsutton-maker.github.io/PCR911/scene-command/**) share one live incident and one shift between tablets. It uses the squad accounts above, so there is nothing new to set up beyond a deploy that succeeds.
+The same relay lets the scene command board (`prototypes/scene-command`, served at **https://dmsutton-maker.github.io/PCR911/scene-command/**) share one live incident and one supervisor board between tablets. It uses the squad accounts above, so there is nothing new to set up beyond a deploy that succeeds.
 
 **How it works.** Each squad gets one Durable Object, a small document store with live subscriptions. Tablets connect to `/v1/board` over a WebSocket, signed in with the member token their invite gave them. Each tablet writes only its own list of changes and replays everyone's, so two people tapping at once never overwrite each other. A tablet that loses signal keeps working and sends what it did when it reconnects. Durable Objects on SQLite storage are on Cloudflare's free plan, and the deploy creates this one.
 
-**Signing tablets in.** On the board: Menu → **Squad sharing**. The first tablet uses **Set up the squad** with the `BOOTSTRAP_CODE`; it becomes the admin and can make invite links. Every other tablet opens an invite link, or types the invite code, and gives itself a name. Setting the repository secret `PCR_RELAY_URL` to the relay's address bakes it into the board, so a typed code is enough.
+**Signing tablets in.** On the board: Menu → **Squad sharing**. The first tablet uses **Set up the squad** with the `BOOTSTRAP_CODE`; it becomes the admin and can make invite links. Every other tablet opens an invite link, or types the invite code, and gives itself a name. The board's web build already has this relay's address (`https://pcr-relay.dmsutton.workers.dev`), so nobody types it; set the repository secret `PCR_RELAY_URL` only to point the board at a different relay.
 
-**What it stores.** What the boards show: triage counts, unit numbers, member names and numbers, hospital reports, and for the shift board each call's type and address. No patient names. Call types with addresses are still sensitive, so treat the board like the rest of this project: practice data until there is a BAA and a HIPAA review covering the relay (see [docs/SECURITY-PHI.md](../docs/SECURITY-PHI.md)).
+**What it stores.** What the boards show: triage counts, unit numbers, member names and numbers, hospital reports, and for the supervisor board each call's type and address. No patient names. Call types with addresses are still sensitive, so treat the board like the rest of this project: practice data until there is a BAA and a HIPAA review covering the relay (see [docs/SECURITY-PHI.md](../docs/SECURITY-PHI.md)).
+
+**Plans: free on one tablet, a trial for sharing.** Any tablet runs the whole board on its own for free. Sharing between a squad's tablets and phones is the squad plan, and the relay enforces it when a tablet connects to `/v1/board` (it never affects narratives):
+
+| Plan | What it means |
+|---|---|
+| trial | Free for 60 days from the first time the squad shares a board. Set `BOARD_TRIAL_DAYS` as a Worker variable to change the length. |
+| squad | Paid through a date, then 14 days' grace so a late invoice never stops a squad's tablets mid-call. |
+| comp | No end date: your own squad, a pilot, a county agency. Pick "No end date · my own squad" when setting up your squad. |
+| off | Sharing turned off. |
+
+When a plan ends, the board refuses the connection with code 4402 and each tablet carries on by itself with everything it had; a tablet already connected keeps sharing until it next reconnects. Plans are stored under `plan:<orgId>` in the same KV namespace.
+
+**Running it for other squads.** On the board: Menu → Squad sharing → **Relay owner: squads and plans**. Enter the `BOOTSTRAP_CODE` (it isn't saved on the tablet) to see every squad and its plan, and to mark one paid through a date, give it no end date, restart its trial, or turn sharing off. The same two endpoints, for scripts: `POST /v1/owner/squads` and `POST /v1/owner/plan` with `{ orgId, tier, paidThrough }`, both with the header `x-bootstrap-code`. The setup code is yours alone as the relay owner: create a squad for a customer and send them an admin invite, rather than giving them the code.
 
 **If the deploy fails creating storage** with `Authentication error [code: 10000]`, the API token cannot manage Workers KV on this account: recreate it from the **Edit Cloudflare Workers** template (step 3 above), check that `CLOUDFLARE_ACCOUNT_ID` is the same account, and save the new token over `CLOUDFLARE_API_TOKEN`.

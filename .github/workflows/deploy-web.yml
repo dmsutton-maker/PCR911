@@ -70,7 +70,9 @@ jobs:
         # prototypes/scene-command. It needs nothing installed beyond Node.
         run: node prototypes/scene-command/build.mjs --site dist/scene-command
         env:
-          PCR_RELAY_URL: ${{ secrets.PCR_RELAY_URL }}
+          # Where tablets sign in to share a board. Not a secret: it is the
+          # relay's public address, so the board has it without anyone typing it.
+          PCR_RELAY_URL: ${{ secrets.PCR_RELAY_URL || 'https://pcr-relay.dmsutton.workers.dev' }}
 
       - name: Prepare for GitHub Pages
         run: |

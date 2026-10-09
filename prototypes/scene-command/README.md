@@ -1,14 +1,14 @@
 # Scene Command Board (prototype)
 
-A touch-first EMS command app for iPads in landscape, with a phone view for members, set up for Hatzalah Jersey Shore (county number 78) in Monmouth County, NJ. It has two boards that any number of tablets share live: a **shift board** for the supervisor on everyday calls, and a **scene board** for an MCI. Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
+A touch-first EMS command app for iPads in landscape, with a phone view for members, set up for Hatzalah Jersey Shore (county number 78) in Monmouth County, NJ. It has two boards that any number of tablets share live: a **supervisor board** for everyday calls, and a **scene board** for an MCI. It's free on one tablet; sharing between tablets and phones is the squad plan, free for the first 60 days (see server/README.md). Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
 
 ## Tablets and jobs
 
-Each tablet picks a job, and each job has its own home screen. All of them share the same incident and the same shift.
+Each tablet picks a job, and each job has its own home screen. All of them share the same incident and the same supervisor board. The supervisor board is one board per day: it turns over by itself at 6 AM, carrying units, crew still on duty and any open call, so there is no shift to start.
 
 | Job | Home screen |
 |---|---|
-| **Supervisor** | Shift board: our units in or out of service with who is riding, active calls stepped from dispatch to back in service with the members responding on their own (first on scene starts the clock), ALS and other requests, crew on duty, today's numbers. Alerts when no crew is en route after 5 minutes or a unit has been at the hospital over 30. Any call can become an MCI. |
+| **Supervisor** | Supervisor board: our units in or out of service with who is riding, active calls stepped from dispatch to back in service with the members responding on their own (first on scene starts the clock), ALS and other requests, crew on duty, today's numbers. Alerts when no crew is en route after 5 minutes or a unit has been at the hospital over 30. Any call can become an MCI. |
 | **Command** | The full scene board below |
 | **Triage** | Big counters, re-triage, the triage report |
 | **Transport** | Units ready to load, hospital grid of sent vs. can-take, transport log |
@@ -31,9 +31,9 @@ This is a clickable prototype for deciding what the real thing should be. It is 
 | **ICS** | Unified command, command staff, operations and the medical group; tap a box to assign it |
 | **Radio** | METHANE, CAN, triage report, hospital notification, mutual-aid request, air medical request and command transfer, all written from the board. Also a channel reference |
 | **Log** | Every tap, time-stamped and marked with which tablet made it, for the after-action report |
-| **Shift** | The supervisor's board for everyday calls (see above) |
+| **Supervisor** | The supervisor board for everyday calls (see above) |
 
-Every action can be undone. **My agency** (in Menu) holds the squad's own units, which load into every new shift and incident; **PAR checks** are an option, off by default.
+Every action can be undone. **My agency** (in Menu) holds the squad's own units, which load into every new day and incident; **PAR checks** are an option, off by default.
 
 ## Building
 
@@ -58,4 +58,4 @@ node prototypes/scene-command/build.mjs
 - **Distances are straight-line**, and the drive minutes are a rough estimate from them (1.3× the distance at 40 mph).
 - **Hospital capacity, beds and ED status are typed in** from what each hospital reports. There is no EMResource feed.
 - **Calls are typed in by the supervisor.** There is no CAD or paging feed, and no push alert: a member sees a new call when they open the app.
-- **The sample incident and shift, and their units, people and squad numbers, are made up.** Hospital capabilities, county assets, and published phone numbers are from the sources in the research notes; confirm them locally.
+- **The sample incident and supervisor day, and their units, people and squad numbers, are made up.** Hospital capabilities, county assets, and published phone numbers are from the sources in the research notes; confirm them locally.

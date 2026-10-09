@@ -1238,6 +1238,7 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .head.mhead { flex-wrap: nowrap; align-items: flex-start; }
 .mhead .clocks { width: auto; flex: 0 0 auto; }
 .mhead .iconbtn { flex: 0 0 auto; min-width: 56px; padding: 8px; }
+.osq { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
 .navrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .navrow .btn { padding: 0 6px; font-size: 15px; min-width: 0; }
 .navrow .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
@@ -1667,7 +1668,7 @@ const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-
    State
    ===================================================================== */
 let S;    // the incident as it stands now: the starting state with every event replayed over it
-let SH;   // today's shift board, built the same way
+let SH;   // today's supervisor board, built the same way
 let C;    // agency configuration that outlives incidents: squad, unit roster, members, extra numbers
 let DEV;  // this tablet only: its id, its job (role), day/night, last GPS fix
 let UI = { view: '', sheet: null, form: {}, logFilter: 'all', unitGroup: 'all', hospFilter: [], pinMode: null, mapLayer: 'sat', live: 'unknown' };
@@ -1991,7 +1992,7 @@ function header() {
 const VIEWS = [
   { id: 'board',     label: 'Board',     icon: 'board' },
   { id: 'triage',    label: 'Triage',    icon: 'tag' },
-  { id: 'shift',     label: 'Shift',     icon: 'clip' },
+  { id: 'shift',     label: 'Supervisor', icon: 'clip' },
   { id: 'member',    label: 'My calls',  icon: 'person' },
   { id: 'map',       label: 'Map',       icon: 'map' },
   { id: 'transport', label: 'Transport', icon: 'amb' },
@@ -2582,9 +2583,9 @@ function roleSheet() {
     body: `<div class="opt-grid wide">${Object.entries(ROLES).map(([k, r]) => opt('role', k, DEV.role === k, `${esc(r.name)}<small>${esc(r.note)}</small>`, 'tall')).join('')}</div>
       <div class="ph"><h2>Tablets on this board</h2><span class="meta">${esc(syncWords())}</span></div>
       ${peers.length ? `<div class="rows">${peers.map(pr => `<div class="row"><span class="pill ${pr.sameTab ? 'onscene' : ''}">${pr.sameTab ? 'This one' : 'Tablet'}</span><div class="t1">${esc((ROLES[pr.presence && pr.presence.role] || {}).name || 'Opening…')}</div><span class="note">${pr.updatedAt ? hhmm(pr.updatedAt) : ''}</span></div>`).join('')}</div>`
-        : `<div class="note">${!IN_CLAUDE && !RELAY ? 'This tablet keeps its own board. Sign it in to the squad to share one live incident and shift with the other tablets.' : Sync.state === 'local' ? 'This board is running on this tablet alone right now.' : 'No other tablets have this board open right now.'}</div>`}
+        : `<div class="note">${!IN_CLAUDE && !RELAY ? 'This tablet keeps its own board. Sign it in to the squad to share one live incident and supervisor board with the other tablets.' : Sync.state === 'local' ? 'This board is running on this tablet alone right now.' : 'No other tablets have this board open right now.'}</div>`}
       ${IN_CLAUDE ? '<div class="note">To add a tablet, open this same link on it, signed in to an account that can edit this page. Each tablet picks its own job; they all share one incident, and every change shows up on the others within a few seconds.</div>'
-        : `<div class="note">${RELAY ? 'To add a tablet, make an invite link under Squad sharing and open it on the new tablet.' : ''} Each tablet picks its own job; they all share one incident and shift, and every change shows up on the others within a second or two.</div><button class="btn" data-act="sheet" data-arg="connect">Squad sharing</button>`}
+        : `<div class="note">${RELAY ? 'To add a tablet, make an invite link under Squad sharing and open it on the new tablet.' : ''} Each tablet picks its own job; they all share one incident and supervisor board, and every change shows up on the others within a second or two.</div><button class="btn" data-act="sheet" data-arg="connect">Squad sharing</button>`}
       ${Sync.state === 'ready' && !streamOfView().shared ? '<button class="btn primary" data-act="share">Share this board now</button>' : ''}`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
@@ -2750,7 +2751,7 @@ function sheetHtml() {
     transport: transportSheet, par: parSheet, unit: unitSheet, 'unit-add': unitAddSheet, 'load-units': loadUnitsSheet, request: requestSheet,
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
-    role: roleSheet, agency: agencySheet, connect: connectSheet,
+    role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -3051,14 +3052,14 @@ function menuSheet() {
       <div class="switch"><span>PAR checks<br><small class="note">A timed check that every crew on scene is accounted for. Applies to every tablet.</small></span><div class="chips">${opt('par-feature', 'off', !parOn(), 'Hide')}${opt('par-feature', 'on', parOn(), 'Use')}</div></div>
       ${parOn() ? `<div class="switch"><span>PAR interval</span><div class="chips">${[10, 15, 20, 30].map(m => opt('par-int', String(m), S.par.interval === m, m + ' min')).join('')}</div></div>` : ''}
       <div class="opt-grid wide">
-        ${IN_CLAUDE ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `Signed in to ${esc(RELAY.org || 'the squad')}` : 'Share one board between tablets'}</small></button>`}
+        ${IN_CLAUDE ? '' : `<button class="opt tall" data-act="sheet" data-arg="connect">Squad sharing<small>${RELAY ? `${esc(RELAY.org || 'Signed in')}${RELAY.plan ? ' · ' + esc(planWords(RELAY.plan)) : ''}` : `Free on this tablet · share free for ${TRIAL_DAYS} days`}</small></button>`}
         <button class="opt tall" data-act="sheet" data-arg="role">This tablet's job<small>${esc((ROLES[DEV.role] || ROLES.command).name)} · ${esc(syncWords())}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="agency">My agency<small>${esc(C.agency.name)} · ${C.roster.length ? plural(C.roster.length, 'unit') : 'add your units'}</small></button>
         <button class="opt tall" data-act="sheet" data-arg="incident">Edit incident details<small>Location, command name, staging, hazards, LZ</small></button>
         <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>
-        <button class="opt tall" data-act="sheet" data-arg="shift-new">Start a new shift<small>Fresh shift board for everyday calls</small></button>
+        ${SH.sample ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
         <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
       </div>
       <div class="note"><b>Prototype.</b> ${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
@@ -3196,7 +3197,7 @@ const RS = {
 };
 
 const INC = new Stream('incident', { root: 'incidents', pointer: 'live/current', key: 'sc3:incident', R, label: 'incident' });
-const SHIFT = new Stream('shift', { root: 'shifts', pointer: 'live/shift', key: 'sc3:shift', R: RS, label: 'shift' });
+const SHIFT = new Stream('shift', { root: 'shifts', pointer: 'live/shift', key: 'sc3:shift', R: RS, label: 'supervisor board' });
 const STREAMS = [INC, SHIFT];
 const dispatch = (...a) => INC.dispatch(...a);
 const sdispatch = (...a) => SHIFT.dispatch(...a);
@@ -3243,7 +3244,7 @@ const Sync = {
     const d = snap.exists ? snap.data() : null, id = d && (d.id || d.incident);
     const booted = str.booted;
     str.booted = true;
-    if (!id) { syncChip(); return; }
+    if (!id) { syncChip(); if (str === SHIFT) maybeNewDay(); return; }
     if (id === str.id) return;
     this.follow(str, id, booted);
   },
@@ -3255,14 +3256,16 @@ const Sync = {
       let snap;
       try { snap = await this.db.doc(`${str.root}/${id}`).get(); } catch (e) { return this.fail(str, e); }
       if (!snap.exists || str.id !== id) return;
+      const was = str.base && str.base.id;
       str.base = snap.data().base;
       str.events.clear();
       (read(K.ev(id)) || []).forEach(e => str.events.set(e.id, e));
       if (str === INC) { UI.sheet = null; UI.form = {}; mapKind = null; }
       str.rebuild(); str.saveLocal(); render();
-      showToast(announce ? `Another tablet started a new ${str.label}. This board now follows it.` : `Joined the live ${str.label}.`, false);
+      showToast(announce ? (str === SHIFT ? (/^day-/.test(was || '') && /^day-/.test(id) ? 'The supervisor board turned over to a new day.' : 'This tablet now shows the supervisor board the other tablets share.') : `Another tablet started a new ${str.label}. This board now follows it.`) : `Joined the live ${str.label}.`, false);
     }
     str.written = {};
+    if (str === SHIFT) setTimeout(maybeNewDay, 1500);   // a tablet opening on a new day turns the shared board over
     str.unsub = this.db.collection(`${str.root}/${id}/devices`).onSnapshot(qs => {
       let changed = false;
       qs.docs.forEach(d => {
@@ -3322,7 +3325,7 @@ const Sync = {
     const code = (e && e.code) || 'unavailable';
     if (STOP_CODES.includes(code)) return this.stop(e);
     str.error = code;
-    if (code === 'quota_exceeded') showToast(`The shared board is full. Start a new ${str.label} to keep sharing.`, false);
+    if (code === 'quota_exceeded') showToast(str === SHIFT ? `The shared supervisor board is full. It starts fresh at ${DAY_STARTS} AM.` : `The shared board is full. Start a new ${str.label} to keep sharing.`, false);
     clearTimeout(str.retry);
     str.retry = setTimeout(() => (str.shared ? this.flush(str) : this.announce(str)), 4000 + Math.random() * 4000);
     syncChip();
@@ -3346,7 +3349,9 @@ const Sync = {
 
 function syncChipHtml() {
   const str = streamOfView(), n = Sync.tablets().length;
-  if (!IN_CLAUDE && Sync.state === 'local') return `<button class="tag" id="sync-chip" data-act="sheet" data-arg="connect">${RELAY ? 'Sign in again to share' : 'Share with other tablets'}</button>`;
+  if (!IN_CLAUDE && Sync.state === 'local') return planEnded()
+    ? `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="connect">${RELAY.plan && RELAY.plan.tier === 'trial' ? 'Trial ended' : 'Sharing off'} · this tablet only</button>`
+    : `<button class="tag" id="sync-chip" data-act="sheet" data-arg="connect">${RELAY ? 'Sign in again to share' : 'Share with other tablets'}</button>`;
   if (relayConn && Sync.state === 'ready' && !relayConn.isOpen()) return `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="connect">Reconnecting…${str.pending() ? ' · ' + str.pending() + ' waiting' : ''}</button>`;
   if (Sync.state === 'connecting' || str.sharing) return `<span class="tag" id="sync-chip">Connecting…</span>`;
   if (Sync.state === 'ready' && str.error) return `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="role">Sync paused · ${str.pending()} waiting</button>`;
@@ -3378,20 +3383,52 @@ const NO_ENROUTE_WARN = 5 * 60000;   // dispatched with nobody en route
 const WALL_WARN = 30 * 60000;        // at the hospital, waiting to offload
 const CALL_TO_INCIDENT = { 'Motor vehicle crash': 'Motor vehicle crash', 'Fire standby': 'Fire / smoke', 'Overdose': 'Hazmat / CO' };
 
-const newShiftId = () => 'shift-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
-function blankShift() {
-  const t = now();
+/* The supervisor's board has no shifts to start. It is one board per day, and
+   the day turns over by itself at DAY_STARTS, carrying units, crew still on
+   duty and any open call to the next one. Every tablet names a day's board the
+   same way, so two tablets turning the day over at once land on the same board. */
+const DAY_STARTS = 6;   // hours: the board's day runs 6 AM to 6 AM, like most EMS shifts
+const dayKey = t => { const d = new Date(t - DAY_STARTS * 3600000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const dayStart = t => { const d = new Date(t - DAY_STARTS * 3600000); d.setHours(DAY_STARTS, 0, 0, 0); return d.getTime(); };
+function blankShift(t = now()) {
   return {
-    v: 1, id: newShiftId(), kind: 'shift', startedAt: t, sample: false,
+    v: 1, id: 'day-' + dayKey(t), day: dayKey(t), kind: 'shift', startedAt: t, sample: false,
     units: C.roster.map(r => ({ id: uid(), name: r.name, kind: r.kind, status: 'in', since: t, note: '' })),
     calls: [], crew: [],
-    log: [{ t, kind: 'note', text: `Shift started · ${C.agency.name}` }],
+    log: [{ t, kind: 'note', text: `${C.agency.name} · ${new Date(t).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}` }],
   };
+}
+function nextDay(prev, t = now()) {
+  const b = blankShift(t);
+  if (prev.units.length) b.units = JSON.parse(JSON.stringify(prev.units));
+  b.crew = JSON.parse(JSON.stringify(prev.crew.filter(p => !p.out)));
+  b.calls = JSON.parse(JSON.stringify(prev.calls.filter(c => c.status !== 'clear')));
+  const carried = [b.crew.length ? plural(b.crew.length, 'member') + ' still on duty' : '', b.calls.length ? plural(b.calls.length, 'open call') : ''].filter(Boolean);
+  if (carried.length) b.log.push({ t, kind: 'note', text: `Carried over from ${dayKey(prev.startedAt)}: ${carried.join(', ')}` });
+  return b;
+}
+let turningDay = false;
+function maybeNewDay() {
+  const t = now();
+  if (!SH || SH.sample || turningDay || (SH.day || dayKey(SH.startedAt)) === dayKey(t)) return;
+  // A tablet that was closed for days must not turn yesterday's stale copy
+  // into today's board; wait to hear what the other tablets have.
+  if (Sync.state === 'connecting' || (Sync.state === 'ready' && (!SHIFT.booted || (SHIFT.id && !SHIFT.shared)))) return;
+  // Calls still running at 6 AM finish on the old day's board, unless they run past noon.
+  if (SH.calls.some(c => c.status !== 'clear') && t - dayStart(t) < 6 * 3600000) return;
+  const next = nextDay(SH, t);
+  const begin = () => { SHIFT.start(next); render(); };
+  if (!Sync.db) return begin();
+  turningDay = true;
+  Sync.db.doc(`${SHIFT.root}/${next.id}`).get()
+    .then(snap => { if (snap.exists) Sync.follow(SHIFT, next.id, false); else begin(); })
+    .catch(() => {})
+    .finally(() => { turningDay = false; });
 }
 function sampleShift() {
   const T = now(), ago = m => T - m * 60000;
   const st = blankShift();
-  st.sample = true; st.startedAt = ago(570);
+  st.sample = true; st.startedAt = ago(570); st.id = 'sample-' + Date.now().toString(36); st.day = 'sample';
   const U = (name, kind, status, since, note = '') => ({ id: uid(), name, kind, status, since, note });
   st.units = [
     U('78-50', 'SUP', 'in', ago(570)), U('78-55', 'RV', 'in', ago(570)),
@@ -3428,7 +3465,7 @@ function sampleShift() {
   cp.reqs = [];
   st.calls.push(cp);
   st.log = [
-    { t: ago(570), kind: 'note', text: `Shift started · ${C.agency.name}` },
+    { t: ago(570), kind: 'note', text: `${C.agency.name} · sample day` },
     { t: ago(300), kind: 'units', text: '78-58 out of service: stretcher repair' },
     { t: ago(200), kind: 'note', text: '88 Elm Ave: no crew available; covered by Sheriff MedStar' },
   ];
@@ -3475,8 +3512,8 @@ function shiftHeader() {
   const day = new Date(now()).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
   return `<header class="head">
     <div class="inc">
-      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${SH.sample ? '<span class="tag sample">Sample shift</span>' : ''}</div>
-      <h1>${esc(C.agency.name)} · Shift board</h1>
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${sampleTag()}</div>
+      <h1>${esc(C.agency.name)} · Supervisor</h1>
       <div class="inc-sub">${esc(day)} · <b>${onDuty} on duty</b> · ${plural(avail, 'unit')} available · ${plural(s.active, 'active call')}</div>
     </div>
     <div class="clocks">
@@ -3601,7 +3638,6 @@ function closedPanel(closed) {
   return `<section class="panel" aria-label="Finished calls">
     <div class="ph"><h2>Finished calls</h2><span class="meta">${closed.length}</span></div>
     <div class="rows">${closed.length ? closed.map(c => `<button class="row" data-act="sheet" data-arg="call:${c.id}"><span class="num">${hhmm(c.times.disp)}</span><div><div class="t1">${esc(c.type)} · ${esc(c.address)}</div><div class="t2">${c.unit ? esc(c.unit) + ' · ' : ''}${esc(c.outcome)}${c.mutualAid ? ' (' + esc(c.mutualAid) + ')' : ''}${c.hosp ? ' · ' + esc((hosp(c.hosp) || {}).short || '') : ''}</div></div><span class="r note">${c.times.onscene ? fmtMin(c.times.onscene - c.times.disp) : ''}</span></button>`).join('') : '<div class="empty">Calls you close appear here.</div>'}</div>
-    <button class="btn small" data-act="sheet" data-arg="shift-new">Start a new shift</button>
   </section>`;
 }
 
@@ -3622,7 +3658,7 @@ function memberHeader() {
   // No clock here: the phone's status bar already shows the time, and the calls need the room.
   return `<header class="head mhead">
     <div class="inc">
-      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)}</button>${syncChipHtml()}${SH.sample ? '<span class="tag sample">Sample shift</span>' : ''}</div>
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)}</button>${syncChipHtml()}${sampleTag()}</div>
       <h1>${esc(C.agency.name)}</h1>
       <div class="inc-sub">${me ? `<b>${esc(me.name)}</b> · ${esc(me.cert)} · ${duty ? `on duty${duty.unit ? ' on ' + esc(duty.unit) : ''}` : 'off duty'}` : 'Member view'}</div>
     </div>
@@ -3649,7 +3685,9 @@ function memberView() {
   const duty = myDuty();
   const active = SH.calls.filter(c => c.status !== 'clear').sort((a, b) => b.times.disp - a.times.disp);
   const ownUnits = SH.units.filter(u => u.status === 'in');
+  const alone = !IN_CLAUDE && Sync.state === 'local';
   return `<div class="mview">
+    ${alone ? `<section class="panel"><div class="note">${planEnded() ? "Your squad's shared board is off right now, so this phone only shows what was on it before." : "This phone isn't connected to your squad yet, so what's below is only on this phone. Open the invite link your supervisor sends you."}</div>${planEnded() ? '' : '<button class="btn small" data-act="sheet" data-arg="connect">Connect to my squad</button>'}</section>` : ''}
     ${mciBanner()}
     <section class="panel">
       <div class="ph"><h2>${duty ? `On duty since ${hhmm(duty.t)}` : 'Off duty'}</h2><button class="btn small" data-act="m-duty">${duty ? 'Go off duty' : 'Go on duty'}</button></div>
@@ -3786,7 +3824,7 @@ function crewSheet(id) {
   const q = (f.num || '').trim();
   const matches = !p && q ? C.members.filter(m => m.num.startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : [];
   return {
-    title: p ? `${p.name} · #${p.num}` : 'Check in for the shift',
+    title: p ? `${p.name} · #${p.num}` : 'Check in',
     body: `<div class="grid2">
         ${field('Member number', input('p-num', 'num', f.num, 'e.g. 4127', 'inputmode="numeric"'))}
         ${field('Name', input('p-name', 'name', f.name, 'Last name, first initial'))}
@@ -3797,11 +3835,12 @@ function crewSheet(id) {
     foot: `${p ? `<button class="btn danger" data-act="crew-out" data-arg="${p.id}">Check out</button>` : ''}<span class="grow"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="crew-save" data-arg="${p ? p.id : ''}">${p ? 'Save' : 'Check in'}</button>`,
   };
 }
+const sampleTag = () => SH.sample ? '<button class="tag sample" data-act="sheet" data-arg="shift-new">Sample · clear it</button>' : '';
 function shiftNewSheet() {
   return {
-    title: 'Start a new shift',
-    body: `<div class="note">Starts a fresh shift board on every tablet sharing it: ${C.roster.length ? `${esc(C.agency.name)}'s ${plural(C.roster.length, 'unit')} in service, ` : ''}no calls, nobody checked in. Today's board stays in the log of this tablet until it is replaced.</div>`,
-    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="shift-new">Start the shift</button>`,
+    title: 'Clear the sample',
+    body: `<div class="note">Replaces the made-up calls, units and crew with your own board for today: ${C.roster.length ? `${esc(C.agency.name)}'s ${plural(C.roster.length, 'unit')} in service, ` : ''}no calls, nobody checked in. Every tablet sharing it switches too. After this the board turns over by itself every morning at ${DAY_STARTS} AM, so there is nothing to start.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="shift-new">Clear the sample</button>`,
   };
 }
 
@@ -3899,8 +3938,9 @@ const SHIFT_ACTIONS = {
   'shift-new'() {
     UI.sheet = null; UI.form = {};
     SHIFT.start(blankShift());
-    UI.view = 'shift'; render();
-    showToast('New shift started', false);
+    if (UI.view !== 'member') UI.view = 'shift';
+    render();
+    showToast('Sample cleared', false);
   },
 };
 
@@ -3958,6 +3998,9 @@ function relayClient(url, token) {
     } else if (m.type === 'col') {
       const s = subs.get(m.path);
       if (s) { s.docs = new Map(m.docs); s.loaded = true; fire(m.path, s); }
+    } else if (m.type === 'welcome') {
+      if (RELAY && m.plan) { RELAY.plan = m.plan; write(RELAY_KEY, RELAY); }
+      planNotice(); syncChip();
     } else if (m.type === 'peers') {
       peers = m.peers || [];
       const ch = { peers: shapePeers(), joined: [], left: [], updated: [] };
@@ -3980,9 +4023,17 @@ function relayClient(url, token) {
     ws.onclose = ev => {
       open = false; ws = null;
       pending.forEach(p => { clearTimeout(p.timer); p.reject({ code: 'unavailable', message: 'Connection lost' }); }); pending.clear();
-      if (ev.code === 4401 || ev.code === 4403) {
-        refused = ev.code === 4403 ? 'revoked' : 'not_granted';
+      if (ev.code === 4401 || ev.code === 4402 || ev.code === 4403) {
+        refused = ev.code === 4403 ? 'revoked' : ev.code === 4402 ? 'plan_ended' : 'not_granted';
         relayRefusal = ev.reason || 'This tablet is not signed in to the squad.';
+        if (ev.code === 4402 && RELAY) {
+          RELAY.plan = { ...(RELAY.plan || { tier: 'trial' }), active: false }; write(RELAY_KEY, RELAY);
+          // The refusal says that the plan ended; the relay says which plan, and when.
+          fetch(relayBase(url) + '/v1/me', { headers: { authorization: 'Bearer ' + token } })
+            .then(r => (r.ok ? r.json() : null))
+            .then(d => { if (d && d.boardPlan && RELAY) { RELAY.plan = d.boardPlan; write(RELAY_KEY, RELAY); syncChip(); if (UI.sheet === 'connect') render(); } })
+            .catch(() => {});
+        }
         waiters.forEach(w => w.reject({ code: refused })); waiters = [];
         subs.forEach(s => s.cbs.forEach(cb => cb.error && cb.error({ code: 'revoked', message: relayRefusal })));
         return;
@@ -4016,7 +4067,7 @@ function relayClient(url, token) {
     connected: () => open,
   };
   connect();
-  return { use: async name => (name === 'db' ? db : name === 'room' ? room : null), isOpen: () => open };
+  return { use: async name => (name === 'db' ? db : name === 'room' ? room : null), isOpen: () => open, refused: () => refused };
 }
 let relayRefusal = '';
 const relayConn = !IN_CLAUDE && RELAY && RELAY.token && RELAY.url ? relayClient(RELAY.url, RELAY.token) : null;
@@ -4041,6 +4092,50 @@ function parseInvite(text) {
   return { url: q.get('u') || '', code: q.get('i') || '' };
 }
 
+/* Free on one tablet, for good. Sharing between tablets and phones is the squad
+   plan: free for TRIAL_DAYS from the first time the squad shares a board, then
+   paid. The relay decides (server/worker.js, boardPlan); this only shows it. */
+const TRIAL_DAYS = 60;   // the relay's default
+const planEnded = () => !!(relayConn && relayConn.refused() === 'plan_ended');
+const fmtDate = iso => new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T12:00:00' : iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const daysLeft = iso => Math.max(0, Math.ceil((Date.parse(iso) - Date.now()) / 86400000));
+function planWords(p) {
+  if (!p) return '';
+  if (!p.active) return p.tier === 'trial' ? 'Free trial ended' : p.tier === 'off' ? 'Sharing turned off' : 'Squad plan lapsed';
+  if (p.tier === 'trial') return `Free trial · ${plural(daysLeft(p.endsAt), 'day')} left`;
+  if (p.tier === 'squad') return p.grace ? 'Squad plan · payment due' : 'Squad plan';
+  return 'Squad plan · no end date';
+}
+function planPanel() {
+  const p = RELAY && RELAY.plan;
+  if (!p) return '';
+  let head, note, cls = '';
+  if (!p.active) {
+    head = planWords(p); cls = 'crit-t';
+    note = 'Each tablet keeps working on its own, with everything it already had. Sharing comes back as soon as the squad plan is on; then tap Try again.';
+  } else if (p.tier === 'trial') {
+    head = planWords(p); cls = daysLeft(p.endsAt) <= 14 ? 'warn-t' : '';
+    note = `Sharing between your tablets and members' phones is free until ${fmtDate(p.endsAt)}. After that each tablet keeps working on its own until the squad plan is on.`;
+  } else if (p.tier === 'squad') {
+    head = planWords(p); cls = p.grace ? 'warn-t' : 'ok-t';
+    note = p.grace ? `Paid through ${fmtDate(p.paidThrough)}. Sharing keeps working until ${fmtDate(p.endsAt)}.` : p.paidThrough ? `Paid through ${fmtDate(p.paidThrough)}.` : 'Active.';
+  } else {
+    head = planWords(p); cls = 'ok-t'; note = 'Sharing has no end date for this squad.';
+  }
+  return `<div class="ph"><h2 class="${cls}">${esc(head)}</h2></div><div class="note">${esc(note)}</div>`;
+}
+/* Once a day, on admin tablets, near the end of the trial or after a missed payment. */
+function planNotice() {
+  const p = RELAY && RELAY.plan;
+  if (!p || !p.active || RELAY.role !== 'admin') return;
+  const soon = p.tier === 'trial' && daysLeft(p.endsAt) <= 14, due = p.tier === 'squad' && p.grace;
+  if (!soon && !due) return;
+  const today = new Date().toDateString();
+  if (read('sc3:plan-notice') === today) return;
+  write('sc3:plan-notice', today);
+  showToast(soon ? `Free trial: ${plural(daysLeft(p.endsAt), 'day')} of sharing left. Menu → Squad sharing.` : `Squad plan payment is due. Sharing stops ${fmtDate(p.endsAt)}.`, false);
+}
+
 function connectSheet() {
   const f = UI.form;
   if (!f._init) Object.assign(f, { rmode: 'join', rurl: (RELAY && RELAY.url) || BAKED_RELAY_URL || '', _init: true });
@@ -4048,14 +4143,16 @@ function connectSheet() {
     const live = relayConn && relayConn.isOpen();
     return {
       title: 'Squad sharing',
-      body: `<div class="note">${relayRefusal ? `<span class="crit-t">${esc(relayRefusal)}</span> ` : ''}This tablet is ${live ? '<span class="ok-t">connected</span>' : 'set up but not connected right now'} to <b>${esc(RELAY.org || 'the squad')}</b> as <b>${esc(RELAY.name || '')}</b>${RELAY.role === 'admin' ? ' (admin)' : ''}. Every tablet signed in to the squad shares the same incident and shift.</div>
+      body: `<div class="note">${relayRefusal && !planEnded() ? `<span class="crit-t">${esc(relayRefusal)}</span> ` : ''}This tablet is ${live ? '<span class="ok-t">connected</span>' : 'set up but not connected right now'} to <b>${esc(RELAY.org || 'the squad')}</b> as <b>${esc(RELAY.name || '')}</b>${RELAY.role === 'admin' ? ' (admin)' : ''}. Every tablet signed in to the squad shares the same incident and supervisor board.</div>
         <div class="note">Relay: <span class="num">${esc(RELAY.url)}</span></div>
-        ${RELAY.role === 'admin' ? `<div class="ph"><h2>Add a tablet</h2></div>
+        ${planPanel()}
+        ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Add a tablet</h2></div>
           <div class="note">Makes a new invite link. Open it on the other tablet, or type its code there. Making a new one stops earlier invite links from working; tablets already joined are not affected.</div>
           ${f.invite ? `<div class="coord" style="word-break:break-all">${esc(f.invite.link)}<small>Invite code ${esc(f.invite.code)}</small></div>
             <div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(f.invite.link)}">${icon('copy')} Copy link</button><button class="btn small" data-act="copy-text" data-arg="${esc(f.invite.code)}">Copy code</button></div>`
-            : `<button class="btn" data-act="relay-invite">Make an invite link</button>`}` : ''}`,
-      foot: `<button class="btn danger" data-act="relay-leave">Disconnect this tablet</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
+            : `<button class="btn" data-act="relay-invite">Make an invite link</button>`}` : ''}
+        ${ownerLink()}`,
+      foot: `<button class="btn danger" data-act="relay-leave">Disconnect this tablet</button><span class="grow"></span>${planEnded() ? '<button class="btn" data-act="relay-retry">Try again</button>' : ''}<button class="btn primary" data-act="close">Done</button>`,
     };
   }
   const tabs = `<div class="chips">${opt('f-set', 'rmode=join', f.rmode === 'join', 'Join with an invite')}${opt('f-set', 'rmode=setup', f.rmode === 'setup', 'Set up the squad · first time')}</div>`;
@@ -4063,13 +4160,14 @@ function connectSheet() {
   const body = f.rmode === 'setup'
     ? `${common}<div class="grid2">${field('Setup code', input('r-boot', 'rboot', f.rboot, 'The BOOTSTRAP_CODE from GitHub', 'autocapitalize="off"'))}${field('Agency', input('r-org', 'rorg', f.rorg || C.agency.name, 'Hatzalah Jersey Shore'))}</div>
        ${field('Your name', input('r-name', 'rname2', f.rname2, 'Name, as the log should show it'))}
-       <div class="note">Creates the squad on your relay and makes this tablet its admin. Do this once; every other tablet joins with an invite.</div>`
+       ${field('Plan', `<div class="chips">${opt('f-set', 'rplan=trial', f.rplan !== 'comp', `${TRIAL_DAYS}-day free trial`)}${opt('f-set', 'rplan=comp', f.rplan === 'comp', 'No end date · my own squad')}</div>`)}
+       <div class="note">Creates the squad on your relay and makes this tablet its admin. Do this once; every other tablet joins with an invite. The trial starts the first time a tablet shares a board.</div>`
     : `${field('Invite link or code', input('r-invite', 'rinvite', f.rinvite, 'Paste the link, or type the code', 'autocapitalize="characters"'))}
        ${common}
        ${field('Name for this tablet', input('r-name', 'rname2', f.rname2, 'e.g. Triage iPad, or your name'))}`;
   return {
     title: 'Squad sharing',
-    body: `<div class="note">Sign this tablet in to the squad so it shares one live incident and shift with the others, through the squad's relay.</div>${tabs}${body}${f.rerr ? `<div class="note crit-t">${esc(f.rerr)}</div>` : ''}`,
+    body: `<div class="note"><b>Free:</b> the whole board on this tablet, for as long as you like. <b>Squad plan:</b> sign in to your squad to share one live incident and supervisor board with its other tablets and members' phones. Free for the first ${TRIAL_DAYS} days.</div>${tabs}${body}${f.rerr ? `<div class="note crit-t">${esc(f.rerr)}</div>` : ''}${ownerLink()}`,
     foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="${f.rmode === 'setup' ? 'relay-setup' : 'relay-join'}">${f.rmode === 'setup' ? 'Create the squad' : 'Join'}</button>`,
   };
 }
@@ -4079,7 +4177,54 @@ function relaySaved(url, data, role) {
   showToast(`Signed in to ${RELAY.org || 'the squad'}. Connecting…`, false);
   setTimeout(() => location.reload(), 700);
 }
+/* For whoever runs the relay: every squad on it and its plan. Uses the setup
+   code that creates squads, which is not saved on the tablet. */
+const ownerLink = () => '<button class="btn small" data-act="sheet" data-arg="owner">Relay owner: squads and plans</button>';
+function ownerSheet() {
+  const f = UI.form;
+  if (!f._init) {
+    const d = new Date(); d.setFullYear(d.getFullYear() + 1);
+    Object.assign(f, { rurl: (RELAY && RELAY.url) || BAKED_RELAY_URL || '', opaid: d.toISOString().slice(0, 10), _init: true });
+  }
+  const row = sq => `<div class="osq">
+      <div class="t1"><b>${esc(sq.name)}</b> <span class="note">${esc(sq.plan ? planWords(sq.plan) : 'Trial not started yet')}${sq.plan && sq.plan.tier === 'squad' && sq.plan.paidThrough ? ' · paid through ' + esc(fmtDate(sq.plan.paidThrough)) : ''}</span></div>
+      <div class="toolbar">
+        <button class="btn small" data-act="owner-plan" data-arg="${esc(sq.id)}=squad">Paid through ${esc(f.opaid ? fmtDate(f.opaid) : '…')}</button>
+        <button class="btn small" data-act="owner-plan" data-arg="${esc(sq.id)}=comp">No end date</button>
+        <button class="btn small" data-act="owner-plan" data-arg="${esc(sq.id)}=trial">Restart trial</button>
+        <button class="btn small danger" data-act="owner-plan" data-arg="${esc(sq.id)}=off">Sharing off</button>
+      </div></div>`;
+  return {
+    title: 'Relay owner · squads and plans',
+    body: `<div class="note">For whoever runs this relay. Turn a squad's plan on when it pays, or give a squad no end date. Each tablet always keeps working on its own; this only decides whether a squad's tablets can share.</div>
+      <div class="grid2">${field('Relay address', input('r-url', 'rurl', f.rurl, 'https://pcr-relay.your-name.workers.dev', 'inputmode="url" autocapitalize="off"'))}${field('Setup code', input('o-code', 'ocode', f.ocode, 'The BOOTSTRAP_CODE', 'autocapitalize="off" type="password"'))}</div>
+      ${field('Squad plan paid through', input('o-paid', 'opaid', f.opaid, 'YYYY-MM-DD', 'inputmode="numeric"'))}
+      <button class="btn" data-act="owner-load">${f.squads ? 'Refresh' : 'Show squads'}</button>
+      ${f.oerr ? `<div class="note crit-t">${esc(f.oerr)}</div>` : ''}
+      ${f.squads ? (f.squads.length ? `<div class="rows">${f.squads.map(row).join('')}</div>` : '<div class="empty">No squads on this relay yet.</div>') : ''}`,
+    foot: `<button class="btn" data-act="sheet" data-arg="connect">Back</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
+  };
+}
 const RELAY_ACTIONS = {
+  'relay-retry'() { location.reload(); },
+  async 'owner-load'() {
+    const f = UI.form; f.oerr = '';
+    try { const { data } = await relayCall('/v1/owner/squads', {}, { 'x-bootstrap-code': (f.ocode || '').trim() }); f.squads = data.squads || []; }
+    catch (e) { f.oerr = e.message; f.squads = null; }
+    render();
+  },
+  async 'owner-plan'(arg) {
+    const f = UI.form, i = arg.indexOf('='), orgId = arg.slice(0, i), tier = arg.slice(i + 1);
+    f.oerr = '';
+    if (tier === 'squad' && !/^\d{4}-\d{2}-\d{2}$/.test((f.opaid || '').trim())) { f.oerr = 'Enter the date the plan is paid through, as YYYY-MM-DD.'; return render(); }
+    try {
+      const { data } = await relayCall('/v1/owner/plan', { orgId, tier, paidThrough: (f.opaid || '').trim() }, { 'x-bootstrap-code': (f.ocode || '').trim() });
+      const sq = (f.squads || []).find(x => x.id === orgId);
+      if (sq) sq.plan = data.plan;
+      showToast(`${data.name}: ${planWords(data.plan)}`, false);
+    } catch (e) { f.oerr = e.message; }
+    render();
+  },
   async 'relay-join'() {
     const f = UI.form;
     const fromLink = parseInvite(f.rinvite);
@@ -4094,7 +4239,7 @@ const RELAY_ACTIONS = {
   async 'relay-setup'() {
     const f = UI.form, name = (f.rname2 || '').trim(), orgName = (f.rorg || C.agency.name || '').trim();
     if (!f.rboot || !name || !orgName) { f.rerr = 'The setup code, the agency and your name are all needed.'; return render(); }
-    try { const { url, data } = await relayCall('/v1/orgs', { orgName, adminName: name }, { 'x-bootstrap-code': f.rboot.trim() }); relaySaved(url, { ...data, adminName: name }, 'admin'); }
+    try { const { url, data } = await relayCall('/v1/orgs', { orgName, adminName: name, plan: f.rplan === 'comp' ? 'comp' : undefined }, { 'x-bootstrap-code': f.rboot.trim() }); relaySaved(url, { ...data, adminName: name }, 'admin'); }
     catch (e) { f.rerr = e.message; render(); }
   },
   async 'relay-invite'() {
@@ -4345,7 +4490,7 @@ const A = {
     UI.sheet = null; UI.form = {};
     const missing = C.roster.filter(r => !S.units.some(u => u.name === r.name));
     const smissing = C.roster.filter(r => !SH.units.some(u => u.name === r.name));
-    if (smissing.length) sdispatch('unitAdd', { units: smissing.map(r => ({ id: uid(), name: r.name, kind: r.kind, status: 'in', since: now(), note: '' })) }, `${plural(smissing.length, 'unit')} added to the shift board`, 'units', { toast: false });
+    if (smissing.length) sdispatch('unitAdd', { units: smissing.map(r => ({ id: uid(), name: r.name, kind: r.kind, status: 'in', since: now(), note: '' })) }, `${plural(smissing.length, 'unit')} added to the supervisor board`, 'units', { toast: false });
     if (addNow === 'add' && missing.length) {
       dispatch('unitAdd', { units: missing.map(r => ({ id: uid(), name: r.name, kind: r.kind, agency: C.agency.name, crew: 2, status: 'available', task: '', t: now() })) },
         `${C.agency.name}: ${plural(missing.length, 'unit')} added as Available`, 'units');
@@ -4498,8 +4643,10 @@ document.addEventListener('submit', e => {
    Clocks
    ===================================================================== */
 let lastShiftDraw = 0;
+let lastDayCheck = 0;
 function tick() {
   const t = now();
+  if (t - lastDayCheck > 60000) { lastDayCheck = t; maybeNewDay(); }
   const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
   set('now', hhmm(t));
   document.querySelectorAll('[data-since]').forEach(el => { const v = dur(t - Number(el.dataset.since)); if (el.textContent !== v) el.textContent = v; });
