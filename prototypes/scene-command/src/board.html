@@ -148,10 +148,10 @@ button.tag { min-height: 32px; }
 .iconbtn svg { width: 26px; height: 26px; }
 
 /* ---------- rail ---------- */
-.rail { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: auto; }
+.rail { display: flex; flex-direction: column; gap: 3px; min-height: 0; overflow: auto; }
 .rail button {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  min-height: 60px; flex-shrink: 0; border-radius: var(--r);
+  min-height: 56px; flex-shrink: 0; border-radius: var(--r);
   background: transparent; border: 1px solid transparent; color: var(--muted);
   font: 600 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase;
 }
@@ -519,8 +519,49 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .hrow .hc.full { background: color-mix(in srgb, var(--crit) 22%, var(--surface)); }
 .hrow .ht { font: 600 13px/1 var(--mono); text-align: center; }
 
+/* ---------- shift board ---------- */
+.shift { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(340px, 1.25fr) minmax(280px, 1fr); gap: 12px; height: 100%; min-height: 0; }
+.shift .col { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.sunits { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.sunit { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 10px; border-radius: 10px; background: var(--raised); border: 2px solid var(--line); min-height: 96px; }
+.sunit .u1 { display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%; }
+.sunit .uid { font: 700 22px/1 var(--display); }
+.sunit .sstat { font: 700 16px/1.15 var(--display); letter-spacing: 0.03em; }
+.sunit .ut { font-size: 13px; color: var(--muted); }
+.sunit .crewline { font-size: 13px; color: var(--fg); }
+.sunit .crewline small { color: var(--faint); }
+.sunit.st-in { border-color: var(--ok); }
+.sunit.st-in .sstat { color: var(--ok); }
+.sunit.st-busy { border-color: var(--accent); }
+.sunit.st-busy .sstat { color: var(--accent); }
+.sunit.st-oos { border-style: dashed; opacity: 0.85; }
+.sunit.st-oos .sstat { color: var(--faint); }
+.call { border: 1.5px solid var(--line); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--raised); }
+.call.al-crit { border-color: var(--crit); }
+.call.al-warn { border-color: var(--warn); }
+.call .ct { font: 700 21px/1.1 var(--display); }
+.call .ca { color: var(--muted); font-size: 15px; }
+.call .uid { font: 700 20px/1 var(--display); }
+.csteps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.cs { display: flex; flex-direction: column; gap: 2px; padding: 5px 6px; border-radius: 6px; border: 1px solid var(--line); min-width: 0; }
+.cs b { font: 700 11px/1.1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs small { font: 600 13px/1 var(--mono); color: var(--muted); min-height: 13px; }
+.cs.done { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); }
+.cs.now { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.cs.now b { color: var(--fg); }
+.cline { font-size: 15px; }
+.calert { font: 700 15px/1.2 var(--display); letter-spacing: 0.03em; padding: 8px 10px; border-radius: 8px; }
+.calert.crit { background: var(--crit); color: var(--on-solid); }
+.calert.warn { border: 1.5px solid var(--warn); color: var(--warn); }
+.shift .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stat.warnstat { outline: 2px solid var(--warn); outline-offset: -2px; }
+
 /* ---------- responsive ---------- */
 @media (max-width: 1100px) {
+  .shift { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: auto; }
+  .shift .col { overflow: visible; }
+  .shift .col:first-child { order: 2; }
+  .shift .col:last-child { grid-column: 1 / -1; order: 3; }
   .desk { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); height: auto; }
   .desk .col { overflow: visible; }
   .desk .col:last-child { grid-column: 1 / -1; }
@@ -542,7 +583,8 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
   .rail button { flex: 1 0 56px; min-height: 56px; font-size: 11px; gap: 3px; }
   .rail button svg { width: 22px; height: 22px; }
   .rail .spacer { display: none; }
-  .board, .board .col.c2, .desk { grid-template-columns: minmax(0, 1fr); }
+  .board, .board .col.c2, .desk, .shift { grid-template-columns: minmax(0, 1fr); }
+  .csteps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tri-big .tri-count { font-size: 60px; }
   .tri-big .tri-btns button { width: 64px; height: 76px; font-size: 34px; }
   .mapcard.mini { height: 240px; }
@@ -867,7 +909,7 @@ const townLL = name => { const n = (name || '').trim().toLowerCase(); const t = 
    Helpers
    ===================================================================== */
 const parOn = () => !!(C && C.features && C.features.par);
-const K = { dev: 'sc3:device', cfg: 'sc3:config', inc: 'sc3:incident', ev: id => 'sc3:events:' + id, ui: 'sc3:ui' };
+const K = { dev: 'sc3:device', cfg: 'sc3:config', ev: id => 'sc3:events:' + id, ui: 'sc3:ui' };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Math.random().toString(36).slice(2, 9);
 const now = () => Date.now();
@@ -925,6 +967,7 @@ const ICON = {
   expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20.5c.9-4 3.6-6 7-6s6.1 2 7 6"/>',
+  clip: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
   tag: '<path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1.4 1.4 0 0 1 0 2l-7 7a1.4 1.4 0 0 1-2 0l-8-8z"/><circle cx="8" cy="8" r="1.6"/>',
 };
 const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[name]}</svg>`;
@@ -933,6 +976,7 @@ const icon = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-
    State
    ===================================================================== */
 let S;    // the incident as it stands now: the starting state with every event replayed over it
+let SH;   // today's shift board, built the same way
 let C;    // agency configuration that outlives incidents: squad, unit roster, members, extra numbers
 let DEV;  // this tablet only: its id, its job (role), day/night, last GPS fix
 let UI = { view: '', sheet: null, form: {}, logFilter: 'all', unitGroup: 'all', hospFilter: [], pinMode: null, mapLayer: 'sat', live: 'unknown' };
@@ -942,11 +986,13 @@ const ROLES = {
   command:   { name: 'Command',   home: 'board',     note: 'The whole board: triage, units, transport, hospitals, ICS, radio' },
   triage:    { name: 'Triage',    home: 'triage',    note: 'Big counters, re-triage, the triage report' },
   transport: { name: 'Transport', home: 'transport', note: 'Loading units, hospital capacity, the transport log' },
+  supervisor: { name: 'Supervisor', home: 'shift',   note: 'Everyday calls: units in service, active calls, crew on duty, today\'s numbers' },
 };
 const RAILS = {
-  command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log'],
+  command:   ['board', 'map', 'transport', 'units', 'hospitals', 'phone', 'ics', 'radio', 'log', 'shift'],
   triage:    ['triage', 'board', 'units', 'map', 'phone', 'log'],
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
+  supervisor: ['shift', 'hospitals', 'phone', 'map', 'board'],
 };
 const homeView = () => (ROLES[DEV.role] || ROLES.command).home;
 const newIncidentId = () => 'inc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
@@ -1134,6 +1180,7 @@ function sampleConfig() {
     { num: '4133', name: 'J. Ortiz', cert: 'EMT' }, { num: '4140', name: 'M. Chen', cert: 'EMT' },
     { num: '4152', name: 'T. Byrne', cert: 'EMR' }, { num: '4158', name: 'A. Russo', cert: 'EMT' },
     { num: '4161', name: 'P. Walsh', cert: 'EMT' }, { num: '4170', name: 'S. Okafor', cert: 'Driver' },
+    { num: '4175', name: 'D. Patel', cert: 'Paramedic' }, { num: '4180', name: 'L. Gomez', cert: 'EMT' },
   ];
   return c;
 }
@@ -1209,6 +1256,7 @@ function render() {
 }
 
 function header() {
+  if (UI.view === 'shift') return shiftHeader();
   const I = S.incident;
   const lvl = I.mciLevel, nts = notices();
   const mci = lvl
@@ -1241,6 +1289,7 @@ function header() {
 const VIEWS = [
   { id: 'board',     label: 'Board',     icon: 'board' },
   { id: 'triage',    label: 'Triage',    icon: 'tag' },
+  { id: 'shift',     label: 'Shift',     icon: 'clip' },
   { id: 'map',       label: 'Map',       icon: 'map' },
   { id: 'transport', label: 'Transport', icon: 'amb' },
   { id: 'units',     label: 'Units',     icon: 'units' },
@@ -1267,6 +1316,7 @@ function view() {
   switch (UI.view) {
     case 'map': return mapView();
     case 'triage': return triageView();
+    case 'shift': return shiftView();
     case 'transport': return transportView();
     case 'units': return unitsView();
     case 'hospitals': return hospitalsView();
@@ -1816,8 +1866,9 @@ function transportView() {
 }
 
 function syncWords() {
-  if (Sync.state === 'live') { const n = Sync.tablets().length; return n ? `live with ${plural(n, 'tablet')}` : 'live'; }
-  if (Sync.state === 'unshared') return 'ready to share';
+  const str = streamOfView();
+  if (Sync.state === 'ready' && str.shared) { const n = Sync.tablets().length; return n ? `live with ${plural(n, 'tablet')}` : 'live'; }
+  if (Sync.state === 'ready') return 'ready to share';
   return 'this tablet only';
 }
 function roleSheet() {
@@ -1829,7 +1880,7 @@ function roleSheet() {
       ${peers.length ? `<div class="rows">${peers.map(pr => `<div class="row"><span class="pill ${pr.sameTab ? 'onscene' : ''}">${pr.sameTab ? 'This one' : 'Tablet'}</span><div class="t1">${esc((ROLES[pr.presence && pr.presence.role] || {}).name || 'Opening…')}</div><span class="note">${pr.updatedAt ? hhmm(pr.updatedAt) : ''}</span></div>`).join('')}</div>`
         : `<div class="note">${Sync.state === 'local' ? 'This board is running on this tablet alone. Sharing needs the page opened from its link while signed in.' : 'No other tablets have this board open right now.'}</div>`}
       <div class="note">To add a tablet, open this same link on it, signed in to an account that can edit this page. Each tablet picks its own job; they all share one incident, and every change shows up on the others within a few seconds.</div>
-      ${Sync.state === 'unshared' ? '<button class="btn primary" data-act="share">Share this board now</button>' : ''}`,
+      ${Sync.state === 'ready' && !streamOfView().shared ? '<button class="btn primary" data-act="share">Share this board now</button>' : ''}`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
 }
@@ -1995,6 +2046,7 @@ function sheetHtml() {
     ics: icsSheet, hosp: hospSheet, incident: incidentSheet, newinc: newIncidentSheet, menu: menuSheet, mci: mciSheet,
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
     role: roleSheet, agency: agencySheet,
+    'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
   return `<div class="sheet-wrap" data-act="backdrop">
@@ -2300,6 +2352,7 @@ function menuSheet() {
         <button class="opt tall" data-act="sheet" data-arg="newinc">Start a new incident<small>Clears this board</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-units">Load mutual aid<small>Paste a list of expected units</small></button>
         <button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>
+        <button class="opt tall" data-act="sheet" data-arg="shift-new">Start a new shift<small>Fresh shift board for everyday calls</small></button>
         <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
       </div>
       <div class="note"><b>Prototype.</b> Tablets that open this same page share one board through it. Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
@@ -2308,41 +2361,65 @@ function menuSheet() {
 }
 
 /* =====================================================================
-   Shared incident. Every change is an event; each tablet keeps its own
-   list of events and every tablet replays all of them over the incident's
-   starting state. Two tablets tapping at once can't overwrite each other,
-   counts add up, and undo takes back one event.
-   ===================================================================== */
-let BASE = null;              // the incident as it was when command was established
-const EVENTS = new Map();     // every event from every tablet, by id
-let seq = 0;
+   Shared boards. Every change is an event; each tablet keeps its own list
+   of events and every tablet replays all of them over the board's starting
+   state. Two tablets tapping at once can't overwrite each other, counts add
+   up, and undo takes back one event.
 
+   There are two boards, each its own stream of events: the MCI incident
+   (scene command) and the everyday shift (supervisor).
+   ===================================================================== */
+let seq = 0;
 const byTime = (a, b) => a.t - b.t || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-const undoneIds = () => new Set([...EVENTS.values()].filter(e => e.type === 'undo').map(e => e.p.target));
-function replay() {
-  const st = JSON.parse(JSON.stringify(BASE));
-  const undone = undoneIds();
-  for (const e of [...EVENTS.values()].sort(byTime)) {
+
+function Stream(name, opts) {
+  Object.assign(this, opts);              // root, pointer, key, R, label
+  this.name = name;
+  this.base = null; this.events = new Map(); this.state = null;
+  this.id = null; this.shared = false; this.unsub = null;
+  this.written = {}; this.writing = false; this.dirty = false; this.error = ''; this.booted = false;
+}
+Stream.prototype.undone = function () { return new Set([...this.events.values()].filter(e => e.type === 'undo').map(e => e.p.target)); };
+Stream.prototype.rebuild = function () {
+  const st = JSON.parse(JSON.stringify(this.base)), undone = this.undone();
+  for (const e of [...this.events.values()].sort(byTime)) {
     if (undone.has(e.id)) continue;
-    if (e.type !== 'undo' && R[e.type]) { try { R[e.type](st, e.p); } catch (err) { console.warn('Skipped an event that no longer applies', e.type, err); } }
+    if (e.type !== 'undo' && this.R[e.type]) { try { this.R[e.type](st, e.p); } catch (err) { console.warn('Skipped an event that no longer applies', e.type, err); } }
     if (e.text) st.log.push({ t: e.t, kind: e.kind, text: e.text, role: e.role });
   }
-  return st;
-}
-function rebuild() { S = replay(); }
-function saveLocal() { write(K.inc, BASE); write(K.ev(BASE.id), [...EVENTS.values()]); }
-
-function dispatch(type, p, text, kind = 'note', { toast = true } = {}) {
+  this.state = st;
+  if (this.name === 'incident') S = st; else SH = st;
+};
+Stream.prototype.saveLocal = function () { write(this.key, this.base); write(K.ev(this.base.id), [...this.events.values()]); };
+Stream.prototype.load = function (fallback) {
+  const b = read(this.key);
+  this.base = b && b.id ? b : fallback();
+  this.events.clear();
+  (read(K.ev(this.base.id)) || []).forEach(e => this.events.set(e.id, e));
+  this.rebuild();
+};
+Stream.prototype.dispatch = function (type, p, text, kind = 'note', { toast = true } = {}) {
   const e = { id: `${DEV.id}.${Date.now().toString(36)}.${(seq++).toString(36)}`, dev: DEV.id, role: DEV.role, t: now(), type, p, text: text || '', kind };
-  EVENTS.set(e.id, e);
-  rebuild(); saveLocal(); render();
+  this.events.set(e.id, e);
+  this.rebuild(); this.saveLocal(); render();
   if (toast && text) showToast(text, e.id);
-  Sync.push();
+  Sync.push(this);
   return e;
-}
+};
+Stream.prototype.start = function (base) {
+  this.base = base; this.events.clear(); this.rebuild(); this.saveLocal();
+  if (Sync.db) Sync.announce(this);
+};
+Stream.prototype.mine = function () { return [...this.events.values()].filter(e => e.dev === DEV.id).sort(byTime); };
+Stream.prototype.pending = function () {
+  const mine = this.mine();
+  let n = 0;
+  for (let i = 0; i * CHUNK < mine.length; i++) n += Math.min(CHUNK, mine.length - i * CHUNK) - (this.written[`${this.id}:${i}`] || 0);
+  return n;
+};
 
 const unitIn = (st, id) => st.units.find(u => u.id === id);
-/* Reducers: how each event changes the incident. They must depend only on the event, never on the clock. */
+/* Reducers: how each event changes the incident. They depend only on the event, never on the clock. */
 const R = {
   tri(st, p) { st.triage[p.k] = Math.max(0, (st.triage[p.k] || 0) + p.d); },
   retriage(st, p) { if ((st.triage[p.from] || 0) > 0) { st.triage[p.from]--; st.triage[p.to] = (st.triage[p.to] || 0) + 1; } },
@@ -2378,22 +2455,43 @@ const R = {
   note() {},
 };
 
+/* Reducers for the everyday shift board. */
+const callIn = (st, id) => st.calls.find(c => c.id === id);
+const RS = {
+  unitStatus(st, p) { const u = unitIn(st, p.id); if (u) { u.status = p.st; u.since = p.at; u.note = p.note || ''; } },
+  unitAdd(st, p) { p.units.forEach(u => { if (!st.units.some(x => x.name === u.name)) st.units.push({ ...u }); }); },
+  callAdd(st, p) { st.calls.push({ ...p.call }); },
+  callStep(st, p) { const c = callIn(st, p.id); if (!c) return; c.status = p.st; c.times[p.st] = p.at; if (p.hosp) c.hosp = p.hosp; },
+  callUnit(st, p) { const c = callIn(st, p.id); if (c) c.unit = p.unit; },
+  callClose(st, p) { const c = callIn(st, p.id); if (!c) return; c.status = 'clear'; c.times.clear = p.at; c.outcome = p.outcome; c.mutualAid = p.ma || ''; },
+  crewIn(st, p) { if (!st.crew.some(x => x.id === p.person.id)) st.crew.push({ ...p.person }); },
+  crewEdit(st, p) { const x = st.crew.find(q => q.id === p.id); if (x) Object.assign(x, p.fields); },
+  crewOut(st, p) { const x = st.crew.find(q => q.id === p.id); if (x) x.out = p.at; },
+  note() {},
+};
+
+const INC = new Stream('incident', { root: 'incidents', pointer: 'live/current', key: 'sc3:incident', R, label: 'incident' });
+const SHIFT = new Stream('shift', { root: 'shifts', pointer: 'live/shift', key: 'sc3:shift', R: RS, label: 'shift' });
+const STREAMS = [INC, SHIFT];
+const dispatch = (...a) => INC.dispatch(...a);
+const sdispatch = (...a) => SHIFT.dispatch(...a);
+const streamOfView = () => (UI.view === 'shift' ? SHIFT : INC);
+
 /* =====================================================================
    Sync between tablets, through this page's shared store.
 
-   live/current                         which incident every tablet follows
-   incidents/<id>                       its starting state
-   incidents/<id>/devices/<tablet>~<n>  that tablet's events, written only by it
-   config/agency                        squad, unit roster, members, extra numbers
+   live/current, live/shift               which incident and which shift every tablet follows
+   incidents/<id>, shifts/<id>            each one's starting state
+   …/<id>/devices/<tablet>~<n>            that tablet's events, written only by it
+   config/agency                          squad, unit roster, members, settings, extra numbers
 
    Without the store (signed out, or the page opened somewhere else) the
-   board runs on this tablet alone, exactly as before.
+   boards run on this tablet alone.
    ===================================================================== */
 const STOP_CODES = ['revoked', 'not_granted', 'capability_disabled', 'capability_removed'];
 const CHUNK = 300;   // events per document, well under the store's 256 KiB per document
 const Sync = {
-  db: null, room: null, state: 'local', incId: null, devUnsub: null,
-  writing: false, dirty: false, written: {}, error: '', peers: [], booted: false, cfgWriting: null,
+  db: null, room: null, state: 'local', peers: [], cfgWriting: null,
 
   async start() {
     if (!window.claude || typeof window.claude.use !== 'function') return;
@@ -2401,9 +2499,10 @@ const Sync = {
     let db = null;
     try { db = await window.claude.use('db'); } catch (e) { db = null; }
     if (!db) { this.state = 'local'; syncChip(); return; }
-    this.db = db;
-    db.doc('live/current').onSnapshot(s => this.onPointer(s), e => this.stop(e));
+    this.db = db; this.state = 'ready';
+    STREAMS.forEach(str => db.doc(str.pointer).onSnapshot(s => this.onPointer(str, s), e => this.stop(e)));
     db.doc('config/agency').onSnapshot(s => this.onConfig(s), () => {});
+    syncChip();
     try {
       const room = await window.claude.use('room');
       if (room) {
@@ -2414,104 +2513,95 @@ const Sync = {
     } catch (e) { this.room = null; }
   },
 
-  onPointer(snap) {
-    const d = snap.exists ? snap.data() : null;
-    if (!d || !d.incident) {
-      if (this.state !== 'live') { this.state = 'unshared'; syncChip(); }
-      this.booted = true;
-      return;
-    }
-    if (d.incident === this.incId) return;
-    this.follow(d.incident, this.booted);
-    this.booted = true;
+  onPointer(str, snap) {
+    const d = snap.exists ? snap.data() : null, id = d && (d.id || d.incident);
+    const booted = str.booted;
+    str.booted = true;
+    if (!id) { syncChip(); return; }
+    if (id === str.id) return;
+    this.follow(str, id, booted);
   },
 
-  async follow(id, announce) {
-    this.incId = id;
-    if (this.devUnsub) { this.devUnsub(); this.devUnsub = null; }
-    if (!BASE || BASE.id !== id) {
+  async follow(str, id, announce) {
+    str.id = id;
+    if (str.unsub) { str.unsub(); str.unsub = null; }
+    if (!str.base || str.base.id !== id) {
       let snap;
-      try { snap = await this.db.doc('incidents/' + id).get(); } catch (e) { return this.fail(e); }
-      if (!snap.exists || this.incId !== id) return;
-      BASE = snap.data().base;
-      EVENTS.clear();
-      (read(K.ev(id)) || []).forEach(e => EVENTS.set(e.id, e));
-      UI.sheet = null; UI.form = {}; mapKind = null;
-      rebuild(); saveLocal(); render();
-      showToast(announce ? 'Another tablet started a new incident. This board now follows it.' : 'Joined the live incident.', false);
+      try { snap = await this.db.doc(`${str.root}/${id}`).get(); } catch (e) { return this.fail(str, e); }
+      if (!snap.exists || str.id !== id) return;
+      str.base = snap.data().base;
+      str.events.clear();
+      (read(K.ev(id)) || []).forEach(e => str.events.set(e.id, e));
+      if (str === INC) { UI.sheet = null; UI.form = {}; mapKind = null; }
+      str.rebuild(); str.saveLocal(); render();
+      showToast(announce ? `Another tablet started a new ${str.label}. This board now follows it.` : `Joined the live ${str.label}.`, false);
     }
-    this.written = {};
-    this.devUnsub = this.db.collection(`incidents/${id}/devices`).onSnapshot(qs => {
+    str.written = {};
+    str.unsub = this.db.collection(`${str.root}/${id}/devices`).onSnapshot(qs => {
       let changed = false;
       qs.docs.forEach(d => {
         const b = d.data();
-        ((b && b.events) || []).forEach(e => { if (!EVENTS.has(e.id)) { EVENTS.set(e.id, e); changed = true; } });
+        ((b && b.events) || []).forEach(e => { if (!str.events.has(e.id)) { str.events.set(e.id, e); changed = true; } });
       });
-      if (changed) { rebuild(); saveLocal(); render(); }
+      if (changed) { str.rebuild(); str.saveLocal(); if (!UI.sheet || str === streamOfView()) render(); }
     }, e => this.stop(e));
-    this.state = 'live'; syncChip();
-    this.flush();
+    str.shared = true; syncChip();
+    this.flush(str);
   },
 
-  /* Make this tablet's incident the one every tablet follows. */
-  async announce() {
+  /* Make this tablet's board the one every tablet follows. */
+  async announce(str) {
     if (!this.db) return;
-    const id = BASE.id;
-    this.state = 'sharing'; syncChip();
+    const id = str.base.id;
+    str.sharing = true; syncChip();
     try {
-      await this.db.doc('incidents/' + id).set({ base: BASE, createdAt: now(), by: DEV.id });
-      this.incId = id;
-      await this.db.doc('live/current').set({ incident: id, at: now(), by: DEV.id });
-      this.follow(id, false);
-    } catch (e) { this.fail(e); }
+      await this.db.doc(`${str.root}/${id}`).set({ base: str.base, createdAt: now(), by: DEV.id });
+      str.id = id;
+      await this.db.doc(str.pointer).set({ id, at: now(), by: DEV.id });
+      str.sharing = false;
+      this.follow(str, id, false);
+    } catch (e) { str.sharing = false; this.fail(str, e); }
   },
 
-  push() {
+  push(str) {
     if (!this.db) return;
-    if (this.state === 'unshared') return this.announce();
-    if (this.state === 'live') return this.flush();
-  },
-
-  mine() { return [...EVENTS.values()].filter(e => e.dev === DEV.id).sort(byTime); },
-  pending() {
-    const mine = this.mine();
-    let n = 0;
-    for (let i = 0; i * CHUNK < mine.length; i++) n += Math.min(CHUNK, mine.length - i * CHUNK) - (this.written[`${this.incId}:${i}`] || 0);
-    return n;
+    if (!str.shared || str.id !== str.base.id) return str.sharing ? null : this.announce(str);
+    return this.flush(str);
   },
 
   /* One write at a time to each document; a burst of taps becomes one write. */
-  async flush() {
-    if (!this.db || this.state !== 'live' || !this.incId) return;
-    if (this.writing) { this.dirty = true; return; }
-    this.writing = true;
+  async flush(str) {
+    if (!this.db || !str.shared || !str.id) return;
+    if (str.writing) { str.dirty = true; return; }
+    str.writing = true;
     try {
       do {
-        this.dirty = false;
-        const inc = this.incId, mine = this.mine();
+        str.dirty = false;
+        const id = str.id, mine = str.mine();
         for (let i = 0; i * CHUNK < mine.length; i++) {
-          const part = mine.slice(i * CHUNK, (i + 1) * CHUNK), key = `${inc}:${i}`;
-          if (this.written[key] === part.length) continue;
-          await this.db.doc(`incidents/${inc}/devices/${DEV.id}~${i}`).set({ dev: DEV.id, role: DEV.role, events: part, at: now() });
-          this.written[key] = part.length;
+          const part = mine.slice(i * CHUNK, (i + 1) * CHUNK), key = `${id}:${i}`;
+          if (str.written[key] === part.length) continue;
+          await this.db.doc(`${str.root}/${id}/devices/${DEV.id}~${i}`).set({ dev: DEV.id, role: DEV.role, events: part, at: now() });
+          str.written[key] = part.length;
         }
-      } while (this.dirty);
-      this.error = '';
-    } catch (e) { this.fail(e); }
-    this.writing = false;
+      } while (str.dirty);
+      str.error = '';
+    } catch (e) { this.fail(str, e); }
+    str.writing = false;
     syncChip();
   },
+  flushAll() { STREAMS.forEach(str => { if (str.shared) this.flush(str); else if (str.error) this.announce(str); }); },
 
-  fail(e) {
+  fail(str, e) {
     const code = (e && e.code) || 'unavailable';
     if (STOP_CODES.includes(code)) return this.stop(e);
-    this.error = code;
-    if (code === 'quota_exceeded') showToast('The shared board is full. Start a new incident to keep sharing.', false);
-    clearTimeout(this.retry);
-    this.retry = setTimeout(() => (this.state === 'unshared' || this.state === 'sharing' ? this.announce() : this.flush()), 4000 + Math.random() * 4000);
+    str.error = code;
+    if (code === 'quota_exceeded') showToast(`The shared board is full. Start a new ${str.label} to keep sharing.`, false);
+    clearTimeout(str.retry);
+    str.retry = setTimeout(() => (str.shared ? this.flush(str) : this.announce(str)), 4000 + Math.random() * 4000);
     syncChip();
   },
-  stop() { this.state = 'local'; this.db = null; this.peers = []; syncChip(); },
+  stop() { this.state = 'local'; this.db = null; this.peers = []; STREAMS.forEach(s => { s.shared = false; }); syncChip(); },
 
   onConfig(snap) {
     if (!snap.exists) return;
@@ -2529,21 +2619,374 @@ const Sync = {
 };
 
 function syncChipHtml() {
-  const s = Sync.state, n = Sync.tablets().length, waiting = Sync.db ? Sync.pending() : 0;
-  if (s === 'live' && Sync.error) return `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="role">Sync paused · ${waiting} waiting</button>`;
-  if (s === 'live') return `<button class="tag live" id="sync-chip" data-act="sheet" data-arg="role">● Live${n ? ' · ' + plural(n, 'tablet') : ''}</button>`;
-  if (s === 'unshared') return `<button class="tag" id="sync-chip" data-act="share">Share this board</button>`;
-  if (s === 'sharing' || s === 'connecting') return `<span class="tag" id="sync-chip">Connecting…</span>`;
+  const str = streamOfView(), n = Sync.tablets().length;
+  if (Sync.state === 'connecting' || str.sharing) return `<span class="tag" id="sync-chip">Connecting…</span>`;
+  if (Sync.state === 'ready' && str.error) return `<button class="tag suggest" id="sync-chip" data-act="sheet" data-arg="role">Sync paused · ${str.pending()} waiting</button>`;
+  if (Sync.state === 'ready' && str.shared) return `<button class="tag live" id="sync-chip" data-act="sheet" data-arg="role">● Live${n ? ' · ' + plural(n, 'tablet') : ''}</button>`;
+  if (Sync.state === 'ready') return `<button class="tag" id="sync-chip" data-act="share">Share this board</button>`;
   return `<button class="tag" id="sync-chip" data-act="sheet" data-arg="role">This tablet only</button>`;
 }
 function syncChip() { const el = document.getElementById('sync-chip'); if (el) el.outerHTML = syncChipHtml(); }
 
 function startIncident(base, msg) {
-  BASE = base; EVENTS.clear(); rebuild(); saveLocal();
-  UI.sheet = null; UI.form = {}; UI.view = homeView(); mapKind = null;
+  UI.sheet = null; UI.form = {}; mapKind = null;
+  INC.start(base);
+  UI.view = DEV.role === 'supervisor' ? 'board' : homeView();
   render(); showToast(msg, false);
-  if (Sync.db) Sync.announce();
 }
+
+/* =====================================================================
+   Shift board: the supervisor's view of everyday calls.
+   ===================================================================== */
+const CALL_TYPES = ['Sick person', 'Fall', 'Breathing problem', 'Chest pain', 'Stroke', 'Unconscious / fainting', 'Seizure', 'Overdose', 'Psych / behavioral', 'Motor vehicle crash', 'Lift assist', 'Fire standby', 'Other'];
+const STEPS = ['disp', 'enroute', 'onscene', 'transport', 'hospital', 'clear'];
+const STEP_SHORT = { disp: 'Disp', enroute: 'En rt', onscene: 'Scene', transport: 'Trans', hospital: 'Hosp' };
+const STEP_NAMES = { disp: 'Dispatched', enroute: 'En route', onscene: 'On scene', transport: 'Transporting', hospital: 'At hospital', clear: 'Clear' };
+const OUTCOMES = ['Transported', 'Refusal (RMA)', 'Lift assist / no transport', 'No patient found', 'Cancelled', 'Mutual aid covered'];
+const OOS_REASONS = ['Mechanical', 'Restocking', 'Cleaning', 'No crew', 'Fuel', 'Other'];
+const NO_ENROUTE_WARN = 5 * 60000;   // dispatched with nobody en route
+const WALL_WARN = 30 * 60000;        // at the hospital, waiting to offload
+const CALL_TO_INCIDENT = { 'Motor vehicle crash': 'Motor vehicle crash', 'Fire standby': 'Fire / smoke', 'Overdose': 'Hazmat / CO' };
+
+const newShiftId = () => 'shift-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+function blankShift() {
+  const t = now();
+  return {
+    v: 1, id: newShiftId(), kind: 'shift', startedAt: t, sample: false,
+    units: C.roster.map(r => ({ id: uid(), name: r.name, kind: r.kind, status: 'in', since: t, note: '' })),
+    calls: [], crew: [],
+    log: [{ t, kind: 'note', text: `Shift started · ${C.agency.name}` }],
+  };
+}
+function sampleShift() {
+  const T = now(), ago = m => T - m * 60000;
+  const st = blankShift();
+  st.sample = true; st.startedAt = ago(570);
+  const U = (name, kind, status, since, note = '') => ({ id: uid(), name, kind, status, since, note });
+  st.units = [
+    U('78-50', 'SUP', 'in', ago(570)), U('78-55', 'RV', 'in', ago(570)),
+    U('78-56', 'BLS', 'in', ago(570)), U('78-57', 'BLS', 'in', ago(570)),
+    U('78-58', 'BLS', 'oos', ago(300), 'Mechanical: stretcher repair'), U('78-59', 'ALS', 'in', ago(480)),
+  ];
+  const P = (num, name, cert, unit, onAt) => ({ id: uid(), num, name, cert, unit, t: onAt });
+  st.crew = [
+    P('4101', 'Lt. R. Ramos', 'Officer', '78-50', ago(570)), P('4127', 'K. Shah', 'EMT', '78-56', ago(570)),
+    P('4140', 'M. Chen', 'EMT', '78-56', ago(560)), P('4133', 'J. Ortiz', 'EMT', '78-57', ago(420)),
+    P('4175', 'D. Patel', 'Paramedic', '78-59', ago(480)), P('4180', 'L. Gomez', 'EMT', '78-59', ago(480)),
+  ];
+  const call = (min, type, address, unit, steps, outcome, extra = {}) => {
+    const d = ago(min), times = { disp: d };
+    Object.entries(steps).forEach(([k, plus]) => { times[k] = d + plus * 60000; });
+    return { id: uid(), num: '', type, address, town: 'Ocean Township', unit, times, status: outcome ? 'clear' : Object.keys(times).pop(), outcome: outcome || '', hosp: extra.hosp || '', mutualAid: extra.ma || '' };
+  };
+  st.calls = [
+    call(545, 'Breathing problem', '22 Oak St', '78-56', { enroute: 4, onscene: 10, transport: 26, hospital: 41, clear: 75 }, 'Transported', { hosp: 'jsumc' }),
+    call(460, 'Lift assist', '7 Birch Ct', '78-57', { enroute: 3, onscene: 9, clear: 31 }, 'Lift assist / no transport'),
+    call(310, 'Chest pain', '410 Monmouth Rd', '78-56', { enroute: 5, onscene: 11, transport: 29, hospital: 44, clear: 70 }, 'Transported', { hosp: 'mmc' }),
+    call(200, 'Unconscious / fainting', '88 Elm Ave', '', { clear: 7 }, 'Mutual aid covered', { ma: 'Sheriff MedStar' }),
+    call(125, 'Motor vehicle crash', 'Route 35 & Deal Rd', '78-57', { enroute: 4, onscene: 9, clear: 34 }, 'Refusal (RMA)'),
+    call(58, 'Sick person', '5 Cedar Ln', '78-56', { enroute: 3, onscene: 6, transport: 12, hospital: 24 }, '', { hosp: 'jsumc' }),
+    call(6, 'Fall', '301 Park Ave', '', {}, ''),
+  ];
+  st.log = [
+    { t: ago(570), kind: 'note', text: `Shift started · ${C.agency.name}` },
+    { t: ago(300), kind: 'units', text: '78-58 out of service: stretcher repair' },
+    { t: ago(200), kind: 'note', text: '88 Elm Ave: no crew available; covered by Sheriff MedStar' },
+  ];
+  return st;
+}
+
+const busyCall = u => SH.calls.find(c => c.unit === u.name && c.status !== 'clear');
+const unitCrew = name => SH.crew.filter(p => !p.out && p.unit === name);
+function crewWarning(u) {
+  if (u.status === 'oos' || !TRANSPORT_KINDS.includes(u.kind)) return '';
+  const crew = unitCrew(u.name);
+  if (!crew.length) return 'No crew';
+  if (crew.length < 2) return 'Short crew';
+  if (!crew.some(p => ['EMT', 'Paramedic', 'RN'].includes(p.cert))) return 'No EMT';
+  return '';
+}
+function callAlert(c) {
+  const t = now();
+  if (c.status === 'disp' && t - c.times.disp > NO_ENROUTE_WARN) return { cls: 'crit', text: c.unit ? `No one en route on ${c.unit}` : 'No crew en route', since: c.times.disp };
+  if (c.status === 'hospital' && t - c.times.hospital > WALL_WARN) return { cls: 'warn', text: 'At the hospital a long time: check offload', since: c.times.hospital };
+  return null;
+}
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+const fmtMin = ms => ms == null ? '—' : `${Math.round(ms / 60000)} min`;
+function shiftStats() {
+  const calls = SH.calls;
+  const gap = (a, b) => calls.filter(c => c.times[a] && c.times[b]).map(c => c.times[b] - c.times[a]);
+  return {
+    total: calls.length,
+    active: calls.filter(c => c.status !== 'clear').length,
+    transports: calls.filter(c => c.outcome === 'Transported' || c.status === 'transport' || c.status === 'hospital').length,
+    refusals: calls.filter(c => c.outcome === 'Refusal (RMA)').length,
+    mutual: calls.filter(c => c.outcome === 'Mutual aid covered').length,
+    turnout: mean(gap('disp', 'enroute')),
+    response: mean(gap('disp', 'onscene')),
+    wall: mean(gap('hospital', 'clear')),
+  };
+}
+
+function shiftHeader() {
+  const s = shiftStats();
+  const avail = SH.units.filter(u => u.status === 'in' && !busyCall(u)).length;
+  const onDuty = SH.crew.filter(p => !p.out).length;
+  const day = new Date(now()).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  return `<header class="head">
+    <div class="inc">
+      <div class="inc-top"><button class="tag role" data-act="sheet" data-arg="role">${esc((ROLES[DEV.role] || ROLES.command).name)} tablet</button>${syncChipHtml()}${SH.sample ? '<span class="tag sample">Sample shift</span>' : ''}</div>
+      <h1>${esc(C.agency.name)} · Shift board</h1>
+      <div class="inc-sub">${esc(day)} · <b>${onDuty} on duty</b> · ${plural(avail, 'unit')} available · ${plural(s.active, 'active call')}</div>
+    </div>
+    <div class="clocks">
+      <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
+      <div class="clock"><span class="lbl">Calls today</span><span class="v">${s.total}</span></div>
+      <button class="iconbtn" data-act="mode" aria-label="Switch to ${DEV.mode === 'day' ? 'night' : 'day'} mode">${icon(DEV.mode === 'day' ? 'moon' : 'sun')}<span class="lbl">${DEV.mode === 'day' ? 'Night' : 'Day'}</span></button>
+    </div>
+  </header>`;
+}
+
+function shiftView() {
+  const active = SH.calls.filter(c => c.status !== 'clear').sort((a, b) => a.times.disp - b.times.disp);
+  const closed = SH.calls.filter(c => c.status === 'clear').sort((a, b) => b.times.disp - a.times.disp);
+  return `<div class="shift">
+    <div class="col" data-scroll="s1">${shiftUnitsPanel()}${crewPanel()}</div>
+    <div class="col" data-scroll="s2">${activeCallsPanel(active)}</div>
+    <div class="col" data-scroll="s3">${todayPanel()}${closedPanel(closed)}</div>
+  </div>`;
+}
+
+function shiftUnitsPanel() {
+  return `<section class="panel" aria-label="Our units">
+    <div class="ph"><h2>Our units</h2><button class="btn small" data-act="sheet" data-arg="agency">Edit units</button></div>
+    <div class="sunits">${SH.units.length ? SH.units.map(u => {
+      const c = busyCall(u), warn = crewWarning(u), crew = unitCrew(u.name);
+      const st = u.status === 'oos' ? 'oos' : c ? 'busy' : 'in';
+      const label = st === 'oos' ? `Out of service${u.note ? ' · ' + u.note : ''}` : c ? `${STEP_NAMES[c.status]}${c.hosp && (c.status === 'transport' || c.status === 'hospital') ? ' · ' + ((hosp(c.hosp) || {}).short || '') : ''}` : 'In service';
+      const since = st === 'busy' ? c.times[c.status] : u.since;
+      return `<button class="sunit st-${st}" data-act="sheet" data-arg="sunit:${u.id}">
+        <span class="u1"><span class="uid">${esc(u.name)}</span>${kindTag(u.kind)}</span>
+        <span class="sstat">${esc(label)}</span>
+        <span class="ut">${st === 'busy' ? `${esc(c.address)} · <span class="num" data-since="${since}">${dur(now() - since)}</span>` : `since ${hhmm(since)}`}</span>
+        <span class="crewline">${crew.length ? crew.map(p => `${esc(p.name)} <small>${esc(p.cert)}</small>`).join(', ') : '<span class="note">No crew assigned</span>'}</span>
+        ${warn ? `<span class="pill requested">${esc(warn)}</span>` : ''}
+      </button>`;
+    }).join('') : '<div class="empty">Add your ambulances, response vehicles and paramedic units under My agency.</div>'}</div>
+  </section>`;
+}
+
+function crewPanel() {
+  const on = SH.crew.filter(p => !p.out);
+  return `<section class="panel" aria-label="Crew on duty">
+    <div class="ph"><h2>Crew on duty</h2><button class="btn small" data-act="sheet" data-arg="crew-in">${icon('person')} Check in</button></div>
+    <div class="rows">${on.length ? on.map(p => `<button class="row" data-act="sheet" data-arg="crew:${p.id}"><span class="num">#${esc(p.num)}</span><div><div class="t1">${esc(p.name)}</div><div class="t2">${esc(p.cert)}${p.unit ? ' · ' + esc(p.unit) : ' · no unit'}</div></div><span class="r note">since ${hhmm(p.t)}</span></button>`).join('') : '<div class="empty">Nobody checked in. Check members in by number as they arrive.</div>'}</div>
+  </section>`;
+}
+
+function activeCallsPanel(active) {
+  return `<section class="panel" aria-label="Active calls">
+    <div class="ph"><h2>Active calls</h2><span class="meta">${plural(active.length, 'call')}</span></div>
+    <button class="btn primary block" data-act="sheet" data-arg="call-new">${icon('plus')} New call</button>
+    ${active.length ? active.map(callCard).join('') : '<div class="empty">No active calls. New call logs one as County Communications dispatches it.</div>'}
+  </section>`;
+}
+function callCard(c) {
+  const a = callAlert(c), i = STEPS.indexOf(c.status), h = hosp(c.hosp);
+  const next = c.status === 'disp' ? (c.unit ? ['call-step', 'En route'] : ['sheet', 'Assign a unit'])
+    : c.status === 'enroute' ? ['call-step', 'On scene']
+    : c.status === 'onscene' ? ['sheet-hosp', 'Transporting']
+    : c.status === 'transport' ? ['call-step', 'At hospital']
+    : ['call-close-tx', 'Back in service'];
+  const nextBtn = next[0] === 'sheet' ? `<button class="btn primary" data-act="sheet" data-arg="call:${c.id}">${next[1]}</button>`
+    : next[0] === 'sheet-hosp' ? `<button class="btn primary" data-act="sheet" data-arg="call-hosp:${c.id}">${next[1]}</button>`
+    : `<button class="btn primary" data-act="${next[0]}" data-arg="${c.id}">${next[1]}</button>`;
+  return `<div class="call ${a ? 'al-' + a.cls : ''}">
+    <div class="ph"><div><div class="ct">${esc(c.type)}</div><div class="ca">${esc(c.address)}${c.town ? ' · ' + esc(c.town) : ''}</div></div>${c.unit ? `<span class="uid">${esc(c.unit)}</span>` : '<span class="pill requested">No unit</span>'}</div>
+    <div class="csteps">${STEPS.slice(0, 5).map((s, j) => `<span class="cs ${j < i ? 'done' : j === i ? 'now' : ''}" title="${STEP_NAMES[s]}"><b>${STEP_SHORT[s]}</b><small>${c.times[s] ? hhmm(c.times[s]) : ''}</small></span>`).join('')}</div>
+    <div class="cline">${STEP_NAMES[c.status]} for <span class="num" data-since="${c.times[c.status]}">${dur(now() - c.times[c.status])}</span>${h ? ` · to ${esc(h.short)}` : ''} · <span class="note">dispatched ${hhmm(c.times.disp)}</span></div>
+    ${a ? `<div class="calert ${a.cls}">${esc(a.text)} · <span class="num" data-since="${a.since}">${dur(now() - a.since)}</span></div>` : ''}
+    <div class="toolbar">${nextBtn}<button class="btn" data-act="sheet" data-arg="call:${c.id}">More</button></div>
+  </div>`;
+}
+
+function todayPanel() {
+  const s = shiftStats();
+  return `<section class="panel" aria-label="Today">
+    <div class="ph"><h2>Today</h2><span class="meta">since ${hhmm(SH.startedAt)}</span></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Calls</span><span class="v num">${s.total}</span></div>
+      <div class="stat"><span class="lbl">Transports</span><span class="v num">${s.transports}</span></div>
+      <div class="stat"><span class="lbl">Refusals</span><span class="v num">${s.refusals}</span></div>
+      <div class="stat ${s.mutual ? 'warnstat' : ''}"><span class="lbl">Covered by mutual aid</span><span class="v num">${s.mutual}</span></div>
+    </div>
+    <dl class="kv">
+      <dt>Turnout</dt><dd>${fmtMin(s.turnout)} <span class="note">dispatch to en route, average</span></dd>
+      <dt>Response</dt><dd>${fmtMin(s.response)} <span class="note">dispatch to on scene, average</span></dd>
+      <dt>At hospital</dt><dd>${fmtMin(s.wall)} <span class="note">arrival to back in service, average</span></dd>
+    </dl>
+  </section>`;
+}
+function closedPanel(closed) {
+  return `<section class="panel" aria-label="Finished calls">
+    <div class="ph"><h2>Finished calls</h2><span class="meta">${closed.length}</span></div>
+    <div class="rows">${closed.length ? closed.map(c => `<button class="row" data-act="sheet" data-arg="call:${c.id}"><span class="num">${hhmm(c.times.disp)}</span><div><div class="t1">${esc(c.type)} · ${esc(c.address)}</div><div class="t2">${c.unit ? esc(c.unit) + ' · ' : ''}${esc(c.outcome)}${c.mutualAid ? ' (' + esc(c.mutualAid) + ')' : ''}${c.hosp ? ' · ' + esc((hosp(c.hosp) || {}).short || '') : ''}</div></div><span class="r note">${c.times.onscene ? fmtMin(c.times.onscene - c.times.disp) : ''}</span></button>`).join('') : '<div class="empty">Calls you close appear here.</div>'}</div>
+    <button class="btn small" data-act="sheet" data-arg="shift-new">Start a new shift</button>
+  </section>`;
+}
+
+/* ---------- shift sheets ---------- */
+function ownFreeUnits() { return SH.units.filter(u => u.status === 'in' && !busyCall(u) && TRANSPORT_KINDS.concat(['RV', 'SUP']).includes(u.kind)); }
+function callNewSheet() {
+  const f = UI.form;
+  if (!f._init) Object.assign(f, { ctype: 'Sick person', ctown: SH.calls.length ? SH.calls[SH.calls.length - 1].town : '', _init: true });
+  return {
+    title: 'New call',
+    body: `${field('Type', `<div class="opt-grid">${CALL_TYPES.map(t => opt('f-set', 'ctype=' + t, f.ctype === t, esc(t))).join('')}</div>`)}
+      <div class="grid2">
+        ${field('Address', input('call-addr', 'caddr', f.caddr, 'Street address or cross streets'))}
+        ${field('Town', input('call-town', 'ctown', f.ctown, 'Monmouth County town', 'list="muni-list2"'))}
+      </div>
+      <datalist id="muni-list2">${MUNICIPALITIES.map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+      ${field('Unit · leave empty while you wait for a crew', `<div class="opt-grid">${ownFreeUnits().map(u => opt('f-set', 'cunit=' + u.name, f.cunit === u.name, `${kindTag(u.kind)} ${esc(u.name)}<small>${unitCrew(u.name).length} crew</small>`, 'tall')).join('') || '<div class="empty">No units free right now.</div>'}</div>`)}
+      ${field('Call number · optional', input('call-num', 'cnum2', f.cnum2, 'From the page or CAD', 'inputmode="numeric"'))}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="call-save">Log call</button>`,
+  };
+}
+function callSheet(id) {
+  const c = SH.calls.find(x => x.id === id), f = UI.form;
+  if (!c) return { title: 'Call', body: '<div class="empty">This call is gone.</div>' };
+  const open = c.status !== 'clear';
+  return {
+    title: `${c.type} · ${c.address}`,
+    body: `<div class="note">${esc(c.town || '')}${c.num ? ' · call ' + esc(c.num) : ''} · dispatched ${hhmm(c.times.disp)}</div>
+      <dl class="kv">${STEPS.filter(s => c.times[s]).map(s => `<dt>${STEP_NAMES[s]}</dt><dd class="num">${hhmm(c.times[s])} <span class="note">+${dur(c.times[s] - c.times.disp)}</span></dd>`).join('')}${c.outcome ? `<dt>Outcome</dt><dd>${esc(c.outcome)}${c.mutualAid ? ' · ' + esc(c.mutualAid) : ''}</dd>` : ''}</dl>
+      ${open ? `${field('Unit', `<div class="opt-grid">${SH.units.filter(u => u.status === 'in' && (!busyCall(u) || u.name === c.unit)).map(u => opt('call-unit', `${c.id}=${u.name}`, c.unit === u.name, `${kindTag(u.kind)} ${esc(u.name)}`)).join('')}</div>`)}
+      ${field('Finish the call', `<div class="opt-grid wide">${OUTCOMES.map(o => opt('call-close', `${c.id}=${o}`, false, esc(o), o === 'Mutual aid covered' ? 'tall' : '')).join('')}</div>`)}
+      ${field('Covered by · for mutual aid', input('call-ma', 'cma', f.cma, 'e.g. Sheriff MedStar, Squad 35', 'list="ma-list"'))}
+      <datalist id="ma-list"><option value="Sheriff MedStar"><option value="Mutual aid squad"><option value="HMH paramedics"><option value="RWJBH paramedics"></datalist>` : ''}`,
+    foot: `${open ? `<button class="btn danger" data-act="call-mci" data-arg="${c.id}">Make this an MCI</button>` : ''}<span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+function callHospSheet(id) {
+  const c = SH.calls.find(x => x.id === id);
+  const o = townLL(c && c.town) || sceneLL();
+  const list = o ? HOSPITALS.slice().sort((a, b) => miles(o, a.ll) - miles(o, b.ll)) : HOSPITALS;
+  return {
+    title: 'Transporting to',
+    body: `<div class="opt-grid wide">${list.slice(0, 10).map(h => { const mi = o ? miles(o, h.ll) : null, ed = hospState(h.id).ed; return opt('call-hosp', `${id}=${h.id}`, false, `${esc(h.short)}${mi != null ? ` · ~${estMin(mi)} min` : ''}<small>${h.trauma ? esc(h.trauma) + ' · ' : ''}${isDivert(ed) ? esc(ed) : esc(h.town)}</small>`, 'tall'); }).join('')}</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button>`,
+  };
+}
+function sunitSheet(id) {
+  const u = SH.units.find(x => x.id === id), f = UI.form;
+  if (!u) return { title: 'Unit', body: '<div class="empty">This unit is gone.</div>' };
+  const c = busyCall(u), crew = unitCrew(u.name);
+  return {
+    title: `${u.name} · ${kindOf(u.kind).name}`,
+    body: `${c ? `<div class="note">On a call: ${esc(c.type)}, ${esc(c.address)} (${STEP_NAMES[c.status]})</div>` : ''}
+      ${field('Status', `<div class="chips">${opt('sunit-status', `${id}=in`, u.status === 'in', 'In service')}${opt('sunit-status', `${id}=oos`, u.status === 'oos', 'Out of service')}</div>`)}
+      ${field('Out of service because', `<div class="chips">${OOS_REASONS.map(r => opt('sunit-oos', `${id}=${r}`, u.status === 'oos' && (u.note || '').startsWith(r), esc(r))).join('')}</div>`)}
+      ${field('Crew on this unit', crew.length ? `<div class="rows">${crew.map(p => `<div class="row"><span class="num">#${esc(p.num)}</span><div class="t1">${esc(p.name)} <small class="note">${esc(p.cert)}</small></div><button class="btn small" data-act="sheet" data-arg="crew:${p.id}">Change</button></div>`).join('')}</div>` : '<div class="empty">Nobody assigned. Check members in and put them on this unit.</div>')}`,
+    foot: `<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+function crewSheet(id) {
+  const p = id ? SH.crew.find(x => x.id === id) : null, f = UI.form;
+  if (!f._init) { Object.assign(f, p ? { num: p.num, name: p.name, cert: p.cert, unit: p.unit } : { cert: 'EMT' }); f._init = true; }
+  const q = (f.num || '').trim();
+  const matches = !p && q ? C.members.filter(m => m.num.startsWith(q) || m.name.toLowerCase().includes(q.toLowerCase())).slice(0, 8) : [];
+  return {
+    title: p ? `${p.name} · #${p.num}` : 'Check in for the shift',
+    body: `<div class="grid2">
+        ${field('Member number', input('p-num', 'num', f.num, 'e.g. 4127', 'inputmode="numeric"'))}
+        ${field('Name', input('p-name', 'name', f.name, 'Last name, first initial'))}
+      </div>
+      <div id="member-matches">${memberMatches(matches)}</div>
+      ${field('Certification', `<div class="chips">${CERTS.map(c => opt('f-set', 'cert=' + c, f.cert === c, c)).join('')}</div>`)}
+      ${field('Riding on', `<div class="opt-grid">${opt('f-set', 'unit=', !f.unit, 'No unit')}${SH.units.filter(u => u.status === 'in').map(u => opt('f-set', 'unit=' + u.name, f.unit === u.name, `${kindTag(u.kind)} ${esc(u.name)}<small>${unitCrew(u.name).length} crew</small>`, 'tall')).join('')}</div>`)}`,
+    foot: `${p ? `<button class="btn danger" data-act="crew-out" data-arg="${p.id}">Check out</button>` : ''}<span class="grow"></span><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="crew-save" data-arg="${p ? p.id : ''}">${p ? 'Save' : 'Check in'}</button>`,
+  };
+}
+function shiftNewSheet() {
+  return {
+    title: 'Start a new shift',
+    body: `<div class="note">Starts a fresh shift board on every tablet sharing it: ${C.roster.length ? `${esc(C.agency.name)}'s ${plural(C.roster.length, 'unit')} in service, ` : ''}no calls, nobody checked in. Today's board stays in the log of this tablet until it is replaced.</div>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="shift-new">Start the shift</button>`,
+  };
+}
+
+const SHIFT_ACTIONS = {
+  'call-save'() {
+    const f = UI.form, address = (f.caddr || '').trim();
+    if (!address) { showToast('Enter the address first', false); document.getElementById('call-addr')?.focus(); return; }
+    const c = { id: uid(), num: (f.cnum2 || '').trim(), type: f.ctype, address, town: (f.ctown || '').trim(), unit: f.cunit || '', times: { disp: now() }, status: 'disp', outcome: '', hosp: '', mutualAid: '' };
+    UI.sheet = null; UI.form = {};
+    sdispatch('callAdd', { call: c }, `Call: ${c.type}, ${c.address}${c.unit ? ' → ' + c.unit : ' · waiting for a crew'}`, 'note');
+  },
+  'call-step'(id) {
+    const c = SH.calls.find(x => x.id === id); if (!c) return;
+    const nx = STEPS[STEPS.indexOf(c.status) + 1];
+    if (!nx || nx === 'clear') return;
+    sdispatch('callStep', { id, st: nx, at: now() }, `${c.unit || 'Call'} ${STEP_NAMES[nx].toLowerCase()}: ${c.address}`, 'units');
+  },
+  'call-hosp'(arg) {
+    const [id, hid] = arg.split('='), c = SH.calls.find(x => x.id === id), h = hosp(hid); if (!c || !h) return;
+    UI.sheet = null; UI.form = {};
+    sdispatch('callStep', { id, st: 'transport', at: now(), hosp: hid }, `${c.unit || 'Unit'} transporting to ${h.short}: ${c.address}`, 'transport');
+  },
+  'call-close-tx'(id) {
+    const c = SH.calls.find(x => x.id === id); if (!c) return;
+    sdispatch('callClose', { id, outcome: 'Transported', at: now() }, `${c.unit || 'Unit'} back in service after ${c.address}`, 'units');
+  },
+  'call-unit'(arg) {
+    const [id, name] = arg.split('='), c = SH.calls.find(x => x.id === id); if (!c || c.unit === name) return;
+    sdispatch('callUnit', { id, unit: name }, `${name} assigned to ${c.address}`, 'units');
+  },
+  'call-close'(arg) {
+    const i = arg.indexOf('='), id = arg.slice(0, i), outcome = arg.slice(i + 1), c = SH.calls.find(x => x.id === id); if (!c) return;
+    const ma = outcome === 'Mutual aid covered' ? (UI.form.cma || '').trim() : '';
+    UI.sheet = null; UI.form = {};
+    sdispatch('callClose', { id, outcome, ma, at: now() }, `${c.address}: ${outcome}${ma ? ' by ' + ma : ''}`, 'note');
+  },
+  'call-mci'(id) {
+    const c = SH.calls.find(x => x.id === id); if (!c) return;
+    UI.sheet = 'newinc';
+    UI.form = { type: CALL_TO_INCIDENT[c.type] || 'Other', location: c.address, municipality: c.town, hazards: [], lz: 'Not requested', est: 0, ic: (SH.crew.find(p => !p.out && p.cert === 'Officer') || {}).name || '', fromCall: id, _init: true };
+    render();
+  },
+  'sunit-status'(arg) {
+    const [id, st] = arg.split('='), u = SH.units.find(x => x.id === id); if (!u || u.status === st) return;
+    sdispatch('unitStatus', { id, st, at: now(), note: '' }, `${u.name} ${st === 'in' ? 'in service' : 'out of service'}`, 'units');
+  },
+  'sunit-oos'(arg) {
+    const i = arg.indexOf('='), id = arg.slice(0, i), why = arg.slice(i + 1), u = SH.units.find(x => x.id === id); if (!u) return;
+    sdispatch('unitStatus', { id, st: 'oos', at: now(), note: why }, `${u.name} out of service: ${why.toLowerCase()}`, 'units');
+  },
+  'crew-save'(id) {
+    const f = UI.form, num = (f.num || '').trim(), name = (f.name || '').trim();
+    if (!num && !name) { showToast('Enter a member number or a name', false); return; }
+    if (!id && SH.crew.some(p => !p.out && p.num && p.num === num)) { showToast(`#${num} is already on duty`, false); return; }
+    UI.sheet = null; UI.form = {};
+    if (id) sdispatch('crewEdit', { id, fields: { num, name, cert: f.cert, unit: f.unit || '' } }, `${name}: ${f.unit || 'no unit'}`, 'people');
+    else {
+      if (num && name && !C.members.some(m => m.num === num)) { C.members.push({ num, name, cert: f.cert }); saveConfig(); }
+      sdispatch('crewIn', { person: { id: uid(), num, name, cert: f.cert, unit: f.unit || '', t: now() } }, `On duty: #${num || '?'} ${name} (${f.cert})${f.unit ? ' on ' + f.unit : ''}`, 'people');
+    }
+  },
+  'crew-out'(id) {
+    const p = SH.crew.find(x => x.id === id); if (!p) return;
+    UI.sheet = null; UI.form = {};
+    sdispatch('crewOut', { id, at: now() }, `Off duty: #${p.num} ${p.name}`, 'people');
+  },
+  'shift-new'() {
+    UI.sheet = null; UI.form = {};
+    SHIFT.start(blankShift());
+    UI.view = 'shift'; render();
+    showToast('New shift started', false);
+  },
+};
 
 /* =====================================================================
    Actions
@@ -2579,12 +3022,13 @@ const A = {
   mode() { DEV.mode = DEV.mode === 'day' ? 'night' : 'day'; saveDev(); render(); styleMap(); },
   'mode-set'(m) { DEV.mode = m; saveDev(); render(); styleMap(); },
   undo(id) {
-    const target = EVENTS.get(id);
-    if (!target || undoneIds().has(id)) return;
-    dispatch('undo', { target: id }, `Undid: ${target.text}`, target.kind, { toast: false });
+    const str = STREAMS.find(x => x.events.has(id));
+    if (!str || str.undone().has(id)) return;
+    const target = str.events.get(id);
+    str.dispatch('undo', { target: id }, `Undid: ${target.text}`, target.kind, { toast: false });
     showToast('Undone', false);
   },
-  share() { if (Sync.db) Sync.announce(); },
+  share() { if (Sync.db) Sync.announce(streamOfView()); },
   role(r) {
     if (DEV.role === r) return;
     DEV.role = r; saveDev(); Sync.setRole();
@@ -2765,6 +3209,8 @@ const A = {
     saveConfig();
     UI.sheet = null; UI.form = {};
     const missing = C.roster.filter(r => !S.units.some(u => u.name === r.name));
+    const smissing = C.roster.filter(r => !SH.units.some(u => u.name === r.name));
+    if (smissing.length) sdispatch('unitAdd', { units: smissing.map(r => ({ id: uid(), name: r.name, kind: r.kind, status: 'in', since: now(), note: '' })) }, `${plural(smissing.length, 'unit')} added to the shift board`, 'units', { toast: false });
     if (addNow === 'add' && missing.length) {
       dispatch('unitAdd', { units: missing.map(r => ({ id: uid(), name: r.name, kind: r.kind, agency: C.agency.name, crew: 2, status: 'available', task: '', t: now() })) },
         `${C.agency.name}: ${plural(missing.length, 'unit')} added as Available`, 'units');
@@ -2862,6 +3308,12 @@ const A = {
     const base = blankState({ ...f, location: (f.location || '').trim(), commandName: (f.commandName || '').trim(), ic: (f.ic || '').trim() });
     base.log[0].text = `Command established${base.incident.commandName ? ': ' + base.incident.commandName : ''}${base.incident.ic ? ', ' + base.incident.ic : ''}`;
     startIncident(base, 'New incident started. Clock running.');
+    if (f.fromCall) {
+      const c = SH.calls.find(x => x.id === f.fromCall);
+      if (c) sdispatch('note', {}, `${c.type} at ${c.address} became an MCI`, 'note', { toast: false });
+      DEV.role = 'command'; saveDev(); Sync.setRole(); UI.view = 'board'; saveUi(); render();
+      showToast('MCI started from the call. This tablet is now Command.', false);
+    }
   },
   'load-sample'() { startIncident(sampleState(), 'Sample incident loaded'); },
 
@@ -2869,6 +3321,8 @@ const A = {
   'quick-note'(text) { dispatch('note', {}, text, 'note'); },
   copy(i) { const s = radioScripts()[Number(i)]; copyText(s.text, document.getElementById('script-' + i)); },
 };
+
+Object.assign(A, SHIFT_ACTIONS);
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -2908,10 +3362,13 @@ document.addEventListener('submit', e => {
 /* =====================================================================
    Clocks
    ===================================================================== */
+let lastShiftDraw = 0;
 function tick() {
   const t = now();
   const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
   set('now', hhmm(t));
+  document.querySelectorAll('[data-since]').forEach(el => { const v = dur(t - Number(el.dataset.since)); if (el.textContent !== v) el.textContent = v; });
+  if (UI.view === 'shift' && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
   set('elapsed', dur(t - S.incident.dispatchAt));
   const due = S.par.last + S.par.interval * 60000, left = due - t;
   set('par', left >= 0 ? dur(left) : '+' + dur(-left));
@@ -2925,8 +3382,8 @@ let lock = null;
 async function wake() {
   try { if (!lock && navigator.wakeLock && document.visibilityState === 'visible') { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (e) { /* not granted */ }
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); Sync.flush(); } });
-window.addEventListener('online', () => Sync.flush());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wake(); tick(); Sync.flushAll(); } });
+window.addEventListener('online', () => Sync.flushAll());
 window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); });
 
 /* =====================================================================
@@ -2935,10 +3392,8 @@ window.addEventListener('resize', () => { if (MAP) MAP.invalidateSize(false); })
 DEV = read(K.dev) || { id: 't' + Math.random().toString(36).slice(2, 10), role: 'command', mode: 'night', me: null };
 saveDev();
 C = { ...defaultConfig(), ...(read(K.cfg) || sampleConfig()) };
-BASE = read(K.inc);
-if (!BASE || !BASE.id) BASE = sampleState();
-(read(K.ev(BASE.id)) || []).forEach(e => EVENTS.set(e.id, e));
-rebuild();
+INC.load(sampleState);
+SHIFT.load(sampleShift);
 loadUi();
 render();
 setInterval(tick, 1000);
