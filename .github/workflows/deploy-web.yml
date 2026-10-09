@@ -65,7 +65,7 @@ jobs:
           PCR_GEMINI_API_KEY: ${{ secrets.PCR_GEMINI_API_KEY }}
           PCR_ANTHROPIC_API_KEY: ${{ secrets.PCR_ANTHROPIC_API_KEY }}
 
-      - name: Add the scene command board
+      - name: Add RigBoard
         # A self-contained page at /PCR911/scene-command/, built from
         # prototypes/scene-command. It needs nothing installed beyond Node.
         run: node prototypes/scene-command/build.mjs --site dist/scene-command

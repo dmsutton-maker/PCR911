@@ -1,4 +1,6 @@
-# Scene Command Board (prototype)
+# RigBoard (prototype)
+
+Served at https://dmsutton-maker.github.io/PCR911/scene-command/ (the address keeps its first name, so links and Home Screen icons already handed out keep working).
 
 A touch-first EMS command app for iPads in landscape, with a phone view for members, set up for Hatzalah Jersey Shore (county number 78) in Monmouth County, NJ. It has two boards that any number of tablets share live: a **supervisor board** for everyday calls, and a **scene board** for an MCI. It's free on one tablet; sharing between tablets and phones is the squad plan, free for the first 60 days (see server/README.md). Research behind it: [docs/SCENE-COMMAND-RESEARCH.md](../../docs/SCENE-COMMAND-RESEARCH.md).
 

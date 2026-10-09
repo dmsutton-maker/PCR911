@@ -1,4 +1,4 @@
-// Builds the scene command board from src/board.html.
+// Builds RigBoard, the scene command and supervisor board, from src/board.html.
 //
 //   node prototypes/scene-command/build.mjs                    → index.html, the page published inside Claude
 //   node prototypes/scene-command/build.mjs --site <folder>    → also <folder>/index.html, a full web page with its
@@ -53,7 +53,7 @@ if (site > -1) {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Scene Command">
+<meta name="apple-mobile-web-app-title" content="RigBoard">
 <meta name="robots" content="noindex">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
@@ -69,8 +69,8 @@ ${body}</body>
   copyFileSync(join(here, 'icon-180.png'), join(dir, 'icon-180.png'));
   copyFileSync(join(here, 'icon-512.png'), join(dir, 'icon-512.png'));
   writeFileSync(join(dir, 'manifest.webmanifest'), JSON.stringify({
-    name: 'Scene Command',
-    short_name: 'Scene Command',
+    name: 'RigBoard',
+    short_name: 'RigBoard',
     start_url: './',
     scope: './',
     display: 'standalone',

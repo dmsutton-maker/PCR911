@@ -1,4 +1,4 @@
-<title>Scene Command Board</title>
+<title>RigBoard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -2557,7 +2557,7 @@ function menuSheet() {
         ${SH.sample ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
         <button class="opt tall" data-act="load-sample">Load the sample incident<small>Bus crash, Ocean Township, 19 patients</small></button>
       </div>
-      <div class="note"><b>Prototype.</b> ${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
+      <div class="note"><b>RigBoard</b> · prototype. ${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
     foot: `<button class="btn primary" data-act="close">Done</button>`,
   };
 }
