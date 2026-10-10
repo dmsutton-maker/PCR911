@@ -64,6 +64,14 @@ const ACCOUNT_ROUTES = new Set([
   '/v1/invites',
   '/v1/guest-invites',
   '/v1/audit',
+  '/v1/account/setup',
+  '/v1/account/password',
+  '/v1/agency/config',
+  '/v1/agency/save',
+  '/v1/agency/overview',
+  '/v1/members/role',
+  '/v1/invites/list',
+  '/v1/invites/revoke',
 ]);
 
 /* Guests: another department (fire, police) working an MCI or event with the squad. A guest invite is for one
@@ -370,6 +378,7 @@ async function me(auth, request, env) {
         name: auth.member.name,
         certLevel: auth.member.certLevel,
         role: auth.member.role,
+        email: auth.member.email || '',
         ...(auth.member.role === 'guest' ? { agency: auth.member.agency, dept: auth.member.dept || '', expiresAt: auth.member.expiresAt } : {}),
       },
       org: org ? { id: org.id, name: org.name, ...(auth.member.role === 'guest' ? {} : { config: org.config }) } : null,
@@ -417,6 +426,8 @@ async function listMembers(auth, request, env) {
         joinedAt: member.joinedAt,
         lastSeenAt: member.lastSeenAt,
         requests: member.requests ?? 0,
+        email: member.email || '',
+        ...(member.role === 'guest' ? { agency: member.agency, dept: member.dept || '', expiresAt: member.expiresAt } : {}),
       });
     }
   }
@@ -463,7 +474,7 @@ async function rotateInvite(auth, request, env) {
   const list = await store.list({ prefix: 'invite:' });
   for (const key of list.keys) {
     const invite = await store.get(key.name, 'json');
-    if (invite?.orgId === auth.orgId && !invite.disabled && invite.role !== 'guest') {
+    if (invite?.orgId === auth.orgId && !invite.disabled && invite.role !== 'guest' && (invite.role === 'admin') === (role === 'admin')) {
       await store.put(key.name, JSON.stringify({ ...invite, disabled: true }));
     }
   }
@@ -481,6 +492,137 @@ async function rotateInvite(auth, request, env) {
   });
 
   return json({ inviteCode, role }, 200, request, env);
+}
+
+/* ------------------------------------------------------------------ *
+ * The agency console: a squad's admin manages its board from any
+ * computer, signed in with an email and password.
+ * ------------------------------------------------------------------ */
+const WEB_SESSION_DAYS = 30;
+
+/* Anyone on the squad (not a guest) can add an email and password to their own membership, from a device already
+   signed in as them. Doing it again replaces it: that is also how a forgotten password is reset. */
+async function accountSetup(auth, request, env) {
+  const store = kv(env);
+  if (auth.member.role === 'guest') return fail(403, 'Guests sign in with their guest link.', request, env);
+  const body = await request.json().catch(() => null);
+  const email = normEmail(body?.email), password = body?.password;
+  if (!emailOk(email)) return fail(400, 'Enter a valid email address.', request, env);
+  const weak = passwordProblem(password);
+  if (weak) return fail(400, weak, request, env);
+  const taken = await store.get(`acct:${email}`, 'json');
+  if (taken && (taken.orgId !== auth.orgId || taken.memberId !== auth.member.id)) return fail(409, 'That email is already used by another login.', request, env);
+  const key = `mem:${auth.orgId}:${auth.member.id}`, member = await store.get(key, 'json');
+  if (!member) return fail(404, 'No such member.', request, env);
+  if (member.email && member.email !== email) await store.delete(`acct:${member.email}`);
+  const salt = crypto.getRandomValues(new Uint8Array(16)), it = hashIterations(env);
+  await store.put(`acct:${email}`, JSON.stringify({ orgId: auth.orgId, memberId: auth.member.id, alg: 'pbkdf2-sha256', it, salt: b64(salt), hash: await passwordHash(password, salt, it), setAt: new Date().toISOString() }));
+  member.email = email;
+  await store.put(key, JSON.stringify(member));
+  await audit(env, auth.orgId, { action: 'web_login_set_up', memberId: member.id, name: member.name });
+  return json({ ok: true, email }, 200, request, env);
+}
+async function accountLogin(request, env) {
+  const store = kv(env);
+  if (!store) return fail(503, 'This relay has no storage bound.', request, env);
+  const body = await request.json().catch(() => null);
+  const email = normEmail(body?.email), password = String(body?.password || '');
+  if (!email || !password) return fail(400, 'Enter your email and password.', request, env);
+  if (await tooManyTries(env, request, email)) return fail(429, 'Too many tries. Wait an hour, or set the password again from your squad tablet.', request, env);
+  const acct = await store.get(`acct:${email}`, 'json');
+  const hash = await passwordHash(password, acct ? unb64(acct.salt) : new Uint8Array(16), acct ? acct.it : hashIterations(env));
+  if (!acct || !safeEqual(hash, acct.hash)) return fail(401, 'That email and password don\'t match.', request, env);
+  const member = await store.get(`mem:${acct.orgId}:${acct.memberId}`, 'json');
+  if (!member || member.status !== 'active') return fail(403, 'Your access to this organization has been withdrawn.', request, env);
+  const org = await store.get(`org:${acct.orgId}`, 'json');
+  const token = 'ws_' + randomToken();
+  await store.put(`tok:${await sha256(token)}`, JSON.stringify({ orgId: acct.orgId, memberId: acct.memberId, web: true }), { expirationTtl: WEB_SESSION_DAYS * 86400 });
+  await audit(env, acct.orgId, { action: 'web_sign_in', memberId: member.id, name: member.name });
+  return json({ token, expiresAt: new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString(), member: { id: member.id, name: member.name, role: member.role, email }, org: org ? { id: org.id, name: org.name } : null }, 200, request, env);
+}
+async function accountLogout(request, env) {
+  const token = bearer(request);
+  if (token && token.startsWith('ws_')) await kv(env).delete(`tok:${await sha256(token)}`);
+  return json({ ok: true }, 200, request, env);
+}
+async function accountPassword(auth, request, env) {
+  const store = kv(env), body = await request.json().catch(() => null);
+  const member = await store.get(`mem:${auth.orgId}:${auth.member.id}`, 'json');
+  const acct = member && member.email ? await store.get(`acct:${member.email}`, 'json') : null;
+  if (!acct) return fail(404, 'This membership has no web login yet.', request, env);
+  if (!safeEqual(await passwordHash(String(body?.current || ''), unb64(acct.salt), acct.it), acct.hash)) return fail(401, 'The current password is not right.', request, env);
+  const weak = passwordProblem(body?.next);
+  if (weak) return fail(400, weak, request, env);
+  const salt = crypto.getRandomValues(new Uint8Array(16)), it = hashIterations(env);
+  await store.put(`acct:${member.email}`, JSON.stringify({ ...acct, it, salt: b64(salt), hash: await passwordHash(body.next, salt, it), setAt: new Date().toISOString() }));
+  return json({ ok: true }, 200, request, env);
+}
+
+/* The squad's settings are one document on its board, the same one every tablet reads and writes. The console
+   reads it and saves a whole new copy; tablets that are open pick it up at once. */
+const boardStub = (env, orgId) => env.BOARD.get(env.BOARD.idFromName(orgId));
+async function agencyConfig(auth, request, env) {
+  if (!env.BOARD) return fail(503, 'This relay was deployed without board storage.', request, env);
+  const res = await boardStub(env, auth.orgId).fetch('https://board.internal/doc', { method: 'POST', body: JSON.stringify({ path: 'squad/config' }) });
+  const { data } = await res.json();
+  const org = await kv(env).get(`org:${auth.orgId}`, 'json');
+  return json({ config: data || null, org: org ? { id: org.id, name: org.name, kind: org.kind || null } : null }, 200, request, env);
+}
+async function agencySave(auth, request, env) {
+  if (!env.BOARD) return fail(503, 'This relay was deployed without board storage.', request, env);
+  const body = await request.json().catch(() => null);
+  const config = body?.config;
+  if (!config || typeof config !== 'object' || Array.isArray(config) || !config.agency || typeof config.agency !== 'object') return fail(400, 'Settings are an object with an agency.', request, env);
+  for (const k of ['roster', 'members', 'contacts', 'cameras', 'feeds', 'favHosp']) if (config[k] !== undefined && !Array.isArray(config[k])) return fail(400, `${k} is a list.`, request, env);
+  // later than whatever a tablet saved last, even if that tablet's clock runs ahead, so tablets take this copy
+  const current = await (await boardStub(env, auth.orgId).fetch('https://board.internal/doc', { method: 'POST', body: JSON.stringify({ path: 'squad/config' }) })).json();
+  const data = { ...config, v: 1, savedAt: Math.max(Date.now(), ((current.data && current.data.savedAt) || 0) + 1) };
+  if (JSON.stringify(data).length > BOARD_MAX_DOC) return fail(413, 'Those settings are over 256 KB. A smaller logo helps.', request, env);
+  await boardStub(env, auth.orgId).fetch('https://board.internal/set', { method: 'POST', body: JSON.stringify({ path: 'squad/config', data }) });
+  await audit(env, auth.orgId, { action: 'settings_saved', memberId: auth.member.id, name: auth.member.name, from: 'agency console' });
+  return json({ ok: true, savedAt: data.savedAt }, 200, request, env);
+}
+async function agencyOverview(auth, request, env) {
+  const store = kv(env);
+  const org = await store.get(`org:${auth.orgId}`, 'json');
+  const record = await store.get(`plan:${auth.orgId}`, 'json');
+  return json({ org: org ? { id: org.id, name: org.name, createdAt: org.createdAt } : null, plan: record ? boardPlan(record) : null, board: await boardStats(env, auth.orgId) }, 200, request, env);
+}
+async function setMemberRole(auth, request, env) {
+  const store = kv(env), body = await request.json().catch(() => null);
+  const memberId = String(body?.memberId || ''), role = body?.role === 'admin' ? 'admin' : 'member';
+  if (memberId === auth.member.id) return fail(400, 'You cannot change your own role.', request, env);
+  const key = `mem:${auth.orgId}:${memberId}`, member = await store.get(key, 'json');
+  if (!member) return fail(404, 'No such member.', request, env);
+  if (member.role === 'guest') return fail(400, 'A guest stays a guest.', request, env);
+  member.role = role;
+  await store.put(key, JSON.stringify(member));
+  await audit(env, auth.orgId, { action: role === 'admin' ? 'made_admin' : 'admin_removed', memberId: auth.member.id, name: auth.member.name, subject: member.name });
+  return json({ ok: true }, 200, request, env);
+}
+async function listInvites(auth, request, env) {
+  const store = kv(env), now = Date.now(), invites = [];
+  let cursor;
+  do {
+    const page = await store.list({ prefix: 'invite:', cursor });
+    for (const { name } of page.keys) {
+      const inv = await store.get(name, 'json');
+      if (!inv || inv.orgId !== auth.orgId || inv.disabled) continue;
+      if (inv.role === 'guest' && !(Date.parse(inv.expiresAt || '') > now)) continue;
+      invites.push({ code: name.slice(7), role: inv.role, agency: inv.agency || null, dept: inv.dept || '', expiresAt: inv.expiresAt || null, createdAt: inv.createdAt });
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+  invites.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  return json({ invites }, 200, request, env);
+}
+async function revokeInvite(auth, request, env) {
+  const store = kv(env), body = await request.json().catch(() => null);
+  const code = String(body?.code || '').trim().toUpperCase(), inv = code ? await store.get(`invite:${code}`, 'json') : null;
+  if (!inv || inv.orgId !== auth.orgId) return fail(404, 'No such invite.', request, env);
+  await store.put(`invite:${code}`, JSON.stringify({ ...inv, disabled: true }));
+  await audit(env, auth.orgId, { action: 'invite_revoked', memberId: auth.member.id, name: auth.member.name, role: inv.role, agency: inv.agency || undefined });
+  return json({ ok: true }, 200, request, env);
 }
 
 async function guestInvite(auth, request, env) {
@@ -986,7 +1128,15 @@ async function openBoard(request, env) {
 export class Board extends DurableObject {
   async fetch(request) {
     // The relay owner's console asks for a summary; nothing outside this worker can reach a Durable Object.
-    if (new URL(request.url).pathname === '/stats') return Response.json(await this.stats());
+    const internal = new URL(request.url).pathname;
+    if (internal === '/stats') return Response.json(await this.stats());
+    if (internal === '/doc' || internal === '/set') {
+      const { path, data } = await request.json();
+      if (path !== 'squad/config') return new Response('Not here.', { status: 400 });
+      if (internal === '/doc') return Response.json({ data: (await this.ctx.storage.get('d:' + path)) ?? null });
+      await this.putDoc(path, data);
+      return Response.json({ ok: true });
+    }
     // Otherwise reached only through openBoard, after the caller was authenticated.
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
@@ -1079,18 +1229,23 @@ export class Board extends DurableObject {
         if (!pathOk || m.path.split('/').length % 2) return bad('A document path is needed.');
         if (!m.data || typeof m.data !== 'object' || Array.isArray(m.data)) return bad('A document is an object.');
         if (JSON.stringify(m.data).length > BOARD_MAX_DOC) return bad('That document is over 256 KB.');
-        await this.ctx.storage.put('d:' + m.path, m.data);
-        if (Date.now() - (this.lastWrite || 0) > 30000) { this.lastWrite = Date.now(); await this.ctx.storage.put('m:last', this.lastWrite); }
-        this.send(ws, { type: 'ok', rid: m.rid });
-        const parent = m.path.split('/').slice(0, -1).join('/');
-        for (const other of this.ctx.getWebSockets()) {
-          const o = other.deserializeAttachment() || {};
-          if ((o.subs || []).some((p) => p === m.path || p === parent)) this.send(other, { type: 'doc', path: m.path, data: m.data });
-        }
+        await this.putDoc(m.path, m.data, ws, m.rid);
         return;
       }
       default:
         return bad('Unknown message.');
+    }
+  }
+
+  /* Store a document and tell everyone subscribed to it, or to its collection. */
+  async putDoc(path, data, from, rid) {
+    await this.ctx.storage.put('d:' + path, data);
+    if (Date.now() - (this.lastWrite || 0) > 30000) { this.lastWrite = Date.now(); await this.ctx.storage.put('m:last', this.lastWrite); }
+    if (from) this.send(from, { type: 'ok', rid });
+    const parent = path.split('/').slice(0, -1).join('/');
+    for (const other of this.ctx.getWebSockets()) {
+      const o = other.deserializeAttachment() || {};
+      if ((o.subs || []).some((p) => p === path || p === parent)) this.send(other, { type: 'doc', path, data });
     }
   }
 
@@ -1250,7 +1405,7 @@ export default {
           // Lets the app tell an org-capable relay from an older one and offer
           // the right screens, rather than failing on an endpoint that is not
           // there yet.
-          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans', 'guests', 'owner-login'] : []), 'divert'],
+          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans', 'guests', 'owner-login', 'agency-console'] : []), 'divert'],
         },
         200,
         request,
@@ -1272,6 +1427,9 @@ export default {
     if (path === '/v1/owner/logout' && request.method === 'POST') return ownerLogout(request, env);
     if (path === '/v1/owner/me' && request.method === 'POST') return ownerMe(request, env);
     if (path === '/v1/owner/password' && request.method === 'POST') return ownerPassword(request, env);
+    // A squad member's own web login, for the agency console.
+    if (path === '/v1/account/login' && request.method === 'POST') return accountLogin(request, env);
+    if (path === '/v1/account/logout' && request.method === 'POST') return accountLogout(request, env);
 
     // The board authenticates inside, from the WebSocket subprotocol, and is
     // not counted against the daily AI request limit: a tablet reconnecting
@@ -1307,13 +1465,12 @@ export default {
       );
     }
 
+    // The daily cap is for AI narratives, the part that costs money; settings and members are not counted.
     const subject = auth.kind === 'member' ? `${auth.orgId}:${auth.member.id}` : auth.code;
-    if (await overDailyLimit(env, subject)) {
-      return fail(429, "Today's request limit for this account has been reached.", request, env);
-    }
 
     if (path === '/v1/generate') {
       if (request.method !== 'POST') return fail(405, 'Method not allowed.', request, env);
+      if (await overDailyLimit(env, subject)) return fail(429, "Today's request limit for this account has been reached.", request, env);
       if (auth.kind === 'member' && auth.member.role === 'guest') return fail(403, 'Guests use the shared boards only.', request, env);
       return generate(auth, request, env);
     }
@@ -1335,6 +1492,8 @@ export default {
       if (request.method !== 'GET') return fail(405, 'Method not allowed.', request, env);
       return me(auth, request, env);
     }
+    if (path === '/v1/account/setup' && request.method === 'POST') return accountSetup(auth, request, env);
+    if (path === '/v1/account/password' && request.method === 'POST') return accountPassword(auth, request, env);
 
     // Everything past here changes the org, so it is admins only.
     if (!isAdmin(auth)) {
@@ -1348,6 +1507,12 @@ export default {
     }
     if (path === '/v1/invites' && request.method === 'POST') return rotateInvite(auth, request, env);
     if (path === '/v1/guest-invites' && request.method === 'POST') return guestInvite(auth, request, env);
+    if (path === '/v1/agency/config' && request.method === 'POST') return agencyConfig(auth, request, env);
+    if (path === '/v1/agency/save' && request.method === 'POST') return agencySave(auth, request, env);
+    if (path === '/v1/agency/overview' && request.method === 'POST') return agencyOverview(auth, request, env);
+    if (path === '/v1/members/role' && request.method === 'POST') return setMemberRole(auth, request, env);
+    if (path === '/v1/invites/list' && request.method === 'POST') return listInvites(auth, request, env);
+    if (path === '/v1/invites/revoke' && request.method === 'POST') return revokeInvite(auth, request, env);
     if (path === '/v1/audit' && request.method === 'GET') return readAudit(auth, request, env);
 
     return fail(404, 'Not found.', request, env);

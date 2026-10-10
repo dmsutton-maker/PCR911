@@ -85,6 +85,13 @@ ${body}</body>
       { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
   }, null, 2));
+  // The agency console: a squad's admins set up its board from any computer. Its hospital list comes from the board's.
+  const hStart = html.indexOf('const HOSPITALS = [') + 'const HOSPITALS = '.length;
+  let depth = 0, hEnd = hStart;
+  for (; hEnd < html.length; hEnd++) { if (html[hEnd] === '[') depth++; else if (html[hEnd] === ']' && --depth === 0) break; }
+  const hospitals = new Function('return ' + html.slice(hStart, hEnd + 1))().map(h => ({ id: h.id, short: h.short, name: h.name, town: h.town, trauma: h.trauma || '' }));
+  const agency = read('src/agency.html').replace("/*@RELAY_URL*/''", replacements["/*@RELAY_URL*/''"]).replace('/*@HOSPITALS*/[]', () => JSON.stringify(hospitals));
+  writeFileSync(join(dir, 'agency.html'), agency);
   // The relay owner's console: every agency on the relay, its plan, setup and use. Not part of the offline copy.
   const owner = read('src/owner.html').replace("/*@RELAY_URL*/''", replacements["/*@RELAY_URL*/''"]);
   writeFileSync(join(dir, 'owner.html'), owner);

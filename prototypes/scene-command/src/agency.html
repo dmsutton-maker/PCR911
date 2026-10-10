@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B1B2B">
+<title>OpsBoard Agency Console</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* OpsBoard agency console: a squad's or department's admin sets up its board from any computer.
+   Same colors as the board: night by default, day for bright rooms; the agency's own color as the accent. */
+:root {
+  --bg: #0B1B2B; --surface: #12293D; --raised: #183449; --line: #25506E;
+  --fg: #EAF2F8; --muted: #9FB6C8; --faint: #6F8AA0;
+  --accent: #4FA3E3; --accent-ink: #04121E; --ok: #4CC38A; --warn: #E8B14C; --crit: #E8695C;
+  --ag-ems: #4FA3E3; --ag-fire: #F0703F; --ag-pd: #7D8BFF;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 12px;
+  color-scheme: dark;
+}
+:root[data-mode="day"] {
+  --bg: #FFFFFF; --surface: #F2F5F8; --raised: #E2E9F0; --line: #8EA4B8;
+  --fg: #06131F; --muted: #2E4558; --faint: #536A7D;
+  --accent: #0B5FA5; --accent-ink: #FFFFFF; --ok: #0E7A45; --warn: #8C5A00; --crit: #B3261E;
+  --ag-ems: #0B5FA5; --ag-fire: #B8401C; --ag-pd: #2B3FBF;
+  color-scheme: light;
+}
+:root[data-agency="fire"] { --accent: var(--ag-fire); --accent-ink: #1A0700; }
+:root[data-agency="police"] { --accent: var(--ag-pd); --accent-ink: #070A24; }
+:root[data-mode="day"][data-agency="fire"], :root[data-mode="day"][data-agency="police"] { --accent-ink: #FFFFFF; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 500 16px/1.4 var(--body); -webkit-text-size-adjust: 100%;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(90px, env(safe-area-inset-bottom)); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.top h1 { margin: 0; font: 700 28px/1 var(--display); letter-spacing: 0.01em; }
+.top .sub { color: var(--muted); font-size: 14px; }
+.grow { flex: 1; }
+.mark { width: 40px; height: 40px; border-radius: 22%; flex: none; }
+.logo { height: 44px; width: auto; max-width: 96px; border-radius: 10px; object-fit: contain; }
+.btn { min-height: 44px; padding: 0 14px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--raised); border: 1.5px solid var(--line); color: var(--fg); font: 700 16px/1 var(--display); letter-spacing: 0.04em; text-decoration: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { background: transparent; border-color: var(--crit); color: var(--crit); }
+.btn.sm { min-height: 36px; font-size: 14px; padding: 0 10px; }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn:disabled { opacity: 0.45; cursor: wait; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.panel h2 { margin: 0; font: 700 20px/1.1 var(--display); }
+.lbl { font: 600 12px/1 var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.note { color: var(--muted); font-size: 14px; margin: 0; }
+.err { color: var(--crit); font-weight: 600; }
+.ok-t { color: var(--ok); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+input[type=text], input[type=password], input[type=email], input[type=search], select, textarea { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); width: 100%; }
+textarea { padding: 10px 12px; min-height: 110px; font-family: var(--mono); font-size: 14px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-visible, .chip:focus-visible, .tab:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.signin { max-width: 560px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1.5px solid var(--line); background: transparent; color: var(--muted); font: 700 13px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 14px; align-items: start; }
+.tabs { display: flex; flex-direction: column; gap: 4px; position: sticky; top: 12px; }
+.tab { text-align: left; min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--muted); font: 700 15px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; }
+.tab[aria-current="page"] { background: var(--raised); border-color: var(--line); color: var(--fg); }
+.tab small { font: 500 13px/1 var(--mono); color: var(--faint); }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.stat { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.stat .v { font: 700 26px/1 var(--mono); font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th { text-align: left; font: 600 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); vertical-align: middle; }
+td.num, .mono { font-family: var(--mono); font-size: 14px; }
+.tw { overflow-x: auto; }
+.pill { display: inline-block; font: 700 12px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 7px; border-radius: 5px; border: 1.5px solid var(--line); color: var(--muted); white-space: nowrap; }
+.pill.ok { border-color: var(--ok); color: var(--ok); } .pill.warn { border-color: var(--warn); color: var(--warn); } .pill.crit { border-color: var(--crit); color: var(--crit); }
+.pill.live { background: var(--crit); border-color: var(--crit); color: #fff; }
+.ag { display: inline-block; font: 700 11px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 6px; border-radius: 5px; color: #fff; background: var(--ag-ems); }
+.ag.fire { background: var(--ag-fire); } .ag.police { background: var(--ag-pd); } .ag.ems { color: #04121E; }
+:root[data-mode="day"] .ag.ems { color: #fff; }
+.kind { display: inline-block; min-width: 40px; text-align: center; font: 700 12px/1 var(--mono); padding: 4px 6px; border-radius: 6px; border: 1.5px solid var(--line); }
+.empty { color: var(--faint); padding: 8px 2px; }
+.hosps { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.hosp { display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); }
+.hosp[aria-pressed="true"] { border-color: var(--warn); }
+.hosp .star { font-size: 22px; color: var(--faint); width: 22px; } .hosp[aria-pressed="true"] .star { color: var(--warn); }
+.hosp b { display: block; } .hosp small { color: var(--muted); }
+.logo-pick { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.logo-pick .big { height: 72px; max-width: 144px; border-radius: 12px; background: var(--raised); object-fit: contain; }
+.logo-pick .none { width: 72px; height: 72px; border-radius: 12px; border: 1.5px dashed var(--line); display: grid; place-items: center; color: var(--faint); font-size: 12px; }
+.link { word-break: break-all; font-family: var(--mono); font-size: 13px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--raised); border-top: 1px solid var(--line); padding: 12px 16px max(12px, env(safe-area-inset-bottom)); display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; bottom: max(84px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; z-index: 30; max-width: calc(100vw - 32px); }
+details summary { cursor: pointer; }
+[hidden] { display: none !important; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .tabs { position: static; flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+  .tab { flex: none; }
+  .tab small { display: none; }
+}
+@media (max-width: 600px) {
+  .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); }
+  .top h1 { font-size: 24px; }
+  td, th { padding: 6px 4px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div id="toast-root"></div>
+<script>
+(() => {
+'use strict';
+const BAKED_RELAY = /*@RELAY_URL*/'';
+const HOSPITALS = /*@HOSPITALS*/[];
+const MARK = '<svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0B1B2B"/><rect x="92" y="92" width="152" height="152" rx="30" fill="#D7373F"/><rect x="268" y="92" width="152" height="152" rx="30" fill="#F2C230"/><rect x="92" y="268" width="152" height="152" rx="30" fill="#2DB86A"/><rect x="268" y="268" width="152" height="152" rx="30" fill="#EAF2F8"/><rect x="331" y="302" width="26" height="84" rx="5.2" fill="#0B1B2B"/><rect x="302" y="331" width="84" height="26" rx="5.2" fill="#0B1B2B"/></svg>';
+const AG = { ems: 'EMS squad', fire: 'Fire department', police: 'Police department' };
+const KINDS = {
+  ems: [['BLS', 'Ambulance (BLS)'], ['ALS', 'Paramedic unit (ALS)'], ['RV', 'Response vehicle'], ['SUP', 'Supervisor / officer'], ['MCI', 'MCI unit'], ['BUS', 'Bus']],
+  fire: [['ENG', 'Engine'], ['TRK', 'Ladder / truck'], ['RES', 'Heavy rescue'], ['CHF', 'Fire chief'], ['BLS', 'Ambulance (BLS)'], ['RV', 'Response vehicle']],
+  police: [['PD', 'Police unit'], ['SUP', 'Supervisor'], ['RV', 'Response vehicle']],
+};
+const CERTS = ['EMR', 'EMT', 'Paramedic', 'RN', 'Driver', 'Officer', 'Firefighter'];
+const LOGO_RE = /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+/=]+$/;
+const logoOk = v => typeof v === 'string' && v.length < 120000 && LOGO_RE.test(v);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
+const base = u => String(u || '').trim().replace(/\/+$/, '');
+const uid = () => Math.random().toString(36).slice(2, 10);
+const memNum = v => String(v || '').trim().toUpperCase().replace(/\s+/g, '');
+const t = v => (typeof v === 'number' ? v : Date.parse(v || ''));
+const ago = v => { const ms = Date.now() - t(v); if (!Number.isFinite(ms)) return 'never'; const m = Math.round(ms / 60000); if (m < 2) return 'just now'; if (m < 60) return m + ' min ago'; const h = Math.round(m / 60); if (h < 36) return h + ' h ago'; return Math.round(h / 24) + ' days ago'; };
+const dt = v => { const n = t(v); return Number.isFinite(n) ? new Date(n).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; };
+const date = v => { const n = t(v); return Number.isFinite(n) ? new Date(n).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : ''; };
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const parseLL = v => { const m = String(v || '').match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/); if (!m) return null; const a = +m[1], b = +m[2]; return Math.abs(a) <= 90 && Math.abs(b) <= 180 ? [a, b] : null; };
+const httpsOk = v => /^https?:\/\/\S+$/i.test(String(v || '').trim());
+
+const S = {
+  relay: base(ls.get('agency:relay') || BAKED_RELAY),
+  token: ls.get('agency:session') || '', email: ls.get('agency:email') || '',
+  me: null, org: null, cfg: null, saved: '', dirty: false, tab: ls.get('agency:tab') || 'overview',
+  members: null, invites: null, audit: null, overview: null, made: {}, err: '', busy: false, form: {},
+};
+document.documentElement.dataset.mode = ls.get('agency:mode') || 'night';
+
+async function call(path, body, method = 'POST') {
+  const r = await fetch(S.relay + path, { method, headers: { 'content-type': 'application/json', ...(S.token ? { authorization: 'Bearer ' + S.token } : {}) }, ...(method === 'GET' ? {} : { body: JSON.stringify(body || {}) }) });
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401 && S.token && path !== '/v1/account/login') { signOutLocal(); render(); }
+  if (!r.ok) throw new Error((data.error && data.error.message) || `The relay answered ${r.status}.`);
+  return data;
+}
+function toast(msg) { const r = document.getElementById('toast-root'); r.innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => { r.innerHTML = ''; }, 4000); }
+function signOutLocal() { S.token = ''; ls.set('agency:session', null); S.me = S.cfg = S.members = S.invites = S.audit = S.overview = null; }
+function defaults() {
+  return { v: 1, agency: { name: (S.org && S.org.name) || '', num: '', logo: '', type: (S.org && S.org.kind) || 'ems' }, features: { par: false }, roster: [], members: [], contacts: [], favHosp: [], feeds: [], cameras: [] };
+}
+function normalize(c) {
+  const d = defaults(), out = { ...d, ...(c || {}) };
+  out.agency = { ...d.agency, ...((c && c.agency) || {}) };
+  out.features = { ...d.features, ...((c && c.features) || {}) };
+  for (const k of ['roster', 'members', 'contacts', 'favHosp', 'feeds', 'cameras']) if (!Array.isArray(out[k])) out[k] = [];
+  return out;
+}
+const kindOf = () => (S.cfg && S.cfg.agency.type) || 'ems';
+function mark() { S.dirty = JSON.stringify(S.cfg) !== S.saved; render(); }
+
+async function loadAll() {
+  if (!S.token) return;
+  S.busy = true; render();
+  try {
+    const me = await call('/v1/me', null, 'GET');
+    S.me = me.member; S.org = me.org;
+    if (S.me.role !== 'admin') { S.busy = false; return render(); }
+    const [cfg, members, invites, overview, audit] = await Promise.all([
+      call('/v1/agency/config', {}), call('/v1/members', null, 'GET'), call('/v1/invites/list', {}), call('/v1/agency/overview', {}), call('/v1/audit', null, 'GET'),
+    ]);
+    S.org = { ...(S.org || {}), ...(cfg.org || {}) };
+    S.cfg = normalize(cfg.config); S.saved = JSON.stringify(S.cfg); S.dirty = false;
+    S.members = members.members; S.invites = invites.invites; S.overview = overview; S.audit = audit.entries;
+    S.err = '';
+  } catch (e) { S.err = e.message; }
+  S.busy = false; render();
+}
+async function reloadPart(part) {
+  try {
+    if (part === 'members') S.members = (await call('/v1/members', null, 'GET')).members;
+    if (part === 'invites') S.invites = (await call('/v1/invites/list', {})).invites;
+    if (part === 'audit') S.audit = (await call('/v1/audit', null, 'GET')).entries;
+    if (part === 'overview') S.overview = await call('/v1/agency/overview', {});
+  } catch (e) { toast(e.message); }
+  render();
+}
+
+/* ---------- screens ---------- */
+function signin() {
+  return `<header class="top">${MARK}<div><h1>Agency console</h1><div class="sub">OpsBoard · set up your squad's board</div></div></header>
+    <section class="panel signin">
+      <p class="note">For your squad's or department's admins: your agency's name and logo, units, member roster, who has access, invite links, hospitals, radio feeds, cameras and phone numbers. Changes go to every tablet and phone right away.</p>
+      <div class="field"><span class="lbl">Email</span><input type="email" id="f-email" value="${esc(S.email)}" autocapitalize="off" autocomplete="username"></div>
+      <div class="field"><span class="lbl">Password</span><input type="password" id="f-pass" autocomplete="current-password"></div>
+      ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
+      <div class="bar"><button class="btn primary" data-act="login" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Signing in…' : 'Sign in'}</button></div>
+      <p class="note"><b>First time, or forgot the password?</b> On your squad's tablet, signed in as an admin: Menu → Squad sharing → <b>Web login</b>, and set your email and a password. Then sign in here, on any computer.</p>
+      <details><summary class="note">Relay</summary><div class="field" style="margin-top:8px"><input type="text" id="f-relay" value="${esc(S.relay)}" autocapitalize="off" inputmode="url"></div></details>
+    </section>`;
+}
+function notAdmin() {
+  return `${top()}<section class="panel signin"><h2>Admins only</h2><p class="note">You're signed in as <b>${esc(S.me.name)}</b>, a member of ${esc((S.org && S.org.name) || 'the squad')}. The agency console is for its admins; ask one to make you an admin.</p><div class="bar"><button class="btn" data-act="signout">Sign out</button></div></section>`;
+}
+function top() {
+  const c = S.cfg, logo = c && logoOk(c.agency.logo) ? `<img class="logo" src="${c.agency.logo}" alt="">` : MARK;
+  return `<header class="top">${logo}<div><h1>${esc((c && c.agency.name) || (S.org && S.org.name) || 'Agency console')}</h1><div class="sub">Agency console · ${esc(S.me ? S.me.name : '')}${S.email ? ' · ' + esc(S.email) : ''}</div></div><span class="grow"></span>
+    <a class="btn sm" href="./">Open the board</a>
+    <button class="btn sm" data-act="mode">${document.documentElement.dataset.mode === 'day' ? 'Night' : 'Day'}</button>
+    <button class="btn sm" data-act="signout">Sign out</button></header>`;
+}
+const TABS = [
+  ['overview', 'Overview'], ['agency', 'Agency'], ['units', 'Units', () => S.cfg.roster.length], ['roster', 'Member roster', () => S.cfg.members.length],
+  ['people', 'People & access', () => (S.members || []).filter(m => m.status === 'active').length], ['invites', 'Invite links', () => (S.invites || []).length],
+  ['hospitals', 'Hospitals', () => S.cfg.favHosp.length], ['feeds', 'Radio feeds', () => S.cfg.feeds.length], ['cameras', 'Cameras', () => S.cfg.cameras.length],
+  ['phones', 'Phone numbers', () => S.cfg.contacts.length], ['activity', 'Activity'],
+];
+function main() {
+  const tab = TABS.find(x => x[0] === S.tab) ? S.tab : 'overview';
+  return `${top()}
+    ${S.err ? `<div class="panel err">${esc(S.err)}</div>` : ''}
+    <div class="layout">
+      <nav class="tabs" aria-label="Sections">${TABS.map(([k, label, n]) => `<button class="tab" data-act="tab" data-arg="${k}" ${tab === k ? 'aria-current="page"' : ''}>${label}${n ? `<small>${n()}</small>` : ''}</button>`).join('')}</nav>
+      <div class="view">${VIEWS[tab]()}</div>
+    </div>
+    ${S.dirty ? `<div class="savebar"><span>You have changes that aren't saved yet.</span><button class="btn" data-act="discard">Undo changes</button><button class="btn primary" data-act="save">Save · send to every tablet</button></div>` : ''}`;
+}
+const f = k => S.form[k] || '';
+const VIEWS = {
+  overview() {
+    const o = S.overview || {}, b = o.board || {}, p = o.plan;
+    const plan = !p ? 'Free trial starts the first time a tablet shares' : p.tier === 'comp' ? 'Sharing: no end date' : p.tier === 'off' ? 'Sharing is off' : p.tier === 'squad' ? (p.active ? `Squad plan${p.paidThrough ? ' · paid through ' + date(p.paidThrough) : ''}` : 'Squad plan lapsed') : p.active ? `Free trial · ends ${date(p.endsAt)}` : 'Free trial ended';
+    const inc = b.incident, ev = b.event;
+    return `<section class="panel"><h2>Overview</h2>
+      <p class="note">${esc(plan)}</p>
+      <div class="stats">
+        <div class="stat"><span class="lbl">Devices online</span><span class="v">${(b.online || []).length}</span></div>
+        <div class="stat"><span class="lbl">Calls today</span><span class="v">${b.day ? b.day.calls : 0}</span></div>
+        <div class="stat"><span class="lbl">On duty today</span><span class="v">${b.day ? b.day.crew : 0}</span></div>
+        <div class="stat"><span class="lbl">Units</span><span class="v">${S.cfg.roster.length}</span></div>
+        <div class="stat"><span class="lbl">Roster</span><span class="v">${S.cfg.members.length}</span></div>
+        <div class="stat"><span class="lbl">People with access</span><span class="v">${(S.members || []).filter(m => m.status === 'active' && m.role !== 'guest').length}</span></div>
+      </div>
+      <p class="note">${inc && !inc.clear && !inc.sample ? `<span class="pill live">MCI</span> ${esc(inc.type || 'Incident')}${inc.place ? ' · ' + esc(inc.place) : ''} · ${plural(inc.patients, 'patient')}` : 'No MCI running.'} ${ev && !ev.endedAt && !ev.sample ? `· <span class="pill ok">Event</span> ${esc(ev.name)}` : ''}</p>
+      <p class="note">Set up here, and every tablet and phone gets it. To run a call, an MCI or an event, use the board itself.</p>
+      <div class="bar"><button class="btn sm" data-act="refresh">Refresh</button></div>
+    </section>
+    ${S.cfg.roster.length && S.cfg.members.length && (S.members || []).length > 1 ? '' : `<section class="panel"><h2>Getting started</h2>
+      <p class="note">${[!S.cfg.agency.logo && '<b>Agency</b>: add your logo', !S.cfg.roster.length && '<b>Units</b>: add your ambulances and other units', !S.cfg.members.length && '<b>Member roster</b>: add members by number, so they check in with one tap', (S.members || []).length <= 1 && '<b>Invite links</b>: send the link to your other tablets and members\' phones'].filter(Boolean).join(' · ')}</p></section>`}`;
+  },
+  agency() {
+    const a = S.cfg.agency;
+    return `<section class="panel"><h2>Agency</h2>
+      <div class="grid2"><div class="field"><span class="lbl">Name</span><input type="text" data-cfg="agency.name" value="${esc(a.name)}"></div><div class="field"><span class="lbl">County number</span><input type="text" data-cfg="agency.num" value="${esc(a.num)}" inputmode="numeric"></div></div>
+      <div class="field"><span class="lbl">We are</span><div class="bar">${Object.entries(AG).map(([k, l]) => `<button class="chip" data-act="cfg-set" data-arg="agency.type=${k}" aria-pressed="${(a.type || 'ems') === k}">${l}</button>`).join('')}</div><p class="note">Sets the colors, Home screen and jobs on every device signed in to your board.</p></div>
+      <div class="field"><span class="lbl">Logo</span><div class="logo-pick">${logoOk(a.logo) ? `<img class="big" src="${a.logo}" alt="Logo">` : '<span class="none">No logo</span>'}
+        <label class="btn sm">${logoOk(a.logo) ? 'Change' : 'Add a logo'}<input type="file" id="f-logo" accept="image/*" hidden></label>${logoOk(a.logo) ? '<button class="btn sm danger" data-act="logo-del">Remove</button>' : ''}</div>
+        <p class="note">A square picture works best, like the patch on your uniform. It's shrunk to 256 pixels and shows next to your name on every tablet and phone, and on reports.</p></div>
+    </section>
+    <section class="panel"><h2>Board options</h2>
+      <div class="bar"><span>PAR checks at an MCI</span><button class="chip" data-act="cfg-set" data-arg="features.par=0" aria-pressed="${!S.cfg.features.par}">Hide</button><button class="chip" data-act="cfg-set" data-arg="features.par=1" aria-pressed="${!!S.cfg.features.par}">Use</button></div>
+      <p class="note">A timed check that every crew on scene is accounted for.</p>
+    </section>`;
+  },
+  units() {
+    const kinds = KINDS[kindOf()] || KINDS.ems;
+    return `<section class="panel"><h2>Units</h2><p class="note">Your own units. They're on the Supervisor board every day and load as Available in every new MCI. Mutual aid units are added on the board during a call.</p>
+      ${S.cfg.roster.length ? `<div class="tw"><table><thead><tr><th>Unit</th><th>Type</th><th></th></tr></thead><tbody>${S.cfg.roster.map((r, i) => `<tr><td class="num">${esc(r.name)}</td><td><select data-roster="${i}" aria-label="Type of ${esc(r.name)}">${[...kinds, ...(kinds.some(k => k[0] === r.kind) ? [] : [[r.kind, r.kind]])].map(([k, l]) => `<option value="${esc(k)}" ${r.kind === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td><td style="text-align:right"><button class="btn sm danger" data-act="unit-del" data-arg="${i}">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No units yet.</p>'}
+      <div class="grid3"><div class="field"><span class="lbl">Unit number</span><input type="text" id="f-unit" data-form="unit" value="${esc(f('unit'))}" placeholder="${S.cfg.agency.num ? `e.g. ${esc(S.cfg.agency.num)}-56` : 'e.g. 78-56'}" autocapitalize="characters"></div>
+        <div class="field"><span class="lbl">Type</span><select id="f-ukind" data-form="ukind">${kinds.map(([k, l]) => `<option value="${k}" ${f('ukind') === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
+        <div class="field"><span class="lbl">&nbsp;</span><button class="btn" data-act="unit-add">Add unit</button></div></div>
+    </section>`;
+  },
+  roster() {
+    const list = S.cfg.members.slice().sort((a, b) => String(a.num).localeCompare(String(b.num), undefined, { numeric: true }));
+    return `<section class="panel"><h2>Member roster</h2><p class="note">Members by number, so they check in on duty, at an MCI or an event by typing their number. Numbers can be letters and digits, like JS111.</p>
+      ${list.length ? `<div class="tw"><table><thead><tr><th>Number</th><th>Name</th><th>Cert</th><th></th></tr></thead><tbody>${list.map(m => `<tr><td class="num">${esc(m.num)}</td><td>${esc(m.name)}</td><td>${esc(m.cert || '')}</td><td style="text-align:right"><button class="btn sm danger" data-act="mem-del" data-arg="${esc(m.num)}">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">Nobody on the roster yet.</p>'}
+      <div class="grid3"><div class="field"><span class="lbl">Number</span><input type="text" id="f-mnum" data-form="mnum" value="${esc(f('mnum'))}" placeholder="e.g. JS111" autocapitalize="characters"></div>
+        <div class="field"><span class="lbl">Name</span><input type="text" id="f-mname" data-form="mname" value="${esc(f('mname'))}" placeholder="e.g. J. Sample"></div>
+        <div class="field"><span class="lbl">Cert</span><select id="f-mcert" data-form="mcert">${CERTS.map(c => `<option ${(f('mcert') || 'EMT') === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div></div>
+      <div class="bar"><button class="btn" data-act="mem-add">Add member</button></div>
+      <details><summary class="note">Add many at once</summary>
+        <div class="field" style="margin-top:8px"><span class="lbl">One per line: number, name, cert</span><textarea id="f-paste" data-form="paste" placeholder="JS111, J. Sample, EMT&#10;JS112, R. Levy, Paramedic">${esc(f('paste'))}</textarea></div>
+        <div class="bar"><button class="btn" data-act="mem-paste">Add these</button><span class="note">A number already on the roster is updated.</span></div>
+      </details>
+    </section>`;
+  },
+  people() {
+    const list = (S.members || []).slice().sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || (a.role === 'guest') - (b.role === 'guest') || String(a.name).localeCompare(String(b.name)));
+    const devs = (S.overview && S.overview.board && S.overview.board.devices) || [];
+    return `<section class="panel"><h2>People & access</h2><p class="note">Everyone whose tablet, phone or web login is signed in to your board. Remove a lost phone or someone who left, and it stops working at once. Admins can use this console and make invite links.</p>
+      ${list.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Web login</th><th>Last used</th><th></th></tr></thead><tbody>${list.map(m => {
+        const seen = devs.filter(d => d.name === m.name).map(d => d.at).concat([t(m.lastSeenAt)]).filter(Number.isFinite);
+        const me = S.me && m.id === S.me.id, guest = m.role === 'guest';
+        return `<tr><td><b>${esc(m.name)}</b>${me ? ' <span class="note">(you)</span>' : ''}${guest ? `<br><small class="note">${esc(m.agency === 'police' ? 'Police' : 'Fire')} guest${m.dept ? ' · ' + esc(m.dept) : ''} · until ${esc(dt(m.expiresAt))}</small>` : ''}</td>
+          <td>${m.status !== 'active' ? '<span class="pill crit">Removed</span>' : guest ? '<span class="pill">Guest</span>' : m.role === 'admin' ? '<span class="pill ok">Admin</span>' : '<span class="pill">Member</span>'}</td>
+          <td>${m.email ? esc(m.email) : '<span class="note">—</span>'}</td><td>${seen.length ? esc(ago(Math.max(...seen))) : '<span class="note">never</span>'}</td>
+          <td style="text-align:right;white-space:nowrap">${me ? '' : m.status !== 'active' ? `<button class="btn sm" data-act="member-status" data-arg="${esc(m.id)}=active">Restore</button>` : `${guest ? '' : m.role === 'admin' ? `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=member">Make member</button>` : `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=admin">Make admin</button>`} <button class="btn sm danger" data-act="member-status" data-arg="${esc(m.id)}=revoked">Remove</button>`}</td></tr>`;
+      }).join('')}</tbody></table></div>` : '<p class="empty">Nobody yet.</p>'}
+      <div class="bar"><button class="btn sm" data-act="reload" data-arg="members">Refresh</button></div>
+    </section>
+    ${S.me && !S.me.email ? '' : `<section class="panel"><h2>Your password</h2>
+      <div class="grid2"><div class="field"><span class="lbl">Current password</span><input type="password" id="f-cur" autocomplete="current-password"></div><div class="field"><span class="lbl">New password · at least 10 characters</span><input type="password" id="f-new" autocomplete="new-password"></div></div>
+      <div class="bar"><button class="btn" data-act="password">Change password</button></div></section>`}`;
+  },
+  invites() {
+    const inv = S.invites || [], member = inv.find(i => i.role === 'member'), admin = inv.find(i => i.role === 'admin'), guests = inv.filter(i => i.role === 'guest');
+    const linkBox = (i, what) => i ? `<div class="link">${esc(linkFor(i.code))}</div><div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(linkFor(i.code))}">Copy link</button><button class="btn sm" data-act="copy" data-arg="${esc(i.code)}">Copy code ${esc(i.code)}</button>${navigator.share ? `<button class="btn sm" data-act="send" data-arg="${esc(i.code)}=${what}">Send…</button>` : ''}<button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(i.code)}">Stop this link</button></div>` : '';
+    return `<section class="panel"><h2>Tablets and members' phones</h2><p class="note">Open this link on a tablet or a member's phone to sign it in to your board. Making a new link stops the old one; devices already signed in keep working.</p>
+      ${member ? linkBox(member, 'member') : '<p class="empty">No member link right now.</p>'}
+      <div class="bar"><button class="btn" data-act="invite-new" data-arg="member">${member ? 'Make a new link' : 'Make a link'}</button></div></section>
+    <section class="panel"><h2>Another admin</h2><p class="note">Signs a device in as an admin, who can use this console and make invite links. Stop it once it's been used.</p>
+      ${admin ? linkBox(admin, 'admin') : ''}<div class="bar"><button class="btn" data-act="invite-new" data-arg="admin">${admin ? 'Make a new admin link' : 'Make an admin link'}</button></div></section>
+    <section class="panel"><h2>Other departments (guests)</h2><p class="note">For fire or police working an MCI or event with you. Their devices see only the MCI and events, in their own colors, and stop when the link runs out.</p>
+      ${guests.length ? `<div class="tw"><table><thead><tr><th>For</th><th>Until</th><th>Code</th><th></th></tr></thead><tbody>${guests.map(g => `<tr><td>${g.agency === 'police' ? 'Police' : 'Fire'}${g.dept ? ' · ' + esc(g.dept) : ''}</td><td>${esc(dt(g.expiresAt))}</td><td class="num">${esc(g.code)}</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" data-act="copy" data-arg="${esc(linkFor(g.code))}">Copy link</button> <button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(g.code)}">Stop</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No guest links running.</p>'}
+      <div class="grid3"><div class="field"><span class="lbl">Department</span><select id="f-gag" data-form="gag"><option value="fire" ${f('gag') !== 'police' ? 'selected' : ''}>Fire</option><option value="police" ${f('gag') === 'police' ? 'selected' : ''}>Police</option></select></div>
+        <div class="field"><span class="lbl">Name · optional</span><input type="text" id="f-gdept" data-form="gdept" value="${esc(f('gdept'))}" placeholder="e.g. Ocean Township Fire"></div>
+        <div class="field"><span class="lbl">Works for</span><select id="f-ghours" data-form="ghours">${[[12, '12 hours'], [24, '1 day'], [72, '3 days'], [168, '1 week']].map(([h, l]) => `<option value="${h}" ${Number(f('ghours') || 24) === h ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <div class="bar"><button class="btn" data-act="guest-new">Make a guest link</button></div></section>`;
+  },
+  hospitals() {
+    const favs = new Set(S.cfg.favHosp);
+    return `<section class="panel"><h2>Hospitals</h2><p class="note">Star the hospitals your squad uses most. They're listed first everywhere on the board: transports, the hospital list, the phone list and briefings.</p>
+      <div class="hosps">${HOSPITALS.map(h => `<button class="hosp" data-act="fav" data-arg="${esc(h.id)}" aria-pressed="${favs.has(h.id)}"><span class="star">${favs.has(h.id) ? '★' : '☆'}</span><span><b>${esc(h.short)}</b><small>${esc(h.name)} · ${esc(h.town)}${h.trauma ? ' · ' + esc(h.trauma) : ''}</small></span></button>`).join('')}</div>
+    </section>`;
+  },
+  feeds() {
+    return `<section class="panel"><h2>Radio feeds</h2><p class="note">Audio streams your squad has the right to use, like your own dispatch channel. They play inside OpsBoard under Radio → Listen live. The county's public Broadcastify feeds are already there.</p>
+      ${S.cfg.feeds.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Stream</th><th></th></tr></thead><tbody>${S.cfg.feeds.map(x => `<tr><td><b>${esc(x.name)}</b>${x.note ? `<br><small class="note">${esc(x.note)}</small>` : ''}</td><td class="mono">${esc(x.url)}</td><td style="text-align:right"><button class="btn sm danger" data-act="list-del" data-arg="feeds=${esc(x.id)}">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No feeds added.</p>'}
+      <div class="grid3"><div class="field"><span class="lbl">Name</span><input type="text" id="f-fname" data-form="fname" value="${esc(f('fname'))}" placeholder="e.g. Hatzalah dispatch"></div>
+        <div class="field"><span class="lbl">Stream address</span><input type="text" id="f-furl" data-form="furl" value="${esc(f('furl'))}" placeholder="https://…" autocapitalize="off" inputmode="url"></div>
+        <div class="field"><span class="lbl">Note · optional</span><input type="text" id="f-fnote" data-form="fnote" value="${esc(f('fnote'))}"></div></div>
+      <div class="bar"><button class="btn" data-act="feed-add">Add feed</button></div></section>`;
+  },
+  cameras() {
+    return `<section class="panel"><h2>Cameras</h2><p class="note">Cameras other organizations share with your squad: a town's, a school's, a business's. A link to a still image (.jpg or .png) shows on the board and refreshes; any other link opens in a new tab. Only add cameras you're allowed to use.</p>
+      ${S.cfg.cameras.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Whose</th><th>Where</th><th></th></tr></thead><tbody>${S.cfg.cameras.map(x => `<tr><td><b>${esc(x.name)}</b><br><small class="note mono">${esc(x.url)}</small></td><td>${esc(x.org || '')}</td><td class="num">${x.ll ? esc(x.ll.join(', ')) : '<span class="note">not on the map</span>'}</td><td style="text-align:right"><button class="btn sm danger" data-act="list-del" data-arg="cameras=${esc(x.id)}">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No cameras added.</p>'}
+      <div class="grid2"><div class="field"><span class="lbl">Name</span><input type="text" id="f-cname" data-form="cname" value="${esc(f('cname'))}" placeholder="e.g. Main St & Ocean Ave"></div>
+        <div class="field"><span class="lbl">Whose camera</span><input type="text" id="f-corg" data-form="corg" value="${esc(f('corg'))}" placeholder="e.g. Long Branch PD"></div>
+        <div class="field"><span class="lbl">Link</span><input type="text" id="f-curl" data-form="curl" value="${esc(f('curl'))}" placeholder="https://…" autocapitalize="off" inputmode="url"></div>
+        <div class="field"><span class="lbl">Where · latitude, longitude · optional</span><input type="text" id="f-cll" data-form="cll" value="${esc(f('cll'))}" placeholder="40.2205, -74.0121" inputmode="decimal"></div></div>
+      <div class="bar"><button class="btn" data-act="cam-add">Add camera</button></div></section>`;
+  },
+  phones() {
+    return `<section class="panel"><h2>Phone numbers</h2><p class="note">Numbers only your agency has, added to the board's phone list next to the hospitals and county numbers.</p>
+      ${S.cfg.contacts.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Number</th><th>Group</th><th></th></tr></thead><tbody>${S.cfg.contacts.map(x => `<tr><td><b>${esc(x.name)}</b>${x.note ? `<br><small class="note">${esc(x.note)}</small>` : ''}</td><td class="num">${esc(x.num)}</td><td>${esc(x.group || '')}</td><td style="text-align:right"><button class="btn sm danger" data-act="list-del" data-arg="contacts=${esc(x.id)}">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No numbers added.</p>'}
+      <div class="grid2"><div class="field"><span class="lbl">Name</span><input type="text" id="f-pname" data-form="pname" value="${esc(f('pname'))}" placeholder="e.g. Hatzalah dispatch"></div>
+        <div class="field"><span class="lbl">Number</span><input type="text" id="f-pnum" data-form="pnum" value="${esc(f('pnum'))}" placeholder="732-555-0100" inputmode="tel"></div>
+        <div class="field"><span class="lbl">Group</span><input type="text" id="f-pgroup" data-form="pgroup" value="${esc(f('pgroup') || 'My agency')}"></div>
+        <div class="field"><span class="lbl">Note · optional</span><input type="text" id="f-pnote" data-form="pnote" value="${esc(f('pnote'))}"></div></div>
+      <div class="bar"><button class="btn" data-act="phone-add">Add number</button></div></section>`;
+  },
+  activity() {
+    const list = S.audit || [];
+    return `<section class="panel"><h2>Activity</h2><p class="note">Who joined, who was removed, invite links, settings saved and sign-ins. Not what happened on calls: that's in each board's own log and report.</p>
+      ${list.length ? `<div class="tw"><table><thead><tr><th>When</th><th>What</th><th>Who</th></tr></thead><tbody>${list.map(a => `<tr><td>${esc(dt(a.at))}</td><td>${esc(String(a.action || '').replace(/_/g, ' '))}${a.subject ? ' · ' + esc(a.subject) : ''}${a.agency ? ' · ' + esc(a.agency) : ''}</td><td>${esc(a.name || '')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">Nothing yet.</p>'}
+      <div class="bar"><button class="btn sm" data-act="reload" data-arg="audit">Refresh</button></div></section>`;
+  },
+};
+const linkFor = code => `${new URL('./', location.href).href}#join=1&u=${encodeURIComponent(S.relay)}&i=${encodeURIComponent(code)}`;
+
+const app = document.getElementById('app');
+function render() {
+  document.documentElement.dataset.agency = S.cfg ? kindOf() : '';
+  const focus = document.activeElement && document.activeElement.id, sel = focus && document.activeElement.selectionStart;
+  app.innerHTML = !S.token ? signin() : !S.me ? `<header class="top">${MARK}<div><h1>Agency console</h1><div class="sub">${S.err ? esc(S.err) : 'Loading…'}</div></div></header>${S.err ? '<div class="bar"><button class="btn" data-act="signout">Sign out</button><button class="btn" data-act="refresh">Try again</button></div>' : ''}` : S.me.role !== 'admin' ? notAdmin() : !S.cfg ? `${top()}<p class="note">${S.err ? esc(S.err) : 'Loading…'}</p>` : main();
+  if (focus) { const el = document.getElementById(focus); if (el) { el.focus(); try { if (sel != null) el.setSelectionRange(sel, sel); } catch (e) {} } }
+}
+
+/* ---------- editing the squad's settings ---------- */
+function setPath(path, v) { const ks = path.split('.'); let o = S.cfg; for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]] = o[ks[i]] || {}; o[ks[ks.length - 1]] = v; }
+function shrinkLogo(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('Pick a picture file'));
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      for (const size of [256, 192, 128]) {
+        const k = Math.min(1, size / Math.max(img.width, img.height)), w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const webp = cv.toDataURL('image/webp', 0.9), png = cv.toDataURL('image/png');
+        const best = /^data:image\/webp/.test(webp) && webp.length < png.length ? webp : png;
+        if (best.length < 110000) return resolve(best);
+      }
+      reject(new Error('That picture is too detailed to use as a logo. Try a simpler one.'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Couldn't read that picture")); };
+    img.src = url;
+  });
+}
+function addMember(num, name, cert) {
+  num = memNum(num); name = String(name || '').trim();
+  if (!num || !name) return false;
+  const was = S.cfg.members.find(m => memNum(m.num) === num);
+  if (was) Object.assign(was, { num, name, cert: cert || was.cert || 'EMT' }); else S.cfg.members.push({ num, name, cert: CERTS.includes(cert) ? cert : 'EMT' });
+  return true;
+}
+
+const ACT = {
+  async login() {
+    const relayEl = document.getElementById('f-relay'); if (relayEl) S.relay = base(relayEl.value);
+    const email = document.getElementById('f-email').value.trim(), password = document.getElementById('f-pass').value;
+    S.email = email; S.err = ''; S.busy = true; render();
+    try {
+      const d = await call('/v1/account/login', { email, password });
+      S.token = d.token; ls.set('agency:session', d.token); ls.set('agency:email', email); ls.set('agency:relay', S.relay);
+      S.busy = false; await loadAll();
+    } catch (e) { S.busy = false; S.err = e.message; render(); }
+  },
+  async signout() {
+    if (S.dirty && !confirm('Sign out without saving your changes?')) return;
+    if (S.token) { try { await call('/v1/account/logout', {}); } catch (e) { /* ends here anyway */ } }
+    signOutLocal(); S.err = ''; S.dirty = false; render();
+  },
+  refresh() { loadAll(); },
+  reload(part) { reloadPart(part); },
+  mode() { const m = document.documentElement.dataset.mode === 'day' ? 'night' : 'day'; document.documentElement.dataset.mode = m; ls.set('agency:mode', m); render(); },
+  tab(k) {
+    S.tab = k; ls.set('agency:tab', k); render(); window.scrollTo(0, 0);
+    // what other people change (a phone joining, a guest link used) is fetched fresh when its section opens
+    if (k === 'people') { reloadPart('members'); reloadPart('overview'); } else if (k === 'invites') reloadPart('invites'); else if (k === 'activity') reloadPart('audit'); else if (k === 'overview') reloadPart('overview');
+  },
+  'cfg-set'(arg) { const i = arg.indexOf('='), path = arg.slice(0, i), v = arg.slice(i + 1); setPath(path, path === 'features.par' ? v === '1' : v); mark(); },
+  'logo-del'() { S.cfg.agency.logo = ''; mark(); },
+  'unit-add'() {
+    const name = f('unit').trim().toUpperCase(), kind = f('ukind') || (KINDS[kindOf()] || KINDS.ems)[0][0];
+    if (!name) return toast('Type the unit number first');
+    if (S.cfg.roster.some(r => r.name === name)) return toast(`${name} is already in the list`);
+    S.cfg.roster.push({ name, kind }); S.form.unit = ''; mark();
+  },
+  'unit-del'(i) { S.cfg.roster.splice(Number(i), 1); mark(); },
+  'mem-add'() {
+    if (!addMember(f('mnum'), f('mname'), f('mcert') || 'EMT')) return toast('Enter a number and a name');
+    S.form.mnum = ''; S.form.mname = ''; mark(); document.getElementById('f-mnum')?.focus();
+  },
+  'mem-paste'() {
+    let n = 0;
+    for (const line of f('paste').split(/\r?\n/)) { const [num, name, cert] = line.split(/\t|,|;/).map(x => x.trim()); if (addMember(num, name, CERTS.find(c => c.toLowerCase() === String(cert || '').toLowerCase()))) n++; }
+    if (!n) return toast('Nothing to add: one member per line, number, name, cert');
+    S.form.paste = ''; mark(); toast(`${plural(n, 'member')} added or updated`);
+  },
+  'mem-del'(num) { S.cfg.members = S.cfg.members.filter(m => memNum(m.num) !== num); mark(); },
+  fav(id) { const s = new Set(S.cfg.favHosp); s.has(id) ? s.delete(id) : s.add(id); S.cfg.favHosp = [...s]; mark(); },
+  'feed-add'() {
+    const name = f('fname').trim(), url = f('furl').trim();
+    if (!name || !httpsOk(url)) return toast('A name and a link starting with https:// are needed');
+    S.cfg.feeds.push({ id: uid(), name, url, note: f('fnote').trim() }); S.form.fname = S.form.furl = S.form.fnote = ''; mark();
+  },
+  'cam-add'() {
+    const name = f('cname').trim(), url = f('curl').trim();
+    if (!name || !httpsOk(url)) return toast('A name and a link starting with https:// are needed');
+    const ll = f('cll').trim() ? parseLL(f('cll')) : null;
+    if (f('cll').trim() && !ll) return toast('Where should be latitude, longitude, like 40.2205, -74.0121');
+    S.cfg.cameras.push({ id: uid(), name, org: f('corg').trim(), url, ll }); ['cname', 'corg', 'curl', 'cll'].forEach(k => { S.form[k] = ''; }); mark();
+  },
+  'phone-add'() {
+    const name = f('pname').trim(), num = f('pnum').trim();
+    if (!name || !num) return toast('Enter a name and a number');
+    S.cfg.contacts.push({ id: uid(), group: (f('pgroup') || 'My agency').trim(), name, num, note: f('pnote').trim() }); ['pname', 'pnum', 'pnote'].forEach(k => { S.form[k] = ''; }); mark();
+  },
+  'list-del'(arg) { const [k, id] = arg.split('='); S.cfg[k] = S.cfg[k].filter(x => x.id !== id); mark(); },
+  discard() { S.cfg = JSON.parse(S.saved); S.dirty = false; render(); },
+  async save(_, e) {
+    const btn = e.target.closest('button'); btn.disabled = true;
+    try { await call('/v1/agency/save', { config: S.cfg }); S.saved = JSON.stringify(S.cfg); S.dirty = false; render(); toast('Saved. Every tablet and phone has it now.'); reloadPart('audit'); }
+    catch (err) { btn.disabled = false; toast(err.message); }
+  },
+  async 'member-role'(arg) {
+    const [id, role] = arg.split('=');
+    try { await call('/v1/members/role', { memberId: id, role }); await reloadPart('members'); toast(role === 'admin' ? 'Made an admin' : 'Now a member'); } catch (e) { toast(e.message); }
+  },
+  async 'member-status'(arg) {
+    const [id, status] = arg.split('='), m = (S.members || []).find(x => x.id === id);
+    if (status === 'revoked' && !confirm(`Remove ${m ? m.name : 'this device'}? It stops working on your board right away.`)) return;
+    try { await call('/v1/members/status', { memberId: id, status }); await reloadPart('members'); toast(status === 'revoked' ? 'Removed' : 'Restored'); } catch (e) { toast(e.message); }
+  },
+  async 'invite-new'(role) {
+    try { await call('/v1/invites', { role }); await reloadPart('invites'); toast('New link made'); } catch (e) { toast(e.message); }
+  },
+  async 'invite-revoke'(code) {
+    if (!confirm('Stop this link? Devices already signed in keep working.')) return;
+    try { await call('/v1/invites/revoke', { code }); await reloadPart('invites'); toast('Link stopped'); } catch (e) { toast(e.message); }
+  },
+  async 'guest-new'() {
+    try { await call('/v1/guest-invites', { agency: f('gag') || 'fire', hours: Number(f('ghours') || 24), dept: f('gdept').trim() }); S.form.gdept = ''; await reloadPart('invites'); toast('Guest link made'); } catch (e) { toast(e.message); }
+  },
+  copy(text) { navigator.clipboard.writeText(text).then(() => toast('Copied'), () => toast(text)); },
+  send(arg) { const [code, what] = arg.split('='); navigator.share({ title: 'OpsBoard', text: `${(S.cfg && S.cfg.agency.name) || 'Our'} OpsBoard ${what === 'admin' ? 'admin ' : ''}invite. Code ${code}.`, url: linkFor(code) }).catch(() => {}); },
+  async password() {
+    const current = document.getElementById('f-cur').value, next = document.getElementById('f-new').value;
+    try { await call('/v1/account/password', { current, next }); toast('Password changed'); render(); } catch (e) { toast(e.message); }
+  },
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const fn = ACT[el.dataset.act]; if (fn) fn(el.dataset.arg, e);
+});
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.form) S.form[el.dataset.form] = el.value;
+  if (el.dataset.cfg) { setPath(el.dataset.cfg, el.value); S.dirty = JSON.stringify(S.cfg) !== S.saved; const bar = document.querySelector('.savebar'); if (!!bar !== S.dirty) render(); }
+});
+document.addEventListener('change', async e => {
+  const el = e.target;
+  if (el.dataset.roster !== undefined) { S.cfg.roster[Number(el.dataset.roster)].kind = el.value; mark(); }
+  if (el.dataset.form) { S.form[el.dataset.form] = el.value; }
+  if (el.id === 'f-logo' && el.files && el.files[0]) {
+    try { S.cfg.agency.logo = await shrinkLogo(el.files[0]); mark(); } catch (err) { toast(err.message); }
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (!S.token && (e.target.id === 'f-pass' || e.target.id === 'f-email')) ACT.login();
+  const map = { 'f-unit': 'unit-add', 'f-mname': 'mem-add', 'f-mnum': 'mem-add', 'f-furl': 'feed-add', 'f-curl': 'cam-add', 'f-pnum': 'phone-add' };
+  if (map[e.target.id]) { e.preventDefault(); ACT[map[e.target.id]](); }
+});
+window.addEventListener('beforeunload', e => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+render();
+if (S.token) loadAll();
+})();
+</script>
+</body>
+</html>

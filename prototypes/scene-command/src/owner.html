@@ -243,7 +243,7 @@ function panels() {
   if (S.panel === 'add') {
     const m = S.made;
     return `<section class="panel signin" aria-label="Add an agency"><h2 class="h">Add an agency</h2>
-      ${m ? `<div class="note">Send this link to <b>${esc(m.orgName)}</b>'s admin. Opening it on their iPad signs them in as the agency's admin; from there they invite their own members. Anyone with this link becomes an admin, until they make their own invite.</div>
+      ${m ? `<div class="note">Send this link to <b>${esc(m.orgName)}</b>'s admin. Opening it on their iPad signs them in as the agency's admin; from there they set up a web login and run their own board from the agency console (agency.html): units, members, invite links, hospitals. Anyone with this link becomes an admin, until they make their own invite.</div>
         <div class="field"><span class="lbl">Admin invite link</span><input type="text" readonly value="${esc(m.link)}" id="f-link"></div>
         <div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(m.link)}">Copy link</button><button class="btn sm" data-act="copy" data-arg="${esc(m.inviteCode)}">Copy code ${esc(m.inviteCode)}</button>${navigator.share ? '<button class="btn sm" data-act="share">Send…</button>' : ''}<button class="btn sm" data-act="add-again">Add another</button><button class="btn sm" data-act="panel" data-arg="">Done</button></div>`
       : `<div class="field"><span class="lbl">Name</span><input type="text" id="f-org" placeholder="e.g. Ocean Township First Aid" value="${esc(S.orgName || '')}"></div>

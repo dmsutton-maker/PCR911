@@ -3332,7 +3332,8 @@ function agencySheet() {
         <div class="field"><span class="lbl">&nbsp;</span><button class="btn" data-act="ag-add">${icon('plus')} Add unit</button></div>
       </div>
       ${field('Type', `<div class="opt-grid">${OWN_KINDS.map(k => opt('f-set', 'akind=' + k, f.akind === k, `${kindTag(k)} ${esc(kindOf(k).name)}`)).join('')}</div>`)}
-      <div class="note">Units save as soon as you add them, and go to every tablet that shares this board. Mutual aid units go in with Load mutual aid on the Units screen.</div>`,
+      <div class="note">Units save as soon as you add them, and go to every tablet that shares this board. Mutual aid units go in with Load mutual aid on the Units screen.</div>
+      ${RELAY && RELAY.role === 'admin' && !IN_CLAUDE ? '<div class="note">On a computer, the <a href="agency.html">agency console</a> does all of this and more: the member roster, who has access, invite links, hospitals, feeds and cameras.</div>' : ''}`,
     foot: `<button class="btn" data-act="close">Cancel</button>${missing ? `<button class="btn" data-act="agency-save" data-arg="add">Save and add ${missing} to this incident</button>` : ''}<button class="btn primary" data-act="agency-save">Save</button>`,
   };
 }
@@ -4533,6 +4534,9 @@ const Sync = {
     C = migrateConfig({ ...defaultConfig(), ...d });
     write(K.cfg, C);
     if (fitRole()) { this.setRole(); if (UI.view !== 'home') { UI.view = homeView(); saveUi(); } }   // the squad changed what it is
+    // units added elsewhere (the agency console) go on today's supervisor board too; adding one twice does nothing
+    const added = C.roster.filter(r => !SH.units.some(u => u.name === r.name));
+    if (added.length && !isGuest() && (DEV.role === 'supervisor' || (RELAY && RELAY.role === 'admin'))) sdispatch('unitAdd', { units: added.map(r => ({ id: uid(), name: r.name, kind: r.kind, status: 'in', since: now(), note: '' })) }, '', 'units', { toast: false });
     if (!UI.sheet) render();
   },
   pushConfig() {
@@ -5708,6 +5712,7 @@ function connectSheet() {
         ${planPanel()}
         ${isGuest() ? `<div class="note">Guest access for <b>${esc(AGENCIES[RELAY.agency] ? AGENCIES[RELAY.agency].long : 'another department')}</b>${RELAY.dept ? ' · ' + esc(RELAY.dept) : ''}${RELAY.until ? ` until <b>${esc(fmtDT(Date.parse(RELAY.until)))}</b>` : ''}. This device shares the MCI and events only.</div>` : ''}
         ${RELAY.role === 'admin' && !planEnded() ? guestInvitePanel() : ''}
+        ${!isGuest() && !IN_CLAUDE ? webLoginPanel() : ''}
         ${RELAY.role === 'admin' && !IN_CLAUDE ? ownerClaimPanel() : ''}
         ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Add a tablet</h2></div>
           <div class="note">Makes a new invite link. Open it on the other tablet, or type its code there. Making a new one stops earlier invite links from working; tablets already joined are not affected.</div>
@@ -5774,6 +5779,18 @@ function ownerSheet() {
     foot: `<button class="btn" data-act="sheet" data-arg="connect">Back</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
   };
 }
+/* A web login (email and password) for this person's own membership, so an admin can run the agency console on
+   any computer. Setting it again replaces it, which is also how a forgotten password is reset. */
+function webLoginPanel() {
+  const f = UI.form, admin = RELAY.role === 'admin';
+  if (f.wlsaved) return `<div class="ph"><h2>Web login</h2></div><div class="note ok-t">Saved for <b>${esc(f.wlsaved)}</b>.</div>${admin ? '<a class="btn" href="agency.html">Open the agency console</a>' : ''}`;
+  if (!f.wl) return `<div class="ph"><h2>Web login</h2></div><div class="note">${admin ? 'Set up the board from any computer, in the <b>agency console</b>: your name and logo, units, member roster, who has access, invite links, hospitals, feeds and cameras. Sign in with an email and a password you set here.' : 'An email and password for your membership.'}</div><div class="toolbar"><button class="btn" data-act="f-set" data-arg="wl=1">Set up my web login</button>${admin ? '<a class="btn" href="agency.html">Agency console</a>' : ''}</div>`;
+  return `<div class="ph"><h2>Web login</h2></div>
+    ${field('Your email', input('wl-email', 'wlemail', f.wlemail, 'you@example.com', 'inputmode="email" autocapitalize="off" autocomplete="username"'))}
+    <div class="grid2">${field('Password · at least 10 characters', input('wl-pass', 'wlpass', f.wlpass, '', 'type="password" autocomplete="new-password"'))}${field('Again', input('wl-pass2', 'wlpass2', f.wlpass2, '', 'type="password" autocomplete="new-password"'))}</div>
+    ${f.wlerr ? `<div class="note crit-t">${esc(f.wlerr)}</div>` : ''}
+    <div class="toolbar"><button class="btn primary" data-act="web-login">Save my web login</button><button class="btn" data-act="f-set" data-arg="wl=">Cancel</button></div>`;
+}
 /* The relay owner's login (email and password) for the owner console, set up once from the owner's own squad. */
 function ownerClaimPanel() {
   const f = UI.form;
@@ -5801,6 +5818,18 @@ function guestInvitePanel() {
 }
 const RELAY_ACTIONS = {
   'relay-retry'() { location.reload(); },
+  async 'web-login'() {
+    const f = UI.form, email = (f.wlemail || '').trim();
+    f.wlerr = '';
+    if (!email || !/@/.test(email)) { f.wlerr = 'Enter your email.'; return render(); }
+    if ((f.wlpass || '').length < 10) { f.wlerr = 'The password needs at least 10 characters.'; return render(); }
+    if (f.wlpass !== f.wlpass2) { f.wlerr = 'The two passwords don\'t match.'; return render(); }
+    try {
+      await relayCall('/v1/account/setup', { email, password: f.wlpass }, { authorization: 'Bearer ' + RELAY.token });
+      f.wlsaved = email.toLowerCase(); f.wlpass = f.wlpass2 = ''; render();
+      showToast('Web login saved.', false);
+    } catch (e) { f.wlerr = e.message; render(); }
+  },
   async 'owner-claim'() {
     const f = UI.form, email = (f.ocemail || '').trim();
     f.ocerr = '';
@@ -5982,7 +6011,7 @@ const A = {
 
   'f-set'(arg) {
     const i = arg.indexOf('='), k = arg.slice(0, i), v = arg.slice(i + 1);
-    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'atype', 'gagency', 'ghours', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert', 'ptkind', 'ptwhere'];
+    const sticky = ['cat', 'type', 'kind', 'status', 'lz', 'into', 'cert', 'ed', 'akind', 'atype', 'gagency', 'ghours', 'wl', 'oclaim', 'pwhere', 'pkind', 'cwhere', 'outcome', 'rmode', 'mcert', 'ptkind', 'ptwhere'];
     UI.form[k] = UI.form[k] === v && !sticky.includes(k) ? '' : v;
     if (k === 'cat') UI.form.n = 1;
     render();
