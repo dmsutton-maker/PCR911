@@ -1039,6 +1039,8 @@ svg.i { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: rou
 .mapside { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; }
 .coord { font: 600 15px/1.5 var(--mono); }
 .coord small { display: block; color: var(--faint); font: 500 12px/1.3 var(--body); }
+.qrbox { background: #fff; padding: 8px; border-radius: 10px; width: 168px; margin: 6px 0; }
+.qrbox svg { display: block; width: 100%; height: auto; }
 
 /* ---------- generic view layouts ---------- */
 .view { display: flex; flex-direction: column; gap: 12px; }
@@ -1956,11 +1958,16 @@ const townLL = name => { const n = (name || '').trim().toLowerCase(); const t = 
    ===================================================================== */
 const parOn = () => !!(C && C.features && C.features.par);
 /* Practice mode (?demo): the sample incident, a sample day and a sample roster,
-   stored apart from the real board and never shared through the squad relay. */
-const DEMO = /(^|&)demo(=|&|$)/.test(location.search.slice(1));
+   stored apart from the real board and never shared through the squad relay.
+   A demo link says who it's for (?demo=ems|fire|police|oem, and &name= for the agency's name): each kind
+   keeps its own practice board, in that agency's colors and screens. */
+const DEMO_Q = new URLSearchParams(location.search);
+const DEMO = DEMO_Q.has('demo');
+const DEMO_KIND = DEMO && ['ems', 'fire', 'police', 'oem'].includes(DEMO_Q.get('demo')) ? DEMO_Q.get('demo') : '';
+const DEMO_NAME = DEMO ? String(DEMO_Q.get('name') || '').trim().slice(0, 60) : '';
 /* sc4: the squad's real board. Boards stored before the clean start (sc3:) are
    left behind; only the squad sign-in carries over. */
-const NS = DEMO ? 'scdemo:' : 'sc4:';
+const NS = DEMO ? (DEMO_KIND ? `scdemo-${DEMO_KIND}:` : 'scdemo:') : 'sc4:';
 const K = { dev: NS + 'device', cfg: NS + 'config', ev: id => NS + 'events:' + id, ui: NS + 'ui' };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -2180,11 +2187,14 @@ function sampleState() {
   });
   st.triage = { R: 4, Y: 6, G: 8, X: 0, B: 1, W: 0 };
 
-  /* Unit numbers follow the county's town–unit pattern (56–63 ambulances, 50 the officer). Squads are made up. */
+  /* Unit numbers follow the county's town–unit pattern (56–63 ambulances, 50 the officer). Squads are made up.
+     A fire or police department's demo owns the fire or police units; an OEM's owns none. */
+  const ownKind = DEMO_KIND === 'oem' ? 'oem' : (C.agency.type || 'ems');
+  const EMS = ownKind === 'ems' ? C.agency.name : 'Squad 78', FIRE = ownKind === 'fire' ? C.agency.name : 'Fire', PD = ownKind === 'police' ? C.agency.name : 'Police';
   st.units = [
-    U('78-50',      'SUP',  C.agency.name, 1, 'onscene', 'Command', at(3, 5)),
-    U('78-56',      'BLS',  C.agency.name, 2, 'onscene', 'Triage', at(3, 5)),
-    U('78-57',      'BLS',  C.agency.name, 2, 'transporting', 'To JSUMC', at(12, 40)),
+    U('78-50',      'SUP',  EMS, 1, 'onscene', 'Command', at(3, 5)),
+    U('78-56',      'BLS',  EMS, 2, 'onscene', 'Triage', at(3, 5)),
+    U('78-57',      'BLS',  EMS, 2, 'transporting', 'To JSUMC', at(12, 40)),
     U('MICU 7',     'ALS',  'HMH paramedics', 2, 'transporting', 'To JSUMC', at(14, 10)),
     U('MICU 12',    'ALS',  'RWJBH paramedics', 2, 'onscene', 'Treatment · Red', at(9, 30)),
     U('35-56',      'BLS',  'Squad 35', 2, 'onscene', 'Treatment · Yellow', at(8, 0)),
@@ -2198,13 +2208,13 @@ function sampleState() {
     U('18-56',      'BLS',  'Squad 18', 2, 'available', '', at(0, 0)),
     U('29-56',      'BLS',  'Squad 29', 2, 'available', '', at(0, 0)),
     U('MICU 9',     'ALS',  'RWJBH paramedics', 2, 'available', '', at(0, 0)),
-    U('Engine 41-1','ENG',  'Fire', 4, 'onscene', 'Extrication', at(4, 30)),
-    U('Rescue 41',  'RES',  'Fire', 4, 'onscene', 'Extrication', at(6, 10)),
-    U('Chief 41',   'CHF',  'Fire', 1, 'onscene', 'Command', at(4, 30)),
+    U('Engine 41-1','ENG',  FIRE, 4, 'onscene', 'Extrication', at(4, 30)),
+    U('Rescue 41',  'RES',  FIRE, 4, 'onscene', 'Extrication', at(6, 10)),
+    U('Chief 41',   'CHF',  FIRE, 1, 'onscene', 'Command', at(4, 30)),
     U('Hazmat 1',   'HAZ',  'County hazmat', 4, 'enroute', '', at(9, 0)),
     U('Engine 38-1','ENG',  'Fire', 4, 'onscene', 'Hazmat', at(7, 40)),
-    U('PD 12',      'PD',   'Police', 1, 'onscene', 'Traffic', at(2, 50)),
-    U('PD 14',      'PD',   'Police', 1, 'onscene', 'Traffic', at(5, 20)),
+    U('PD 12',      'PD',   PD, 1, 'onscene', 'Traffic', at(2, 50)),
+    U('PD 14',      'PD',   PD, 1, 'onscene', 'Traffic', at(5, 20)),
   ];
   const near = (dLat, dLng) => [+(P.scene[0] + dLat).toFixed(5), +(P.scene[1] + dLng).toFixed(5)];
   st.points = [
@@ -2311,8 +2321,22 @@ function sampleConfig() {
     { num: '4175', name: 'D. Patel', cert: 'Paramedic' }, { num: '4180', name: 'L. Gomez', cert: 'EMT' },
     { num: '4190', name: 'Y. Klein', cert: 'EMT' }, { num: '4195', name: 'S. Haddad', cert: 'Paramedic' },
   ];
+  if (DEMO_KIND) Object.assign(c.agency, DEMO_AGENCY[DEMO_KIND].agency, { logo: '' });
+  if (DEMO_NAME) c.agency.name = DEMO_NAME;
+  const d = DEMO_AGENCY[DEMO_KIND];
+  if (d && d.roster) c.roster = d.roster.map(([name, kind]) => ({ name, kind }));
+  if (d && d.cert) c.members = c.members.map(m => ({ ...m, cert: m.cert === 'Officer' ? 'Officer' : d.cert }));
   return c;
 }
+/* Who each demo is for: its name and kind, and a fire or police department's own units and people. */
+const DEMO_AGENCY = {
+  ems: { agency: { name: 'Demo First Aid Squad', num: '78', type: 'ems' } },
+  fire: { agency: { name: 'Demo Fire Department', num: '41', type: 'fire' }, cert: 'Firefighter',
+    roster: [['Engine 41-1', 'ENG'], ['Engine 41-2', 'ENG'], ['Ladder 41', 'TRK'], ['Rescue 41', 'RES'], ['Chief 41', 'CHF']] },
+  police: { agency: { name: 'Demo Police Department', num: '', type: 'police' }, cert: 'Officer',
+    roster: [['Sgt. 3', 'PD'], ['Car 12', 'PD'], ['Car 14', 'PD'], ['Car 21', 'PD'], ['Traffic 1', 'PD']] },
+  oem: { agency: { name: 'Demo County OEM', num: '', type: 'ems' } },
+};
 
 function read(key) { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 function write(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* in-memory only */ } }
@@ -3878,7 +3902,15 @@ function reportSheet(kind) {
 
 /* The PDF. jsPDF is loaded from cdnjs the first time a report opens, so the board itself stays small. */
 let pdfLoading = null, logoPng = null;
-const loadScript = src => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.async = true; el.onload = res; el.onerror = () => { el.remove(); rej(new Error('Could not load ' + src)); }; document.head.appendChild(el); });
+const loadScript = (src, integrity) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.async = true; if (integrity) { el.integrity = integrity; el.crossOrigin = 'anonymous'; } el.onload = res; el.onerror = () => { el.remove(); rej(new Error('Could not load ' + src)); }; document.head.appendChild(el); });
+/* A QR code for an invite link, so a phone can join by pointing its camera at this tablet. The maker loads the first
+   time one is shown (and is kept for offline use). */
+const QR_URL = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+const QR_SRI = 'sha512-ZDSPMa/JM1D+7kdg2x3BsruQ6T/JpJo3jWDWkCZsP+5yVyp1KfESqLI+7RqB5k24F7p2cV7i2YHh/890y6P6Sw==';
+function qrHtml(text) {
+  if (typeof qrcode !== 'function') { if (!qrHtml.loading) qrHtml.loading = loadScript(QR_URL, QR_SRI).then(() => { if (UI.sheet) render(); }).catch(() => {}); return ''; }
+  try { const q = qrcode(0, 'M'); q.addData(text); q.make(); return `<div class="qrbox" role="img" aria-label="QR code: scan it with a phone's camera">${q.createSvgTag({ cellSize: 4, margin: 2, scalable: true })}</div>`; } catch (e) { return ''; }
+}
 const pdfReady = () => !!(window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable);
 function loadPdfLib() {
   if (pdfReady()) return Promise.resolve(window.jspdf.jsPDF);
@@ -4349,6 +4381,7 @@ function menuSheet() {
         ${isGuest() ? '' : `<button class="opt tall" data-act="sheet" data-arg="load-members">Member roster<small>${C.members.length ? plural(C.members.length, 'member') + ' saved' : 'Check-in by member number'}</small></button>`}
         ${SH.sample && w !== 'mci' && w !== 'event' ? '<button class="opt tall" data-act="sheet" data-arg="shift-new">Clear the sample day<small>Start using the supervisor board for real</small></button>' : ''}
         ${mciWs || w === 'home' ? (S.sample ? '<button class="opt tall" data-act="sheet" data-arg="inc-clear">Clear the sample incident<small>Back to an empty board</small></button>' : '<button class="opt tall" data-act="load-sample">Load the sample incident<small>Practice: bus crash, Ocean Township, 19 patients</small></button>') : ''}
+        ${DEMO && !IN_CLAUDE ? '<button class="opt tall" data-act="demo-reset">Reset the demo<small>Everything back the way it started</small></button>' : ''}
       </div>
       <div class="rblock">${rbMark(40)}<div><b>OpsBoard</b><small>EMS · fire · police · events · prototype</small></div></div>
       <div class="note">${IN_CLAUDE ? 'Tablets that open this same page share one board through it.' : RELAY ? `Tablets signed in to ${esc(RELAY.org || 'the squad')} share one board through the squad's relay.` : 'This tablet keeps its own board, saved in this browser, until it is signed in to the squad.'} Nothing is sent to CAD, EMTrack, or anyone else. Use practice data.</div>`,
@@ -4544,6 +4577,11 @@ function sampleEvent() {
     M('4180', 'L. Gomez', 'EMT', 'pr', 'atpost', 70), M('4190', 'Y. Klein', 'EMT', '', 'assigned', 5),
   ];
   ev.units = [{ id: 'eu1', name: '78-56', kind: 'BLS', post: 'pa' }, { id: 'eu2', name: '78-55', kind: 'RV', post: 'pcp' }];
+  const own = DEMO_AGENCY[DEMO_KIND];
+  if (own && own.roster) {
+    ev.units = [{ id: 'eu1', name: own.roster[1][0], kind: own.roster[1][1], post: 'pa' }, { id: 'eu2', name: own.roster[0][0], kind: own.roster[0][1], post: 'pcp' }];
+    ev.people = ev.people.map(p => ({ ...p, cert: p.cert === 'Officer' ? 'Officer' : own.cert }));
+  }
   ev.pts = [
     { id: 'ep1', t: ago(60), post: 'paid', age: 'Adult', complaint: 'Heat / dehydration', outcome: 'Treated & released', hosp: '', unit: '', note: '' },
     { id: 'ep2', t: ago(35), post: 'p1', age: 'Child', complaint: 'Cut / bleeding', outcome: 'Treated & released', hosp: '', unit: '', note: '' },
@@ -4742,7 +4780,17 @@ const Sync = {
   /* The squad's settings are one document: the newest save wins. A tablet whose save never reached the store
      (offline, reconnecting) keeps its newer copy and sends it again, instead of being overwritten by the old one. */
   onConfig(snap) {
-    if (!snap.exists) { if (C.savedAt) this.pushConfig(); write(NS + 'cfg-joined', 1); return; }
+    if (!snap.exists) {
+      // a new agency's first device: its name and kind are the agency's, not this tablet's defaults
+      if ((!C.savedAt || C.agency.name === defaultConfig().agency.name) && RELAY && RELAY.org && !isGuest() && !isDisplay()) {
+        C = { ...C, agency: { ...C.agency, name: RELAY.org, num: C.agency.name === RELAY.org ? C.agency.num : '', logo: '', ...(AGENCIES[RELAY.kind] ? { type: RELAY.kind } : {}) }, savedAt: now() };
+        write(K.cfg, C);
+        if (fitRole()) { this.setRole(); if (UI.view !== 'home') { UI.view = homeView(); saveUi(); } }
+        if (!UI.sheet) render();
+      }
+      if (C.savedAt) this.pushConfig();
+      write(NS + 'cfg-joined', 1); return;
+    }
     const d = snap.data() || {};
     if (!read(NS + 'cfg-joined') && !isGuest() && !isDisplay()) {
       write(NS + 'cfg-joined', 1);
@@ -4899,6 +4947,27 @@ function sampleShift() {
     { t: ago(300), kind: 'units', text: '78-58 out of service: stretcher repair' },
     { t: ago(200), kind: 'note', text: '88 Elm Ave: no crew available; covered by Sheriff MedStar' },
   ];
+  const own = DEMO_AGENCY[DEMO_KIND];
+  if (own && own.roster) {   // a fire or police department's demo: its own units and calls
+    const [u1, u2, u3, u4, u5] = own.roster.map(r => r[0]), fire = DEMO_KIND === 'fire';
+    st.units = own.roster.map(([name, kind], i) => U(name, kind, i === 3 && fire ? 'oos' : 'in', ago(570), i === 3 && fire ? 'Mechanical: pump repair' : ''));
+    st.crew = st.crew.map((p, i) => ({ ...p, cert: p.cert === 'Officer' ? 'Officer' : own.cert, unit: [u1, u1, u2, u2, u3, u5][i] }));
+    st.calls = fire ? [
+      call(530, 'Fire alarm activation', '145 Main St', u1, { enroute: 2, onscene: 7, clear: 25 }, 'No fire found'),
+      call(410, 'Odor of gas', '22 Oak St', u2, { enroute: 2, onscene: 6, clear: 48 }, 'Utility notified'),
+      call(260, 'Motor vehicle crash', 'Route 35 & Deal Rd', u1, { enroute: 2, onscene: 6, clear: 52 }, 'Extrication; patient to EMS'),
+      call(140, 'Wires down', '7 Birch Ct', u3, { enroute: 3, onscene: 9, clear: 40 }, 'Utility on scene'),
+      call(14, 'Structure fire', '12 Pine St', u1, { enroute: 1, onscene: 5 }, ''),
+    ] : [
+      call(520, 'Motor vehicle crash', 'Route 35 & Deal Rd', u2, { enroute: 2, onscene: 6, clear: 58 }, 'Report taken'),
+      call(400, 'Alarm', '410 Monmouth Rd', u3, { enroute: 3, onscene: 8, clear: 20 }, 'False alarm'),
+      call(250, 'Welfare check', '88 Elm Ave', u2, { enroute: 4, onscene: 11, clear: 35 }, 'Checked OK'),
+      call(90, 'Traffic detail', 'Ocean Ave & Laird St', u5, { enroute: 5, onscene: 15 }, ''),
+      call(8, 'Disturbance', '5 Cedar Ln', u3, { enroute: 1 }, ''),
+    ];
+    st.calls.forEach(c => { c.town = 'Ocean Township'; });
+    st.log = [{ t: ago(570), kind: 'note', text: `${C.agency.name} · sample day` }, ...(fire ? [{ t: ago(300), kind: 'units', text: `${u4} out of service: pump repair` }] : [])];
+  }
   return st;
 }
 
@@ -5938,12 +6007,12 @@ function connectSheet() {
         ${planPanel()}
         ${isGuest() ? `<div class="note">Guest access for <b>${esc(AGENCIES[RELAY.agency] ? AGENCIES[RELAY.agency].long : 'another department')}</b>${RELAY.dept ? ' · ' + esc(RELAY.dept) : ''}${RELAY.until ? ` until <b>${esc(fmtDT(Date.parse(RELAY.until)))}</b>` : ''}. This device shares the MCI and events only.</div>` : ''}
         ${RELAY.role === 'admin' && !planEnded() ? guestInvitePanel() : ''}
-        ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Big screen</h2></div><div class="note">A TV or monitor that shows the board live and can't change it. Open the link on the computer or smart TV that drives it.</div>${UI.form.dlink ? `<div class="coord" style="word-break:break-all">${esc(UI.form.dlink)}</div><div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(UI.form.dlink)}">${icon('copy')} Copy link</button></div>` : '<button class="btn" data-act="relay-display">Make a big-screen link</button>'}` : ''}
+        ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Big screen</h2></div><div class="note">A TV or monitor that shows the board live and can't change it. Open the link on the computer or smart TV that drives it.</div>${UI.form.dlink ? `${qrHtml(UI.form.dlink)}<div class="coord" style="word-break:break-all">${esc(UI.form.dlink)}</div><div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(UI.form.dlink)}">${icon('copy')} Copy link</button></div>` : '<button class="btn" data-act="relay-display">Make a big-screen link</button>'}` : ''}
         ${!isGuest() && !IN_CLAUDE ? webLoginPanel() : ''}
         ${RELAY.role === 'admin' && !IN_CLAUDE ? ownerClaimPanel() : ''}
         ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Add a tablet</h2></div>
           <div class="note">Makes a new invite link. Open it on the other tablet, or type its code there. Making a new one stops earlier invite links from working; tablets already joined are not affected.</div>
-          ${f.invite ? `<div class="coord" style="word-break:break-all">${esc(f.invite.link)}<small>Invite code ${esc(f.invite.code)}</small></div>
+          ${f.invite ? `${qrHtml(f.invite.link)}<div class="coord" style="word-break:break-all">${esc(f.invite.link)}<small>Invite code ${esc(f.invite.code)} · members can scan the QR code with their phone's camera</small></div>
             <div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(f.invite.link)}">${icon('copy')} Copy link</button><button class="btn small" data-act="copy-text" data-arg="${esc(f.invite.code)}">Copy code</button></div>`
             : `<button class="btn" data-act="relay-invite">Make an invite link</button>`}` : ''}
         ${ownerLink()}`,
@@ -5971,7 +6040,7 @@ function connectSheet() {
 }
 function relaySaved(url, data, role) {
   const mem = data.member || {};
-  RELAY = { url, token: data.token, name: mem.name || data.adminName || '', org: (data.org && data.org.name) || data.orgName || '', role: role || mem.role || 'member' };
+  RELAY = { url, token: data.token, name: mem.name || data.adminName || '', org: (data.org && data.org.name) || data.orgName || '', kind: (data.org && data.org.kind) || '', role: role || mem.role || 'member' };
   if (RELAY.role === 'guest') Object.assign(RELAY, { guest: true, agency: mem.agency, dept: mem.dept || '', until: mem.expiresAt });
   write(RELAY_KEY, RELAY);
   showToast(`Signed in to ${RELAY.org || 'the squad'}. Connecting…`, false);
@@ -6039,7 +6108,7 @@ function guestInvitePanel() {
     <div class="switch"><span>Department</span><div class="chips">${opt('f-set', 'gagency=fire', ag === 'fire', 'Fire')}${opt('f-set', 'gagency=police', ag === 'police', 'Police')}</div></div>
     ${field('Name · optional', input('g-dept', 'gdept', f.gdept, ag === 'fire' ? 'e.g. Ocean Township Fire' : 'e.g. Ocean Township PD'))}
     <div class="switch"><span>Works for</span><div class="chips">${[[12, '12 hours'], [24, '1 day'], [72, '3 days'], [168, '1 week']].map(([h, l]) => opt('f-set', 'ghours=' + h, hrs === h, l)).join('')}</div></div>
-    ${g ? `<div class="coord" style="word-break:break-all">${esc(g.link)}<small>${esc(AGENCIES[g.agency].name)} guest code ${esc(g.code)} · until ${esc(fmtDT(Date.parse(g.expiresAt)))}</small></div>
+    ${g ? `${qrHtml(g.link)}<div class="coord" style="word-break:break-all">${esc(g.link)}<small>${esc(AGENCIES[g.agency].name)} guest code ${esc(g.code)} · until ${esc(fmtDT(Date.parse(g.expiresAt)))}</small></div>
       <div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(g.link)}">${icon('copy')} Copy link</button><button class="btn small" data-act="copy-text" data-arg="${esc(g.code)}">Copy code</button>${navigator.share ? `<button class="btn small" data-act="guest-share">Send…</button>` : ''}<button class="btn small" data-act="relay-guest">Make another</button></div>`
       : `<button class="btn" data-act="relay-guest">Make a ${ag === 'fire' ? 'fire' : 'police'} guest link</button>`}`;
 }
@@ -6511,6 +6580,11 @@ const A = {
     }
   },
   'load-sample'() { startIncident(sampleState(), 'Sample incident loaded'); },
+  'demo-reset'() {
+    if (!DEMO || !confirm('Reset the demo? Everything on it goes back the way it started.')) return;
+    try { Object.keys(localStorage).filter(k => k.startsWith(NS)).forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
+    location.reload();
+  },
   'inc-clear'() { startIncident(freshIncident(), 'Sample cleared', { stay: true }); },
 
   'log-filter'(k) { UI.logFilter = k; render(); },
@@ -6615,7 +6689,10 @@ if ((DEV.v || 1) < 2) {
 }
 saveDev();
 if (!DEMO) { try { Object.keys(localStorage).filter(k => k.startsWith('sc3:') && k !== RELAY_KEY).forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ } }
+const firstDemo = DEMO && !read(K.cfg);
 C = migrateConfig({ ...defaultConfig(), ...(read(K.cfg) || (DEMO ? sampleConfig() : {})) });
+if (DEMO && DEMO_NAME && C.agency.name !== DEMO_NAME) { C.agency = { ...C.agency, name: DEMO_NAME }; write(K.cfg, C); }
+if (firstDemo) { write(K.cfg, C); if (DEMO_KIND === 'oem' && !phone) { DEV.role = 'oem'; saveDev(); } }
 if (isGuest()) C.agency = { ...C.agency, name: RELAY.org || C.agency.name, logo: '' };   // a guest never reads the squad's settings
 fitRole();
 INC.load(DEMO ? sampleState : freshIncident);

@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha512-ZDSPMa/JM1D+7kdg2x3BsruQ6T/JpJo3jWDWkCZsP+5yVyp1KfESqLI+7RqB5k24F7p2cV7i2YHh/890y6P6Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
 <style>
 /* OpsBoard owner console: every agency on the relay, its plan, its setup and how it is being used.
    Same colors as the board: night by default, day for bright rooms. */
@@ -100,6 +101,18 @@ td { padding: 7px 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 5
 .plans .field { width: 170px; }
 .toast { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; z-index: 30; max-width: calc(100vw - 32px); }
 [hidden] { display: none !important; }
+/* sharing a link: a QR code to scan, and the ways to send it */
+.share { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.share .sharebody { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 10px; }
+.qr { background: #fff; padding: 8px; border-radius: 10px; width: 176px; flex: none; }
+.qr svg { display: block; width: 100%; height: auto; }
+.qr:empty { display: none; }
+ol.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; font: 700 16px/1 var(--mono); letter-spacing: 0.04em; }
+.codes span { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; text-align: center; }
+.key { font: 700 16px/1.4 var(--mono); letter-spacing: 0.08em; word-break: break-all; }
+.nudge { border-color: var(--warn); }
+input.code { font: 700 22px/1 var(--mono); letter-spacing: 0.2em; max-width: 220px; }
 @media (max-width: 900px) {
   .row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .row.head { display: none; }
@@ -121,7 +134,7 @@ td { padding: 7px 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 5
 const BAKED_RELAY = /*@RELAY_URL*/'';
 const MARK = '<svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0B1B2B"/><rect x="92" y="92" width="152" height="152" rx="30" fill="#D7373F"/><rect x="268" y="92" width="152" height="152" rx="30" fill="#F2C230"/><rect x="92" y="268" width="152" height="152" rx="30" fill="#2DB86A"/><rect x="268" y="268" width="152" height="152" rx="30" fill="#EAF2F8"/><rect x="331" y="302" width="26" height="84" rx="5.2" fill="#0B1B2B"/><rect x="302" y="331" width="84" height="26" rx="5.2" fill="#0B1B2B"/></svg>';
 const AG = { ems: 'EMS', fire: 'Fire', police: 'Police' };
-const JOB = { command: 'EMS', triage: 'EMS', transport: 'EMS', supervisor: 'EMS', member: 'EMS', fire: 'Fire', police: 'Police', event: 'Event' };
+const JOB = { command: 'EMS', triage: 'EMS', transport: 'EMS', supervisor: 'EMS', member: 'EMS', fire: 'Fire', police: 'Police', oem: 'Unified command', display: 'Big screen', event: 'Event' };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ss = { get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} } };
 const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
@@ -151,14 +164,15 @@ async function call(path, body, headers) {
   const r = await fetch(S.relay + path, { method: 'POST', headers: { 'content-type': 'application/json', ...auth }, body: JSON.stringify(body || {}) });
   const data = await r.json().catch(() => ({}));
   if (r.status === 401 && S.token && !headers) { endSession(); }
-  if (!r.ok) throw new Error((data.error && data.error.message) || `The relay answered ${r.status}.`);
+  if (!r.ok) { const err = new Error((data.error && data.error.message) || `The relay answered ${r.status}.`); err.code = data.error && data.error.code; throw err; }
   return data;
 }
-function endSession() { S.token = ''; ls.set('owner:session', ''); S.squads = null; S.open = null; renderDrawer(); }
-function startSession(d) { S.token = d.token; S.email = d.email; S.code = ''; ss.set('owner:code', null); ls.set('owner:session', d.token); ls.set('owner:email', d.email); ls.set('owner:relay', S.relay); }
+function endSession() { S.token = ''; ls.set('owner:session', ''); S.squads = null; S.open = null; S.twoStep = null; S.tf = null; S.recovery = null; renderDrawer(); }
+function startSession(d) { S.token = d.token; S.email = d.email || S.email; if ('twoStep' in d) S.twoStep = d.twoStep; S.code = ''; ss.set('owner:code', null); ls.set('owner:session', d.token); ls.set('owner:email', d.email); ls.set('owner:relay', S.relay); }
 async function load(quiet) {
   if (!signedIn() || !S.relay || S.mustChange) return;
   S.busy = true; if (!quiet) render();
+  if (S.token && S.twoStep == null) { try { const m = await call('/v1/owner/me', {}); S.twoStep = m.twoStep; S.recoveryLeft = m.recoveryLeft; } catch (e) { /* the list below says why */ } }
   try { const d = await call('/v1/owner/squads', {}); S.squads = d.squads; S.at = d.at; S.err = ''; }
   catch (e) { S.err = e.message; if (!S.squads) S.squads = null; }
   S.busy = false; render();
@@ -211,6 +225,60 @@ function setupText(sq) {
   return esc(bits.join(' · '));
 }
 
+/* ---------- sharing a link ---------- */
+const APP_URL = new URL('./', location.href).href;
+const qrSvg = text => { try { const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); } catch (e) { return ''; } };
+const MSG = {};   // what Send, Text and Email say, by link
+function adminMessage(orgName, link, code) {
+  return `Here is the OpsBoard admin link for ${orgName}:\n${link}\n\n`
+    + `1. Open it on the iPad your agency will run OpsBoard on. On an iPad or iPhone, first add the page to the Home Screen (Share, then Add to Home Screen), open it from there, and tap Join.\n`
+    + `2. That iPad is now your agency's admin. From it, Menu > Squad sharing makes links for your other tablets and your members' phones.\n`
+    + `3. To set up your agency from a computer (name, logo, units, roster), on the admin iPad: Menu > Squad sharing > Web login. Then sign in at ${APP_URL}agency.html\n\n`
+    + `Invite code, if it asks: ${code}\nAnyone with this link becomes an admin, so keep it to yourselves.`;
+}
+const shareInstructions = () => `<ol class="steps"><li>They open the link on the iPad the agency will use (on an iPad, Add to Home Screen first, then open it from there) and tap <b>Join</b>. That iPad is the agency's admin.</li>
+  <li>From it, Menu → Squad sharing makes links for their other tablets and members' phones, and a web login for the agency console on a computer.</li>
+  <li>Anyone with this link becomes an admin. If it's lost or sent to the wrong person, make a new one from the agency's row here: the old one stops working.</li></ol>`;
+function shareBox(link, { code, subject, message }) {
+  MSG[link] = { subject, message };
+  return `<div class="share"><div class="qr" role="img" aria-label="QR code for this link">${qrSvg(link)}</div>
+    <div class="sharebody">
+      <div class="field"><span class="lbl">Link</span><input type="text" readonly value="${esc(link)}" id="f-link" aria-label="Link"></div>
+      <div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(link)}">Copy link</button>${code ? `<button class="btn sm" data-act="copy" data-arg="${esc(code)}">Copy code ${esc(code)}</button>` : ''}
+        ${navigator.share ? `<button class="btn sm" data-act="send" data-arg="${esc(link)}">Send…</button>` : ''}
+        <a class="btn sm" href="sms:?&body=${encodeURIComponent(message)}">Text</a>
+        <a class="btn sm" href="mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}">Email</a></div>
+      <p class="note">They can also point the iPad's camera at the QR code.</p>
+    </div></div>`;
+}
+
+/* ---------- two-step sign-in ---------- */
+function twoStepPanel() {
+  if (S.recovery) return `<h3 class="h">Save your recovery codes</h3>
+    <p class="note">Each one signs you in once if you don't have your phone. Keep them somewhere safe, apart from your phone: printed, or in a password manager. They won't be shown again.</p>
+    <div class="codes">${S.recovery.map(c => `<span>${esc(c)}</span>`).join('')}</div>
+    <div class="bar"><button class="btn sm" data-act="copy" data-arg="${esc(S.recovery.join('\n'))}">Copy them</button><button class="btn sm" data-act="codes-file">Download</button><button class="btn sm primary" data-act="codes-done">I saved them</button></div>`;
+  if (S.tf) return `<h3 class="h">Turn on two-step sign-in</h3>
+    <ol class="steps"><li>On your phone, open an authenticator app: the iPhone's <b>Passwords</b> app (Codes), <b>Google Authenticator</b> or <b>Microsoft Authenticator</b>.</li>
+      <li>Scan this code with it${S.tf.uri && /iPhone|iPad|Android/.test(navigator.userAgent) ? `, or <a href="${esc(S.tf.uri)}">add it on this phone</a>` : ''}. Or type the key below.</li>
+      <li>Type the 6-digit code it shows.</li></ol>
+    <div class="share"><div class="qr" role="img" aria-label="QR code for the authenticator app">${qrSvg(S.tf.uri)}</div>
+      <div class="sharebody"><div class="field"><span class="lbl">Key</span><div class="key">${esc(S.tf.secret.replace(/(.{4})/g, '$1 ').trim())}</div></div>
+        <div class="field"><span class="lbl">Code from the app</span><input type="text" class="code" id="f-tfcode" inputmode="numeric" autocomplete="one-time-code" maxlength="7"></div>
+        ${S.perr ? `<div class="err">${esc(S.perr)}</div>` : ''}
+        <div class="bar"><button class="btn primary" data-act="tf-confirm">Turn it on</button><button class="btn sm" data-act="tf-cancel">Cancel</button></div></div></div>`;
+  if (S.twoStep) return `<h3 class="h">Two-step sign-in <span class="pill ok">On</span></h3>
+    <p class="note">Signing in takes your password and a code from your phone. ${plural(S.recoveryLeft || 0, 'recovery code')} left.</p>
+    <div class="field"><span class="lbl">Code from the app</span><input type="text" class="code" id="f-tfcode" inputmode="numeric" autocomplete="one-time-code" maxlength="9"></div>
+    <div class="field"><span class="lbl">Password · to turn it off</span><input type="password" id="f-tfpass" autocomplete="current-password"></div>
+    ${S.perr ? `<div class="err">${esc(S.perr)}</div>` : ''}
+    <div class="bar"><button class="btn sm" data-act="tf-recovery">New recovery codes</button><button class="btn sm danger" data-act="tf-off">Turn off</button></div>`;
+  return `<h3 class="h">Two-step sign-in <span class="pill warn">Off</span></h3>
+    <p class="note">With it on, signing in needs your password and a 6-digit code from an app on your phone, so a stolen or guessed password isn't enough. Government buyers expect it.</p>
+    ${S.perr ? `<div class="err">${esc(S.perr)}</div>` : ''}
+    <div class="bar"><button class="btn primary" data-act="tf-start">Turn on two-step sign-in</button></div>`;
+}
+
 /* ---------- screens ---------- */
 function choosePassword() {
   return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">${esc(S.email)}</div></div></header>
@@ -226,7 +294,12 @@ function choosePassword() {
 function signin() {
   const relayField = `<div class="field"><span class="lbl">Relay address</span><input type="text" id="f-relay" value="${esc(S.relay)}" placeholder="https://pcr-relay.your-name.workers.dev" autocapitalize="off" inputmode="url"></div>`;
   const ways = {
-    login: `<div class="field"><span class="lbl">Email</span><input type="text" id="f-email" value="${esc(S.email)}" autocapitalize="off" autocomplete="username" inputmode="email"></div>
+    login: S.need ? `<div class="note">Signing in as <b>${esc(S.email)}</b>. Open your authenticator app and type the 6-digit code for OpsBoard. No phone? Type one of your recovery codes.</div>
+      <div class="field"><span class="lbl">Code</span><input type="text" class="code" id="f-code2" inputmode="numeric" autocomplete="one-time-code" maxlength="9"></div>
+      ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
+      <div class="bar"><button class="btn primary" data-act="login" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Signing in…' : 'Sign in'}</button><button class="btn sm" data-act="code-back">Back</button></div>
+      <div class="note">Lost your phone and the recovery codes? Reset the password with the setup code: that turns two-step sign-in off.</div>`
+    : `<div class="field"><span class="lbl">Email</span><input type="text" id="f-email" value="${esc(S.email)}" autocapitalize="off" autocomplete="username" inputmode="email"></div>
       <div class="field"><span class="lbl">Password</span><input type="password" id="f-pass" autocomplete="current-password"></div>
       ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
       <div class="bar"><button class="btn primary" data-act="login" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Signing in…' : 'Sign in'}</button></div>
@@ -254,9 +327,10 @@ function panels() {
   if (S.panel === 'add') {
     const m = S.made;
     return `<section class="panel signin" aria-label="Add an agency"><h2 class="h">Add an agency</h2>
-      ${m ? `<div class="note">Send this link to <b>${esc(m.orgName)}</b>'s admin. Opening it on their iPad signs them in as the agency's admin; from there they set up a web login and run their own board from the agency console (agency.html): units, members, invite links, hospitals. Anyone with this link becomes an admin, until they make their own invite.</div>
-        <div class="field"><span class="lbl">Admin invite link</span><input type="text" readonly value="${esc(m.link)}" id="f-link"></div>
-        <div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(m.link)}">Copy link</button><button class="btn sm" data-act="copy" data-arg="${esc(m.inviteCode)}">Copy code ${esc(m.inviteCode)}</button>${navigator.share ? '<button class="btn sm" data-act="share">Send…</button>' : ''}<button class="btn sm" data-act="add-again">Add another</button><button class="btn sm" data-act="panel" data-arg="">Done</button></div>`
+      ${m ? `<p class="note"><b>${esc(m.orgName)}</b> is on your relay. Now send its chief or admin this link:</p>
+        ${shareInstructions()}
+        ${shareBox(m.link, { code: m.inviteCode, subject: `OpsBoard admin link for ${m.orgName}`, message: adminMessage(m.orgName, m.link, m.inviteCode) })}
+        <div class="bar"><button class="btn sm" data-act="add-again">Add another</button><button class="btn sm" data-act="panel" data-arg="">Done</button></div>`
       : `<div class="field"><span class="lbl">Name</span><input type="text" id="f-org" placeholder="e.g. Ocean Township First Aid" value="${esc(S.orgName || '')}"></div>
         <div class="bar"><span class="lbl">Kind</span>${['ems', 'fire', 'police'].map(k => `<button class="chip" data-act="kind" data-arg="${k}" aria-pressed="${(S.kind || 'ems') === k}">${AG[k]}</button>`).join('')}</div>
         <div class="bar"><span class="lbl">Plan</span><button class="chip" data-act="newplan" data-arg="trial" aria-pressed="${S.newplan !== 'comp'}">60-day free trial</button><button class="chip" data-act="newplan" data-arg="comp" aria-pressed="${S.newplan === 'comp'}">No end date</button></div>
@@ -264,12 +338,26 @@ function panels() {
         <div class="bar"><button class="btn primary" data-act="create">Add and make the admin link</button><button class="btn sm" data-act="panel" data-arg="">Cancel</button></div>`}
     </section>`;
   }
-  if (S.panel === 'password') {
-    return `<section class="panel signin" aria-label="Change password"><h2 class="h">Change password</h2>
+  if (S.panel === 'security') {
+    return `<section class="panel signin" aria-label="Sign-in and security">
+      ${twoStepPanel()}
+      <h3 class="h">Password</h3>
       <div class="field"><span class="lbl">Current password</span><input type="password" id="f-cur" autocomplete="current-password"></div>
       <div class="field"><span class="lbl">New password · at least 10 characters</span><input type="password" id="f-new" autocomplete="new-password"></div>
-      ${S.perr ? `<div class="err">${esc(S.perr)}</div>` : ''}
-      <div class="bar"><button class="btn primary" data-act="password">Change it</button><button class="btn sm" data-act="panel" data-arg="">Cancel</button></div>
+      ${S.pwerr ? `<div class="err">${esc(S.pwerr)}</div>` : ''}
+      <div class="bar"><button class="btn" data-act="password">Change password</button><button class="btn sm" data-act="panel" data-arg="">Close</button></div>
+    </section>`;
+  }
+  if (S.panel === 'demo') {
+    const k = S.dkind || 'ems', name = (S.dname || '').trim();
+    const link = `${APP_URL}?demo=${k}${name ? '&name=' + encodeURIComponent(name) : ''}`;
+    const what = { ems: 'an EMS squad', fire: 'a fire department', police: 'a police department', oem: 'an OEM or county coordinator' }[k];
+    return `<section class="panel signin" aria-label="Demo links"><h2 class="h">Demo links</h2>
+      <p class="note">Show OpsBoard to ${what} without signing anyone in. The demo opens in that agency's colors and screens, with a made-up bus crash in progress, a day of calls and an event. It stays on the device that opens it, never touches a real board, and Menu → Reset starts it over.</p>
+      <div class="bar"><span class="lbl">For</span>${[['ems', 'EMS'], ['fire', 'Fire'], ['police', 'Police'], ['oem', 'OEM']].map(([v, l]) => `<button class="chip" data-act="dkind" data-arg="${v}" aria-pressed="${k === v}">${l}</button>`).join('')}</div>
+      <div class="field"><span class="lbl">Agency name on the demo · optional</span><input type="text" id="f-dname" value="${esc(S.dname || '')}" placeholder="e.g. Ocean Township Fire"></div>
+      ${shareBox(link, { subject: `OpsBoard demo${name ? ' for ' + name : ''}`, message: `Try OpsBoard${name ? ' for ' + name : ''}, the shared command board for MCIs, daily calls and events. This demo has made-up data and stays on your device:\n${link}` })}
+      <div class="bar"><a class="btn primary" href="${esc(link)}" target="_blank" rel="noopener">Open the demo</a><button class="btn sm" data-act="panel" data-arg="">Close</button></div>
     </section>`;
   }
   return '';
@@ -286,10 +374,12 @@ function main() {
       <button class="btn sm primary" data-act="panel" data-arg="add">Add an agency</button>
       <button class="btn sm" data-act="refresh" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Loading…' : 'Refresh'}</button>
       <button class="btn sm" data-act="csv">Download CSV</button>
-      ${S.token ? '<button class="btn sm" data-act="panel" data-arg="password">Password</button>' : ''}
+      <button class="btn sm" data-act="panel" data-arg="demo">Demo links</button>
+      ${S.token ? '<button class="btn sm" data-act="panel" data-arg="security">Security</button>' : ''}
       <button class="btn sm" data-act="mode">${document.documentElement.dataset.mode === 'day' ? 'Night' : 'Day'}</button>
       <button class="btn sm" data-act="signout">Sign out</button></header>
     ${panels()}
+    ${S.token && S.twoStep === false && S.panel !== 'security' ? '<section class="panel nudge bar"><span><b>Protect the owner login.</b> <span class="note">Turn on two-step sign-in: a code from your phone as well as the password.</span></span><span class="grow"></span><button class="btn sm primary" data-act="panel" data-arg="security">Turn it on</button></section>' : ''}
     ${S.err ? `<div class="panel err">${esc(S.err)}</div>` : ''}
     <section class="stats" aria-label="Totals">
       ${stat('Agencies', sqs.length)}
@@ -330,9 +420,14 @@ function drawer() {
   return `<div class="scrim" data-act="close-bg"><aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(sq.name)}">
     <div class="top"><div><h2><span class="ag ${kind(sq)}">${AG[kind(sq)]}</span>${esc(sq.name)}</h2><div class="sub">${esc(sq.id)}</div></div><span class="grow"></span><button class="btn sm" data-act="close">Close</button></div>
     ${d && d.error ? `<div class="err">${esc(d.error)}</div>` : ''}
+    <section class="panel"><h3>Share with the agency</h3>
+      ${S.inv && S.inv.orgId === sq.id ? `${shareInstructions()}${shareBox(S.inv.link, { code: S.inv.inviteCode, subject: `OpsBoard admin link for ${sq.name}`, message: adminMessage(sq.name, S.inv.link, S.inv.inviteCode) })}`
+        : `<p class="note">Send ${esc(sq.name)}'s chief or admin a link. Opening it on their iPad makes that iPad the agency's admin, and from there they bring in everyone else. Making a new link stops the one before.</p>`}
+      <div class="plans"><button class="btn sm primary" data-act="owner-invite">${S.inv && S.inv.orgId === sq.id ? 'Make a new admin link' : 'Make an admin link'}</button></div>
+    </section>
     <section class="panel"><h3>Set up this agency</h3>
       <p class="note">Open ${esc(sq.name)}'s own agency console to set up its name, logo, units, member roster, hospitals and invite links for it. It shows in the agency's activity log as the OpsBoard owner.</p>
-      <div class="plans"><button class="btn sm primary" data-act="act-as">Open ${esc(sq.name)}'s console</button></div>
+      <div class="plans"><button class="btn sm" data-act="act-as">Open ${esc(sq.name)}'s console</button></div>
     </section>
     <section class="panel"><h3>Plan</h3>
       <p><span class="pill ${pi.cls}">${esc(pi.label)}</span> <span class="note">${esc(pi.note)}</span></p>
@@ -406,15 +501,63 @@ const ACT = {
   },
   async login() {
     S.relay = base(document.getElementById('f-relay').value);
-    const email = document.getElementById('f-email').value.trim(), password = document.getElementById('f-pass').value;
+    const codeEl = document.getElementById('f-code2');
+    const email = codeEl ? S.email : document.getElementById('f-email').value.trim(), password = codeEl ? S.pass : document.getElementById('f-pass').value;
+    const code = codeEl ? codeEl.value.trim() : '';
     S.email = email; S.err = ''; S.busy = true; render();
     try {
-      const d = await call('/v1/owner/login', { email, password }, {});
-      startSession(d); S.busy = false;
+      const d = await call('/v1/owner/login', { email, password, ...(code ? { code } : {}) }, {});
+      S.need = false; S.pass = ''; startSession(d); S.busy = false;
       if (d.mustChange) { S.mustChange = true; S.firstPass = password; return render(); }
+      if (d.recoveryLeft !== undefined) toast(`Signed in with a recovery code. ${plural(d.recoveryLeft, 'code')} left.`);
       await load();
-    } catch (e) { S.busy = false; S.err = e.message; render(); }
+    } catch (e) {
+      S.busy = false;
+      if (e.code === 'need_code') { S.need = true; S.pass = password; S.err = ''; } else S.err = e.message;
+      render();
+    }
   },
+  'code-back'() { S.need = false; S.pass = ''; S.err = ''; render(); },
+  async 'tf-start'() {
+    S.perr = '';
+    try { S.tf = await call('/v1/owner/2fa/start', {}); } catch (e) { S.perr = e.message; }
+    render();
+  },
+  'tf-cancel'() { S.tf = null; S.perr = ''; render(); },
+  async 'tf-confirm'() {
+    const code = document.getElementById('f-tfcode').value.trim(); S.perr = '';
+    try {
+      const d = await call('/v1/owner/2fa/confirm', { code });
+      startSession({ token: d.token, twoStep: true }); S.tf = null; S.recovery = d.recovery; S.recoveryLeft = d.recovery.length;
+      toast('Two-step sign-in is on.');
+    } catch (e) { S.perr = e.message; }
+    render();
+  },
+  async 'tf-recovery'() {
+    const code = document.getElementById('f-tfcode').value.trim(); S.perr = '';
+    try { const d = await call('/v1/owner/2fa/recovery', { code }); S.recovery = d.recovery; S.recoveryLeft = d.recovery.length; } catch (e) { S.perr = e.message; }
+    render();
+  },
+  async 'tf-off'() {
+    const code = document.getElementById('f-tfcode').value.trim(), password = document.getElementById('f-tfpass').value; S.perr = '';
+    if (!confirm('Turn off two-step sign-in? Your password alone will open the owner console.')) return;
+    try { await call('/v1/owner/2fa/off', { code, password }); S.twoStep = false; toast('Two-step sign-in is off.'); } catch (e) { S.perr = e.message; }
+    render();
+  },
+  'codes-done'() { S.recovery = null; render(); },
+  'codes-file'() {
+    const text = `OpsBoard owner recovery codes for ${S.email}\nEach works once. Made ${new Date().toLocaleString()}.\n\n${S.recovery.join('\n')}\n`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = 'opsboard-recovery-codes.txt';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  },
+  async 'owner-invite'() {
+    try {
+      const d = await call('/v1/owner/invite', { orgId: S.open });
+      S.inv = { ...d, link: `${APP_URL}#join=1&u=${encodeURIComponent(S.relay)}&i=${encodeURIComponent(d.inviteCode)}` };
+      renderDrawer(); toast('New admin link made. The one before stops working.');
+    } catch (e) { toast(e.message); }
+  },
+  dkind(k) { S.dkind = k; render(); },
   async choose() {
     const a = document.getElementById('f-new1').value, b = document.getElementById('f-new2').value;
     S.err = '';
@@ -444,7 +587,7 @@ const ACT = {
     catch (e) { S.busy = false; S.err = e.message; render(); }
   },
   way(k) { S.way = k; S.err = ''; render(); },
-  panel(k) { S.panel = k || null; S.made = null; S.perr = ''; render(); },
+  panel(k) { S.panel = k || null; S.made = null; S.perr = ''; S.pwerr = ''; S.tf = null; render(); },
   kind(k) { S.kind = k; render(); },
   newplan(k) { S.newplan = k; render(); },
   'add-again'() { S.made = null; render(); },
@@ -453,17 +596,17 @@ const ACT = {
     if (!orgName) { S.perr = 'The agency needs a name.'; return render(); }
     try {
       const d = await call('/v1/owner/create', { orgName, kind: S.kind || 'ems', plan: S.newplan === 'comp' ? 'comp' : 'trial' });
-      S.made = { ...d, link: `${new URL('./', location.href).href}#join=1&u=${encodeURIComponent(S.relay)}&i=${encodeURIComponent(d.inviteCode)}` };
+      S.made = { ...d, link: `${APP_URL}#join=1&u=${encodeURIComponent(S.relay)}&i=${encodeURIComponent(d.inviteCode)}` };
       S.perr = ''; S.orgName = ''; render(); load(true);
     } catch (e) { S.perr = e.message; render(); }
   },
   async password() {
     const current = document.getElementById('f-cur').value, next = document.getElementById('f-new').value;
-    try { await call('/v1/owner/password', { current, next }); S.panel = null; render(); toast('Password changed.'); }
-    catch (e) { S.perr = e.message; render(); }
+    try { const d = await call('/v1/owner/password', { current, next }); if (d.token) startSession({ token: d.token }); S.pwerr = ''; S.panel = null; render(); toast('Password changed. Every other sign-in has ended.'); }
+    catch (e) { S.pwerr = e.message; render(); }
   },
   copy(text) { navigator.clipboard.writeText(text).then(() => toast('Copied'), () => { const el = document.getElementById('f-link'); if (el) { el.select(); } toast('Select it and copy.'); }); },
-  share() { const m = S.made; if (m && navigator.share) navigator.share({ title: 'OpsBoard admin invite', text: `${m.orgName}: your OpsBoard admin invite. Code ${m.inviteCode}.`, url: m.link }).catch(() => {}); },
+  send(link) { const m = MSG[link]; if (m && navigator.share) navigator.share({ title: m.subject, text: m.message.replace(link, '').trim(), url: link }).catch(() => {}); },
   refresh() { load(); },
   async signout() {
     if (S.token) { try { await call('/v1/owner/logout', {}); } catch (e) { /* ends locally anyway */ } }
@@ -472,7 +615,7 @@ const ACT = {
   mode() { const m = document.documentElement.dataset.mode === 'day' ? 'night' : 'day'; document.documentElement.dataset.mode = m; ls.set('owner:mode', m); render(); renderDrawer(); },
   filter(k) { S.filter = k; render(); },
   open(id) { openSquad(id); },
-  close() { S.open = null; S.detail = null; renderDrawer(); },
+  close() { S.open = null; S.detail = null; S.inv = null; renderDrawer(); },
   'close-bg'(_, e) { if (e.target.classList.contains('scrim')) ACT.close(); },
   csv() { csv(); },
   async plan(tier, e) {
@@ -496,11 +639,13 @@ document.addEventListener('click', e => {
 document.addEventListener('input', e => {
   if (e.target.id === 'f-q') { S.q = e.target.value; render(); }
   if (e.target.id === 'f-org') S.orgName = e.target.value;   // kept across redraws, like picking the kind
+  if (e.target.id === 'f-dname') { S.dname = e.target.value; render(); }
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && S.open) ACT.close();
   if (e.key === 'Enter' && S.mustChange && e.target.id === 'f-new2') ACT.choose();
-  if (e.key === 'Enter' && !signedIn()) { if (S.way === 'login' && (e.target.id === 'f-pass' || e.target.id === 'f-email')) ACT.login(); else if (S.way === 'code' && e.target.id === 'f-code') ACT.signin(); else if (S.way === 'reset' && e.target.id === 'f-code') ACT.reset(); }
+  if (e.key === 'Enter' && e.target.id === 'f-tfcode' && S.tf) ACT['tf-confirm']();
+  if (e.key === 'Enter' && !signedIn()) { if (S.way === 'login' && (e.target.id === 'f-pass' || e.target.id === 'f-email' || e.target.id === 'f-code2')) ACT.login(); else if (S.way === 'code' && e.target.id === 'f-code') ACT.signin(); else if (S.way === 'reset' && e.target.id === 'f-code') ACT.reset(); }
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.squads && Date.now() - t(S.at) > 120000) load(true); });
 setInterval(() => { if (document.visibilityState === 'visible' && S.squads && !S.busy) load(true); }, 300000);   // every 5 minutes: each refresh counts against the free plan's daily lookups

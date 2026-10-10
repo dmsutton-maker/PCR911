@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha512-ZDSPMa/JM1D+7kdg2x3BsruQ6T/JpJo3jWDWkCZsP+5yVyp1KfESqLI+7RqB5k24F7p2cV7i2YHh/890y6P6Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
 <style>
 /* OpsBoard agency console: a squad's or department's admin sets up its board from any computer.
    Same colors as the board: night by default, day for bright rooms; the agency's own color as the accent. */
@@ -105,6 +106,18 @@ td.num, .mono { font-family: var(--mono); font-size: 14px; }
 .toast { position: fixed; left: 50%; bottom: max(84px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; z-index: 30; max-width: calc(100vw - 32px); }
 details summary { cursor: pointer; }
 [hidden] { display: none !important; }
+/* sharing a link: a QR code to scan, and the ways to send it */
+.share { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.share .sharebody { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 10px; }
+.qr { background: #fff; padding: 8px; border-radius: 10px; width: 168px; flex: none; }
+.qr svg { display: block; width: 100%; height: auto; }
+.qr:empty { display: none; }
+ol.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; font: 700 16px/1 var(--mono); letter-spacing: 0.04em; }
+.codes span { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; text-align: center; }
+.key { font: 700 16px/1.4 var(--mono); letter-spacing: 0.08em; word-break: break-all; }
+.nudge { border-color: var(--warn); }
+input.code { font: 700 22px/1 var(--mono); letter-spacing: 0.2em; max-width: 220px; }
 @media (max-width: 860px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .tabs { position: static; flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
@@ -173,11 +186,12 @@ async function call(path, body, method = 'POST') {
   const r = await fetch(S.relay + path, { method, headers: { 'content-type': 'application/json', ...(S.token ? { authorization: 'Bearer ' + S.token } : {}) }, ...(method === 'GET' ? {} : { body: JSON.stringify(body || {}) }) });
   const data = await r.json().catch(() => ({}));
   if (r.status === 401 && S.token && path !== '/v1/account/login') { signOutLocal(); render(); }
-  if (!r.ok) throw new Error((data.error && data.error.message) || `The relay answered ${r.status}.`);
+  if (!r.ok) { const err = new Error((data.error && data.error.message) || `The relay answered ${r.status}.`); err.code = data.error && data.error.code; throw err; }
   return data;
 }
 function toast(msg) { const r = document.getElementById('toast-root'); r.innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => { r.innerHTML = ''; }, 4000); }
-function signOutLocal() { S.token = ''; ls.set('agency:session', null); try { sessionStorage.removeItem('agency:owner'); } catch (e) {} S.asOwner = false; S.me = S.cfg = S.members = S.invites = S.audit = S.overview = null; }
+function signOutLocal() { S.token = ''; ls.set('agency:session', null); try { sessionStorage.removeItem('agency:owner'); } catch (e) {} S.asOwner = false; S.enroll = false; S.tf = S.recovery = null; S.me = S.cfg = S.members = S.invites = S.audit = S.overview = null; }
+function useToken(tok) { S.token = tok; if (S.asOwner) { try { sessionStorage.setItem('agency:owner', JSON.stringify({ token: tok, relay: S.relay })); } catch (e) {} } else ls.set('agency:session', tok); }
 function defaults() {
   return { v: 1, agency: { name: (S.org && S.org.name) || '', num: '', logo: '', type: (S.org && S.org.kind) || 'ems' }, features: { par: false }, roster: [], members: [], contacts: [], favHosp: [], feeds: [], cameras: [] };
 }
@@ -196,8 +210,8 @@ async function loadAll() {
   S.busy = true; render();
   try {
     const me = await call('/v1/me', null, 'GET');
-    S.me = me.member; S.org = me.org;
-    if (S.me.role !== 'admin') { S.busy = false; return render(); }
+    S.me = me.member; S.org = me.org; S.enroll = !!me.enroll;
+    if (S.enroll || S.me.role !== 'admin') { S.busy = false; return render(); }
     const [cfg, members, invites, overview, audit] = await Promise.all([
       call('/v1/agency/config', {}), call('/v1/members', null, 'GET'), call('/v1/invites/list', {}), call('/v1/agency/overview', {}), call('/v1/audit', null, 'GET'),
     ]);
@@ -223,13 +237,64 @@ function signin() {
   return `<header class="top">${MARK}<div><h1>Agency console</h1><div class="sub">OpsBoard · set up your squad's board</div></div></header>
     <section class="panel signin">
       <p class="note">For your squad's or department's admins: your agency's name and logo, units, member roster, who has access, invite links, hospitals, radio feeds, cameras and phone numbers. Changes go to every tablet and phone right away.</p>
-      <div class="field"><span class="lbl">Email</span><input type="email" id="f-email" value="${esc(S.email)}" autocapitalize="off" autocomplete="username"></div>
+      ${S.need ? `<p class="note">Signing in as <b>${esc(S.email)}</b>. Open your authenticator app and type the 6-digit code for OpsBoard. No phone? Type one of your recovery codes, or ask another admin to reset your two-step sign-in.</p>
+      <div class="field"><span class="lbl">Code</span><input type="text" class="code" id="f-code2" inputmode="numeric" autocomplete="one-time-code" maxlength="9"></div>
+      ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
+      <div class="bar"><button class="btn primary" data-act="login" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Signing in…' : 'Sign in'}</button><button class="btn sm" data-act="code-back">Back</button></div>`
+      : `<div class="field"><span class="lbl">Email</span><input type="email" id="f-email" value="${esc(S.email)}" autocapitalize="off" autocomplete="username"></div>
       <div class="field"><span class="lbl">Password</span><input type="password" id="f-pass" autocomplete="current-password"></div>
       ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
-      <div class="bar"><button class="btn primary" data-act="login" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Signing in…' : 'Sign in'}</button></div>
+      <div class="bar"><button class="btn primary" data-act="login" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Signing in…' : 'Sign in'}</button></div>`}
       <p class="note"><b>First time, or forgot the password?</b> On your squad's tablet, signed in as an admin: Menu → Squad sharing → <b>Web login</b>, and set your email and a password. Then sign in here, on any computer.</p>
       <details><summary class="note">Relay</summary><div class="field" style="margin-top:8px"><input type="text" id="f-relay" value="${esc(S.relay)}" autocapitalize="off" inputmode="url"></div></details>
     </section>`;
+}
+/* The agency requires two-step sign-in and this login doesn't have it yet: setting it up is all it can do. */
+function enrollOnly() {
+  return `<header class="top">${MARK}<div><h1>Agency console</h1><div class="sub">${esc((S.org && S.org.name) || '')}${S.email ? ' · ' + esc(S.email) : ''}</div></div><span class="grow"></span><button class="btn sm" data-act="signout">Sign out</button></header>
+    <section class="panel signin"><h2>Your agency requires two-step sign-in</h2>
+      <p class="note">${esc((S.org && S.org.name) || 'Your agency')} asks every web login for a code from a phone as well as the password. Set it up now; it takes a minute.</p>
+      ${twoStepPanel(true)}</section>`;
+}
+const qrSvg = text => { try { const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); } catch (e) { return ''; } };
+const MSG = {};   // what Send, Text and Email say, by link
+function shareBox(link, { code, subject, message, danger }) {
+  MSG[link] = { subject, message };
+  return `<div class="share"><div class="qr" role="img" aria-label="QR code for this link">${qrSvg(link)}</div>
+    <div class="sharebody"><div class="link">${esc(link)}</div>
+      <div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(link)}">Copy link</button>${code ? `<button class="btn sm" data-act="copy" data-arg="${esc(code)}">Copy code ${esc(code)}</button>` : ''}
+        ${navigator.share ? `<button class="btn sm" data-act="send" data-arg="${esc(link)}">Send…</button>` : ''}
+        <a class="btn sm" href="sms:?&body=${encodeURIComponent(message)}">Text</a>
+        <a class="btn sm" href="mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}">Email</a>
+        ${danger || ''}</div>
+      <p class="note">Or scan the QR code with the tablet's or phone's camera.</p></div></div>`;
+}
+function inviteMessage(link, code, what) {
+  const name = (S.cfg && S.cfg.agency.name) || (S.org && S.org.name) || 'our agency';
+  const how = { member: `It signs a tablet or your phone in to ${name}'s board.`, admin: `It signs a device in as an admin of ${name}'s board.`, display: `Open it on the computer or smart TV that drives the big screen. It shows ${name}'s board and can't change anything.`, guest: `It joins your department to ${name}'s MCI and event boards until it runs out.` }[what] || '';
+  return `${name} on OpsBoard: ${how}\n${link}\n\nOn an iPhone or iPad, add the page to the Home Screen first (Share, then Add to Home Screen), open it from there, and tap Join.\nInvite code, if it asks: ${code}`;
+}
+function twoStepPanel(enrolling) {
+  if (S.recovery) return `<h3>Save your recovery codes</h3>
+    <p class="note">Each one signs you in once if you don't have your phone. Keep them somewhere safe, apart from your phone. They won't be shown again.</p>
+    <div class="codes">${S.recovery.map(c => `<span>${esc(c)}</span>`).join('')}</div>
+    <div class="bar"><button class="btn sm" data-act="copy" data-arg="${esc(S.recovery.join('\n'))}">Copy them</button><button class="btn sm" data-act="codes-file">Download</button><button class="btn sm primary" data-act="codes-done">I saved them</button></div>`;
+  if (S.tf) return `<ol class="steps"><li>On your phone, open an authenticator app: the iPhone's <b>Passwords</b> app (Codes), <b>Google Authenticator</b> or <b>Microsoft Authenticator</b>.</li>
+      <li>Scan this code with it${/iPhone|iPad|Android/.test(navigator.userAgent) ? `, or <a href="${esc(S.tf.uri)}">add it on this phone</a>` : ''}. Or type the key.</li><li>Type the 6-digit code it shows.</li></ol>
+    <div class="share"><div class="qr" role="img" aria-label="QR code for the authenticator app">${qrSvg(S.tf.uri)}</div>
+      <div class="sharebody"><div class="field"><span class="lbl">Key</span><div class="key">${esc(S.tf.secret.replace(/(.{4})/g, '$1 ').trim())}</div></div>
+        <div class="field"><span class="lbl">Code from the app</span><input type="text" class="code" id="f-tfcode" inputmode="numeric" autocomplete="one-time-code" maxlength="7"></div>
+        ${S.tferr ? `<div class="err">${esc(S.tferr)}</div>` : ''}
+        <div class="bar"><button class="btn primary" data-act="tf-confirm">Turn it on</button>${enrolling ? '' : '<button class="btn sm" data-act="tf-cancel">Cancel</button>'}</div></div></div>`;
+  if (enrolling) return `${S.tferr ? `<div class="err">${esc(S.tferr)}</div>` : ''}<div class="bar"><button class="btn primary" data-act="tf-start">Set up two-step sign-in</button></div>`;
+  if (S.me && S.me.twoStep) return `<p><span class="pill ok">On</span> <span class="note">Signing in takes your password and a code from your phone.</span></p>
+    <div class="grid2"><div class="field"><span class="lbl">Code from the app</span><input type="text" class="code" id="f-tfcode" inputmode="numeric" autocomplete="one-time-code" maxlength="9"></div>
+      <div class="field"><span class="lbl">Password · to turn it off</span><input type="password" id="f-tfpass" autocomplete="current-password"></div></div>
+    ${S.tferr ? `<div class="err">${esc(S.tferr)}</div>` : ''}
+    <div class="bar"><button class="btn sm" data-act="tf-recovery">New recovery codes</button>${S.org && S.org.require2fa ? '' : '<button class="btn sm danger" data-act="tf-off">Turn off</button>'}</div>`;
+  return `<p><span class="pill warn">Off</span> <span class="note">With it on, signing in needs your password and a 6-digit code from an app on your phone, so a stolen or guessed password isn't enough.</span></p>
+    ${S.tferr ? `<div class="err">${esc(S.tferr)}</div>` : ''}
+    <div class="bar"><button class="btn primary" data-act="tf-start">Turn on two-step sign-in</button></div>`;
 }
 function notAdmin() {
   return `${top()}<section class="panel signin"><h2>Admins only</h2><p class="note">You're signed in as <b>${esc(S.me.name)}</b>, a member of ${esc((S.org && S.org.name) || 'the squad')}. The agency console is for its admins; ask one to make you an admin.</p><div class="bar"><button class="btn" data-act="signout">Sign out</button></div></section>`;
@@ -245,7 +310,7 @@ const TABS = [
   ['overview', 'Overview'], ['agency', 'Agency'], ['units', 'Units', () => S.cfg.roster.length], ['roster', 'Member roster', () => S.cfg.members.length],
   ['people', 'People & access', () => (S.members || []).filter(m => m.status === 'active').length], ['invites', 'Invite links', () => (S.invites || []).length],
   ['hospitals', 'Hospitals', () => S.cfg.favHosp.length], ['feeds', 'Radio feeds', () => S.cfg.feeds.length], ['cameras', 'Cameras', () => S.cfg.cameras.length],
-  ['phones', 'Phone numbers', () => S.cfg.contacts.length], ['activity', 'Activity'],
+  ['phones', 'Phone numbers', () => S.cfg.contacts.length], ['security', 'Sign-in & security'], ['activity', 'Activity'],
 ];
 function main() {
   const tab = TABS.find(x => x[0] === S.tab) ? S.tab : 'overview';
@@ -264,7 +329,8 @@ const VIEWS = {
     const o = S.overview || {}, b = o.board || {}, p = o.plan;
     const plan = !p ? 'Free trial starts the first time a tablet shares' : p.tier === 'comp' ? 'Sharing: no end date' : p.tier === 'off' ? 'Sharing is off' : p.tier === 'squad' ? (p.active ? `Squad plan${p.paidThrough ? ' · paid through ' + date(p.paidThrough) : ''}` : 'Squad plan lapsed') : p.active ? `Free trial · ends ${date(p.endsAt)}` : 'Free trial ended';
     const inc = b.incident, ev = b.event;
-    return `<section class="panel"><h2>Overview</h2>
+    return `${S.me && S.me.email && !S.me.twoStep && !S.asOwner ? '<section class="panel nudge bar"><span><b>Protect your login.</b> <span class="note">Turn on two-step sign-in: a code from your phone as well as the password.</span></span><span class="grow"></span><button class="btn sm primary" data-act="tab" data-arg="security">Turn it on</button></section>' : ''}
+    <section class="panel"><h2>Overview</h2>
       <p class="note">${esc(plan)}</p>
       <div class="stats">
         <div class="stat"><span class="lbl">Devices online</span><span class="v">${(b.online || []).length}</span></div>
@@ -322,23 +388,34 @@ const VIEWS = {
     const list = (S.members || []).slice().sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) || (a.role === 'guest') - (b.role === 'guest') || String(a.name).localeCompare(String(b.name)));
     const devs = (S.overview && S.overview.board && S.overview.board.devices) || [];
     return `<section class="panel"><h2>People & access</h2><p class="note">Everyone whose tablet, phone or web login is signed in to your board. Remove a lost phone or someone who left, and it stops working at once. Admins can use this console and make invite links.</p>
-      ${list.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Web login</th><th>Last used</th><th></th></tr></thead><tbody>${list.map(m => {
+      ${list.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Web login</th><th>Two-step</th><th>Last used</th><th></th></tr></thead><tbody>${list.map(m => {
         const seen = devs.filter(d => d.name === m.name).map(d => d.at).concat([t(m.lastSeenAt)]).filter(Number.isFinite);
         const me = S.me && m.id === S.me.id, guest = m.role === 'guest';
         return `<tr><td><b>${esc(m.name)}</b>${me ? ' <span class="note">(you)</span>' : ''}${guest ? `<br><small class="note">${esc(m.agency === 'police' ? 'Police' : 'Fire')} guest${m.dept ? ' · ' + esc(m.dept) : ''} · until ${esc(dt(m.expiresAt))}</small>` : ''}</td>
           <td>${m.status !== 'active' ? '<span class="pill crit">Removed</span>' : guest ? '<span class="pill">Guest</span>' : m.role === 'display' ? '<span class="pill">Display</span>' : m.role === 'admin' ? '<span class="pill ok">Admin</span>' : '<span class="pill">Member</span>'}</td>
-          <td>${m.email ? esc(m.email) : '<span class="note">—</span>'}</td><td>${seen.length ? esc(ago(Math.max(...seen))) : '<span class="note">never</span>'}</td>
+          <td>${m.email ? esc(m.email) : '<span class="note">—</span>'}</td><td>${!m.email ? '<span class="note">—</span>' : m.twoStep ? `<span class="pill ok">On</span>${me ? '' : ` <button class="btn sm" data-act="tf-reset" data-arg="${esc(m.id)}">Reset</button>`}` : '<span class="pill">Off</span>'}</td><td>${seen.length ? esc(ago(Math.max(...seen))) : '<span class="note">never</span>'}</td>
           <td style="text-align:right;white-space:nowrap">${me ? '' : m.status !== 'active' ? `<button class="btn sm" data-act="member-status" data-arg="${esc(m.id)}=active">Restore</button>` : `${guest || m.role === 'display' ? '' : m.role === 'admin' ? `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=member">Make member</button>` : `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=admin">Make admin</button>`} <button class="btn sm danger" data-act="member-status" data-arg="${esc(m.id)}=revoked">Remove</button>`}</td></tr>`;
       }).join('')}</tbody></table></div>` : '<p class="empty">Nobody yet.</p>'}
       <div class="bar"><button class="btn sm" data-act="reload" data-arg="members">Refresh</button></div>
     </section>
+`;
+  },
+  security() {
+    const req = !!(S.org && S.org.require2fa), mine = !!(S.me && S.me.twoStep);
+    return `<section class="panel"><h2>Your two-step sign-in</h2>
+      ${S.me && S.me.email ? twoStepPanel(false) : `<p class="note">${S.asOwner ? 'Opened by the OpsBoard owner: this sign-in has no web login of its own.' : 'You have no web login yet.'}</p>`}</section>
+    <section class="panel"><h2>Everyone's web logins</h2>
+      <p class="note">Require two-step sign-in for every web login to this console. Anyone without it is signed out and sets it up at their next sign-in. Tablets and phones signed in with an invite link aren't affected; remove a lost one under People & access.</p>
+      <p>${req ? '<span class="pill ok">Required</span>' : '<span class="pill">Not required</span>'} <span class="note">${(S.members || []).filter(m => m.email && m.status === 'active' && !m.twoStep).length} web logins without it.</span></p>
+      <div class="bar">${req ? '<button class="btn sm" data-act="require2fa" data-arg="0">Stop requiring it</button>' : `<button class="btn primary" data-act="require2fa" data-arg="1" ${mine || S.asOwner ? '' : 'disabled'}>Require two-step sign-in</button>${mine || S.asOwner ? '' : '<span class="note">Turn on your own first.</span>'}`}</div></section>
     ${S.me && !S.me.email ? '' : `<section class="panel"><h2>Your password</h2>
+      <p class="note">Changing it signs out every other browser using your login.</p>
       <div class="grid2"><div class="field"><span class="lbl">Current password</span><input type="password" id="f-cur" autocomplete="current-password"></div><div class="field"><span class="lbl">New password · at least 10 characters</span><input type="password" id="f-new" autocomplete="new-password"></div></div>
       <div class="bar"><button class="btn" data-act="password">Change password</button></div></section>`}`;
   },
   invites() {
     const inv = S.invites || [], member = inv.find(i => i.role === 'member'), admin = inv.find(i => i.role === 'admin'), display = inv.find(i => i.role === 'display'), guests = inv.filter(i => i.role === 'guest');
-    const linkBox = (i, what) => i ? `<div class="link">${esc(linkFor(i.code))}</div><div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(linkFor(i.code))}">Copy link</button><button class="btn sm" data-act="copy" data-arg="${esc(i.code)}">Copy code ${esc(i.code)}</button>${navigator.share ? `<button class="btn sm" data-act="send" data-arg="${esc(i.code)}=${what}">Send…</button>` : ''}<button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(i.code)}">Stop this link</button></div>` : '';
+    const linkBox = (i, what) => i ? shareBox(linkFor(i.code), { code: i.code, subject: `OpsBoard ${what === 'admin' ? 'admin ' : what === 'display' ? 'big-screen ' : ''}link`, message: inviteMessage(linkFor(i.code), i.code, what), danger: `<button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(i.code)}">Stop this link</button>` }) : '';
     return `<section class="panel"><h2>Tablets and members' phones</h2><p class="note">Open this link on a tablet or a member's phone to sign it in to your board. Making a new link stops the old one; devices already signed in keep working.</p>
       ${member ? linkBox(member, 'member') : '<p class="empty">No member link right now.</p>'}
       <div class="bar"><button class="btn" data-act="invite-new" data-arg="member">${member ? 'Make a new link' : 'Make a link'}</button></div></section>
@@ -347,7 +424,7 @@ const VIEWS = {
     <section class="panel"><h2>Big-screen displays</h2><p class="note">For a TV or monitor in your building, at the command post or at OEM. Open this link on the computer or smart TV that drives it: it shows the board live and can't change anything. Each screen picks what to show (MCI, units, hospitals, the map, today's calls, an event) with the gear in its corner.</p>
       ${display ? linkBox(display, 'display') : ''}<div class="bar"><button class="btn" data-act="invite-new" data-arg="display">${display ? 'Make a new display link' : 'Make a display link'}</button></div></section>
     <section class="panel"><h2>Other departments (guests)</h2><p class="note">For fire or police working an MCI or event with you. Their devices see only the MCI and events, in their own colors, and stop when the link runs out.</p>
-      ${guests.length ? `<div class="tw"><table><thead><tr><th>For</th><th>Until</th><th>Code</th><th></th></tr></thead><tbody>${guests.map(g => `<tr><td>${g.agency === 'police' ? 'Police' : 'Fire'}${g.dept ? ' · ' + esc(g.dept) : ''}</td><td>${esc(dt(g.expiresAt))}</td><td class="num">${esc(g.code)}</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" data-act="copy" data-arg="${esc(linkFor(g.code))}">Copy link</button> <button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(g.code)}">Stop</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No guest links running.</p>'}
+      ${guests.length ? guests.map(g => `<div class="panel" style="margin:8px 0"><p><b>${g.agency === 'police' ? 'Police' : 'Fire'}${g.dept ? ' · ' + esc(g.dept) : ''}</b> <span class="note">until ${esc(dt(g.expiresAt))}</span></p>${shareBox(linkFor(g.code), { code: g.code, subject: 'OpsBoard guest link', message: inviteMessage(linkFor(g.code), g.code, 'guest'), danger: `<button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(g.code)}">Stop</button>` })}</div>`).join('') : '<p class="empty">No guest links running.</p>'}
       <div class="grid3"><div class="field"><span class="lbl">Department</span><select id="f-gag" data-form="gag"><option value="fire" ${f('gag') !== 'police' ? 'selected' : ''}>Fire</option><option value="police" ${f('gag') === 'police' ? 'selected' : ''}>Police</option></select></div>
         <div class="field"><span class="lbl">Name · optional</span><input type="text" id="f-gdept" data-form="gdept" value="${esc(f('gdept'))}" placeholder="e.g. Ocean Township Fire"></div>
         <div class="field"><span class="lbl">Works for</span><select id="f-ghours" data-form="ghours">${[[12, '12 hours'], [24, '1 day'], [72, '3 days'], [168, '1 week']].map(([h, l]) => `<option value="${h}" ${Number(f('ghours') || 24) === h ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
@@ -398,7 +475,7 @@ const app = document.getElementById('app');
 function render() {
   document.documentElement.dataset.agency = S.cfg ? kindOf() : '';
   const focus = document.activeElement && document.activeElement.id, sel = focus && document.activeElement.selectionStart;
-  app.innerHTML = !S.token ? signin() : !S.me ? `<header class="top">${MARK}<div><h1>Agency console</h1><div class="sub">${S.err ? esc(S.err) : 'Loading…'}</div></div></header>${S.err ? '<div class="bar"><button class="btn" data-act="signout">Sign out</button><button class="btn" data-act="refresh">Try again</button></div>' : ''}` : S.me.role !== 'admin' ? notAdmin() : !S.cfg ? `${top()}<p class="note">${S.err ? esc(S.err) : 'Loading…'}</p>` : main();
+  app.innerHTML = !S.token ? signin() : S.enroll && S.me ? enrollOnly() : !S.me ? `<header class="top">${MARK}<div><h1>Agency console</h1><div class="sub">${S.err ? esc(S.err) : 'Loading…'}</div></div></header>${S.err ? '<div class="bar"><button class="btn" data-act="signout">Sign out</button><button class="btn" data-act="refresh">Try again</button></div>' : ''}` : S.me.role !== 'admin' ? notAdmin() : !S.cfg ? `${top()}<p class="note">${S.err ? esc(S.err) : 'Loading…'}</p>` : main();
   if (focus) { const el = document.getElementById(focus); if (el) { el.focus(); try { if (sel != null) el.setSelectionRange(sel, sel); } catch (e) {} } }
 }
 
@@ -434,13 +511,59 @@ function addMember(num, name, cert) {
 const ACT = {
   async login() {
     const relayEl = document.getElementById('f-relay'); if (relayEl) S.relay = base(relayEl.value);
-    const email = document.getElementById('f-email').value.trim(), password = document.getElementById('f-pass').value;
+    const codeEl = document.getElementById('f-code2');
+    const email = codeEl ? S.email : document.getElementById('f-email').value.trim(), password = codeEl ? S.pass : document.getElementById('f-pass').value;
+    const code = codeEl ? codeEl.value.trim() : '';
     S.email = email; S.err = ''; S.busy = true; render();
     try {
-      const d = await call('/v1/account/login', { email, password });
+      const d = await call('/v1/account/login', { email, password, ...(code ? { code } : {}) });
+      S.need = false; S.pass = '';
       S.token = d.token; ls.set('agency:session', d.token); ls.set('agency:email', email); ls.set('agency:relay', S.relay);
+      if (d.recoveryLeft !== undefined) toast(`Signed in with a recovery code. ${plural(d.recoveryLeft, 'code')} left.`);
       S.busy = false; await loadAll();
-    } catch (e) { S.busy = false; S.err = e.message; render(); }
+    } catch (e) {
+      S.busy = false;
+      if (e.code === 'need_code') { S.need = true; S.pass = password; S.err = ''; } else S.err = e.message;
+      render();
+    }
+  },
+  'code-back'() { S.need = false; S.pass = ''; S.err = ''; render(); },
+  async 'tf-start'() { S.tferr = ''; try { S.tf = await call('/v1/account/2fa/start', {}); } catch (e) { S.tferr = e.message; } render(); },
+  'tf-cancel'() { S.tf = null; S.tferr = ''; render(); },
+  async 'tf-confirm'() {
+    const code = document.getElementById('f-tfcode').value.trim(); S.tferr = '';
+    try {
+      const d = await call('/v1/account/2fa/confirm', { code });
+      if (d.token) useToken(d.token);
+      S.tf = null; S.recovery = d.recovery; if (S.me) S.me.twoStep = true;
+      toast('Two-step sign-in is on.');
+    } catch (e) { S.tferr = e.message; }
+    render();
+  },
+  'codes-done'() { S.recovery = null; if (S.enroll) { S.enroll = false; loadAll(); } else { reloadPart('members'); } },
+  'codes-file'() {
+    const text = `OpsBoard recovery codes for ${S.email || (S.me && S.me.email) || ''}\nEach works once. Made ${new Date().toLocaleString()}.\n\n${S.recovery.join('\n')}\n`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = 'opsboard-recovery-codes.txt';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  },
+  async 'tf-recovery'() {
+    const code = document.getElementById('f-tfcode').value.trim(); S.tferr = '';
+    try { S.recovery = (await call('/v1/account/2fa/recovery', { code })).recovery; } catch (e) { S.tferr = e.message; }
+    render();
+  },
+  async 'tf-off'() {
+    const code = document.getElementById('f-tfcode').value.trim(), password = document.getElementById('f-tfpass').value; S.tferr = '';
+    if (!confirm('Turn off two-step sign-in? Your password alone will open this console.')) return;
+    try { await call('/v1/account/2fa/off', { code, password }); S.me.twoStep = false; toast('Two-step sign-in is off.'); reloadPart('members'); } catch (e) { S.tferr = e.message; render(); }
+  },
+  async 'tf-reset'(id) {
+    const m = (S.members || []).find(x => x.id === id);
+    if (!confirm(`Reset ${m ? m.name : 'their'} two-step sign-in? Their web sign-ins end, and they set it up again with a new phone.`)) return;
+    try { await call('/v1/members/2fa-reset', { memberId: id }); await reloadPart('members'); toast('Reset. They set it up again at their next sign-in.'); } catch (e) { toast(e.message); }
+  },
+  async require2fa(on) {
+    if (on === '1' && !confirm('Require two-step sign-in for every web login? Anyone without it is signed out now and sets it up at their next sign-in.')) return;
+    try { const d = await call('/v1/agency/security', { require2fa: on === '1' }); S.org = { ...(S.org || {}), require2fa: d.require2fa }; toast(d.require2fa ? 'Two-step sign-in is required now.' : 'No longer required.'); reloadPart('audit'); render(); } catch (e) { toast(e.message); }
   },
   async signout() {
     if (S.dirty && !confirm('Sign out without saving your changes?')) return;
@@ -453,7 +576,7 @@ const ACT = {
   tab(k) {
     S.tab = k; ls.set('agency:tab', k); render(); window.scrollTo(0, 0);
     // what other people change (a phone joining, a guest link used) is fetched fresh when its section opens
-    if (k === 'people') { reloadPart('members'); reloadPart('overview'); } else if (k === 'invites') reloadPart('invites'); else if (k === 'activity') reloadPart('audit'); else if (k === 'overview') reloadPart('overview');
+    if (k === 'people') { reloadPart('members'); reloadPart('overview'); } else if (k === 'invites') reloadPart('invites'); else if (k === 'activity') reloadPart('audit'); else if (k === 'overview') reloadPart('overview'); else if (k === 'security') reloadPart('members');
   },
   'cfg-set'(arg) { const i = arg.indexOf('='), path = arg.slice(0, i), v = arg.slice(i + 1); setPath(path, path === 'features.par' ? v === '1' : v); mark(); },
   'logo-del'() { S.cfg.agency.logo = ''; mark(); },
@@ -520,10 +643,10 @@ const ACT = {
     try { await call('/v1/guest-invites', { agency: f('gag') || 'fire', hours: Number(f('ghours') || 24), dept: f('gdept').trim() }); S.form.gdept = ''; await reloadPart('invites'); toast('Guest link made'); } catch (e) { toast(e.message); }
   },
   copy(text) { navigator.clipboard.writeText(text).then(() => toast('Copied'), () => toast(text)); },
-  send(arg) { const [code, what] = arg.split('='); navigator.share({ title: 'OpsBoard', text: `${(S.cfg && S.cfg.agency.name) || 'Our'} OpsBoard ${what === 'admin' ? 'admin ' : ''}invite. Code ${code}.`, url: linkFor(code) }).catch(() => {}); },
+  send(link) { const m = MSG[link]; if (m && navigator.share) navigator.share({ title: m.subject, text: m.message.replace(link, '').trim(), url: link }).catch(() => {}); },
   async password() {
     const current = document.getElementById('f-cur').value, next = document.getElementById('f-new').value;
-    try { await call('/v1/account/password', { current, next }); toast('Password changed'); render(); } catch (e) { toast(e.message); }
+    try { const d = await call('/v1/account/password', { current, next }); if (d.token) useToken(d.token); toast('Password changed. Every other browser is signed out.'); render(); } catch (e) { toast(e.message); }
   },
 };
 document.addEventListener('click', e => {
@@ -545,7 +668,8 @@ document.addEventListener('change', async e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
-  if (!S.token && (e.target.id === 'f-pass' || e.target.id === 'f-email')) ACT.login();
+  if (!S.token && (e.target.id === 'f-pass' || e.target.id === 'f-email' || e.target.id === 'f-code2')) ACT.login();
+  if (e.target.id === 'f-tfcode' && S.tf) ACT['tf-confirm']();
   const map = { 'f-unit': 'unit-add', 'f-mname': 'mem-add', 'f-mnum': 'mem-add', 'f-furl': 'feed-add', 'f-curl': 'cam-add', 'f-pnum': 'phone-add' };
   if (map[e.target.id]) { e.preventDefault(); ACT[map[e.target.id]](); }
 });

@@ -72,7 +72,15 @@ const ACCOUNT_ROUTES = new Set([
   '/v1/members/role',
   '/v1/invites/list',
   '/v1/invites/revoke',
+  '/v1/account/2fa/start',
+  '/v1/account/2fa/confirm',
+  '/v1/account/2fa/recovery',
+  '/v1/account/2fa/off',
+  '/v1/members/2fa-reset',
+  '/v1/agency/security',
 ]);
+/* A web login whose agency requires two-step sign-in, before it is turned on, can reach only these. */
+const ENROLL_ROUTES = new Set(['/v1/me', '/v1/account/2fa/start', '/v1/account/2fa/confirm', '/v1/account/logout']);
 
 /* Guests: another department (fire, police) working an MCI or event with the squad. A guest invite is for one
    agency and runs out; a guest device can reach only the incident and event boards, never the squad's daily
@@ -183,7 +191,9 @@ async function authenticate(request, env, tokenOverride) {
       const member = await store.get(`mem:${pointer.orgId}:${pointer.memberId}`, 'json');
       if (member && member.status === 'active') {
         if (member.role === 'guest' && Date.parse(member.expiresAt || '') <= Date.now()) return { kind: 'expired', member };
-        return { kind: 'member', orgId: pointer.orgId, member };
+        // a new password or two-step sign-in ends every web sign-in made before it
+        if (pointer.web && member.webAfter && !(Date.parse(pointer.at || '') >= Date.parse(member.webAfter))) return { kind: 'unknown' };
+        return { kind: 'member', orgId: pointer.orgId, member, web: !!pointer.web, enrollOnly: !!pointer.enroll, owner: !!pointer.owner };
       }
       if (member) return { kind: 'revoked', member };
     }
@@ -357,7 +367,7 @@ async function join(request, env) {
     {
       token,
       member: { id: memberId, name, certLevel, role, ...(guest ? { agency: invite.agency, dept: invite.dept || '', expiresAt: invite.expiresAt } : {}) },
-      org: { id: org.id, name: org.name, ...(guest ? {} : { config: org.config }) },
+      org: { id: org.id, name: org.name, kind: org.kind || null, ...(guest ? {} : { config: org.config }) },
     },
     200,
     request,
@@ -379,9 +389,11 @@ async function me(auth, request, env) {
         certLevel: auth.member.certLevel,
         role: auth.member.role,
         email: auth.member.email || '',
+        twoStep: !!auth.member.twoStep,
         ...(auth.member.role === 'guest' ? { agency: auth.member.agency, dept: auth.member.dept || '', expiresAt: auth.member.expiresAt } : {}),
       },
-      org: org ? { id: org.id, name: org.name, ...(auth.member.role === 'guest' ? {} : { config: org.config }) } : null,
+      ...(auth.enrollOnly ? { enroll: true } : {}),
+      org: org ? { id: org.id, name: org.name, kind: org.kind || null, require2fa: !!org.require2fa, ...(auth.member.role === 'guest' ? {} : { config: org.config }) } : null,
     },
     200,
     request,
@@ -427,6 +439,7 @@ async function listMembers(auth, request, env) {
         lastSeenAt: member.lastSeenAt,
         requests: member.requests ?? 0,
         email: member.email || '',
+        twoStep: !!member.twoStep,
         ...(member.role === 'guest' ? { agency: member.agency, dept: member.dept || '', expiresAt: member.expiresAt } : {}),
       });
     }
@@ -499,6 +512,11 @@ async function rotateInvite(auth, request, env) {
  * computer, signed in with an email and password.
  * ------------------------------------------------------------------ */
 const WEB_SESSION_DAYS = 30;
+async function newWebToken(env, orgId, memberId, enroll = false) {
+  const token = 'ws_' + randomToken(), days = enroll ? 1 : WEB_SESSION_DAYS;
+  await kv(env).put(`tok:${await sha256(token)}`, JSON.stringify({ orgId, memberId, web: true, at: new Date().toISOString(), ...(enroll ? { enroll: true } : {}) }), { expirationTtl: days * 86400 });
+  return { token, expiresAt: new Date(Date.now() + days * 86400000).toISOString() };
+}
 
 /* Anyone on the squad (not a guest) can add an email and password to their own membership, from a device already
    signed in as them. Doing it again replaces it: that is also how a forgotten password is reset. */
@@ -514,10 +532,11 @@ async function accountSetup(auth, request, env) {
   if (taken && (taken.orgId !== auth.orgId || taken.memberId !== auth.member.id)) return fail(409, 'That email is already used by another login.', request, env);
   const key = `mem:${auth.orgId}:${auth.member.id}`, member = await store.get(key, 'json');
   if (!member) return fail(404, 'No such member.', request, env);
+  const before = member.email ? await store.get(`acct:${member.email}`, 'json') : null;   // two-step sign-in stays on
   if (member.email && member.email !== email) await store.delete(`acct:${member.email}`);
   const salt = crypto.getRandomValues(new Uint8Array(16)), it = hashIterations(env);
-  await store.put(`acct:${email}`, JSON.stringify({ orgId: auth.orgId, memberId: auth.member.id, alg: 'pbkdf2-sha256', it, salt: b64(salt), hash: await passwordHash(password, salt, it), setAt: new Date().toISOString() }));
-  member.email = email;
+  await store.put(`acct:${email}`, JSON.stringify({ orgId: auth.orgId, memberId: auth.member.id, alg: 'pbkdf2-sha256', it, salt: b64(salt), hash: await passwordHash(password, salt, it), setAt: new Date().toISOString(), ...(before && before.totp ? { totp: before.totp } : {}) }));
+  member.email = email; member.webAfter = new Date().toISOString();
   await store.put(key, JSON.stringify(member));
   await audit(env, auth.orgId, { action: 'web_login_set_up', memberId: member.id, name: member.name });
   return json({ ok: true, email }, 200, request, env);
@@ -531,14 +550,23 @@ async function accountLogin(request, env) {
   if (await tooManyTries(env, request, email)) return fail(429, 'Too many tries. Wait an hour, or set the password again from your squad tablet.', request, env);
   const acct = await store.get(`acct:${email}`, 'json');
   const hash = await passwordHash(password, acct ? unb64(acct.salt) : new Uint8Array(16), acct ? acct.it : hashIterations(env));
-  if (!acct || !safeEqual(hash, acct.hash)) return fail(401, 'That email and password don\'t match.', request, env);
+  if (!acct || !safeEqual(hash, acct.hash)) { await wrongTry(env, request, email); return fail(401, 'That email and password don\'t match.', request, env); }
   const member = await store.get(`mem:${acct.orgId}:${acct.memberId}`, 'json');
   if (!member || member.status !== 'active') return fail(403, 'Your access to this organization has been withdrawn.', request, env);
   const org = await store.get(`org:${acct.orgId}`, 'json');
-  const token = 'ws_' + randomToken();
-  await store.put(`tok:${await sha256(token)}`, JSON.stringify({ orgId: acct.orgId, memberId: acct.memberId, web: true }), { expirationTtl: WEB_SESSION_DAYS * 86400 });
-  await audit(env, acct.orgId, { action: 'web_sign_in', memberId: member.id, name: member.name });
-  return json({ token, expiresAt: new Date(Date.now() + WEB_SESSION_DAYS * 86400000).toISOString(), member: { id: member.id, name: member.name, role: member.role, email }, org: org ? { id: org.id, name: org.name } : null }, 200, request, env);
+  let recoveryLeft;
+  if (acct.totp) {
+    const st = await secondStep(acct.totp, body?.code);
+    if (st.need) return needCode(request, env);
+    if (!st.ok) { await wrongTry(env, request, email); return badCode(request, env); }
+    await store.put(`acct:${email}`, JSON.stringify({ ...acct, totp: st.tf }));
+    recoveryLeft = st.recoveryLeft;
+  }
+  // an agency that requires two-step sign-in lets a login without it do one thing: turn it on
+  const enroll = !acct.totp && !!(org && org.require2fa);
+  const session = await newWebToken(env, acct.orgId, acct.memberId, enroll);
+  await audit(env, acct.orgId, { action: 'web_sign_in', memberId: member.id, name: member.name, ...(recoveryLeft !== undefined ? { with: 'recovery code' } : {}) });
+  return json({ ...session, ...(enroll ? { enroll: true } : {}), ...(recoveryLeft !== undefined ? { recoveryLeft } : {}), member: { id: member.id, name: member.name, role: member.role, email, twoStep: !!acct.totp }, org: org ? { id: org.id, name: org.name, kind: org.kind || null, require2fa: !!org.require2fa } : null }, 200, request, env);
 }
 async function accountLogout(request, env) {
   const token = bearer(request);
@@ -550,12 +578,90 @@ async function accountPassword(auth, request, env) {
   const member = await store.get(`mem:${auth.orgId}:${auth.member.id}`, 'json');
   const acct = member && member.email ? await store.get(`acct:${member.email}`, 'json') : null;
   if (!acct) return fail(404, 'This membership has no web login yet.', request, env);
-  if (!safeEqual(await passwordHash(String(body?.current || ''), unb64(acct.salt), acct.it), acct.hash)) return fail(401, 'The current password is not right.', request, env);
+  if (!safeEqual(await passwordHash(String(body?.current || ''), unb64(acct.salt), acct.it), acct.hash)) return fail(403, 'The current password is not right.', request, env);
   const weak = passwordProblem(body?.next);
   if (weak) return fail(400, weak, request, env);
   const salt = crypto.getRandomValues(new Uint8Array(16)), it = hashIterations(env);
   await store.put(`acct:${member.email}`, JSON.stringify({ ...acct, it, salt: b64(salt), hash: await passwordHash(body.next, salt, it), setAt: new Date().toISOString() }));
+  return json({ ok: true, ...(await endWebSignIns(auth, request, env, member)) }, 200, request, env);
+}
+/* Every web sign-in made before now ends; a web caller gets a new one so it carries on. */
+async function endWebSignIns(auth, request, env, member) {
+  const store = kv(env), key = `mem:${auth.orgId}:${auth.member.id}`;
+  member = member || (await store.get(key, 'json'));
+  member.webAfter = new Date().toISOString();
+  await store.put(key, JSON.stringify(member));
+  if (!auth.web) return {};
+  await store.delete(`tok:${await sha256(bearer(request))}`);
+  return newWebToken(env, auth.orgId, auth.member.id);
+}
+/* A member's own two-step sign-in for their web login: start, confirm, recovery, off (as for the owner). */
+async function accountTwoStep(what, auth, request, env) {
+  const store = kv(env), body = await request.json().catch(() => ({}));
+  const member = await store.get(`mem:${auth.orgId}:${auth.member.id}`, 'json');
+  const acct = member && member.email ? await store.get(`acct:${member.email}`, 'json') : null;
+  if (!acct) return fail(404, 'Set up a web login first: an email and password.', request, env);
+  const akey = `acct:${member.email}`;
+  if (what === 'start') return json(await twoStepStart(env, akey, member.email), 200, request, env);
+  if (what === 'confirm') {
+    const r = await twoStepConfirm(env, akey, body?.code);
+    if (r.error) return fail(400, r.error, request, env);
+    await store.put(akey, JSON.stringify({ ...acct, totp: r.tf }));
+    member.twoStep = true;
+    const session = await endWebSignIns(auth, request, env, member);
+    await audit(env, auth.orgId, { action: 'two_step_on', memberId: member.id, name: member.name });
+    return json({ ok: true, recovery: r.codes, ...session }, 200, request, env);
+  }
+  if (!acct.totp) return fail(400, 'Two-step sign-in is off.', request, env);
+  if (what === 'off') {
+    const org = await store.get(`org:${auth.orgId}`, 'json');
+    if (org && org.require2fa) return fail(403, 'Your agency requires two-step sign-in. An admin can reset it for you if you lost your phone.', request, env);
+    if (!safeEqual(await passwordHash(String(body?.password || ''), unb64(acct.salt), acct.it), acct.hash)) { await wrongTry(env, request, member.email); return fail(403, 'The password is not right.', request, env); }
+  }
+  if (await tooManyTries(env, request, member.email)) return fail(429, 'Too many tries. Wait an hour.', request, env);
+  const st = await secondStep(acct.totp, body?.code);
+  if (!st.ok) { await wrongTry(env, request, member.email); return badCode(request, env, 403); }
+  if (what === 'recovery') {
+    const { codes, hashes } = await newRecoveryCodes();
+    await store.put(akey, JSON.stringify({ ...acct, totp: { ...st.tf, recovery: hashes } }));
+    return json({ ok: true, recovery: codes }, 200, request, env);
+  }
+  const { totp, ...rest } = acct;
+  await store.put(akey, JSON.stringify(rest));
+  member.twoStep = false; await store.put(`mem:${auth.orgId}:${auth.member.id}`, JSON.stringify(member));
+  await audit(env, auth.orgId, { action: 'two_step_off', memberId: member.id, name: member.name });
   return json({ ok: true }, 200, request, env);
+}
+/* An admin turns off someone's two-step sign-in, for a lost phone; their web sign-ins end. */
+async function memberTwoStepReset(auth, request, env) {
+  const store = kv(env), body = await request.json().catch(() => null);
+  const key = `mem:${auth.orgId}:${String(body?.memberId || '')}`, member = await store.get(key, 'json');
+  if (!member) return fail(404, 'No such member.', request, env);
+  const acct = member.email ? await store.get(`acct:${member.email}`, 'json') : null;
+  if (acct && acct.totp) { const { totp, ...rest } = acct; await store.put(`acct:${member.email}`, JSON.stringify(rest)); }
+  Object.assign(member, { twoStep: false, webAfter: new Date().toISOString() });
+  await store.put(key, JSON.stringify(member));
+  await audit(env, auth.orgId, { action: 'two_step_reset', memberId: auth.member.id, name: auth.member.name, subject: member.name });
+  return json({ ok: true }, 200, request, env);
+}
+/* The agency's sign-in rules: require two-step sign-in for every web login. */
+async function agencySecurity(auth, request, env) {
+  const store = kv(env), body = await request.json().catch(() => null);
+  const org = await store.get(`org:${auth.orgId}`, 'json');
+  if (!org) return fail(404, 'No such organization.', request, env);
+  org.require2fa = !!body?.require2fa;
+  if (org.require2fa && !auth.owner && !auth.member.twoStep) return fail(400, 'Turn on your own two-step sign-in first, so you aren\'t locked out.', request, env);
+  await store.put(`org:${auth.orgId}`, JSON.stringify(org));
+  // web logins without it are signed out; at their next sign-in they turn it on
+  if (org.require2fa) {
+    const at = new Date().toISOString(), list = await store.list({ prefix: `mem:${auth.orgId}:` });
+    for (const k of list.keys) {
+      const m = await store.get(k.name, 'json');
+      if (m && m.email && !m.twoStep) await store.put(k.name, JSON.stringify({ ...m, webAfter: at }));
+    }
+  }
+  await audit(env, auth.orgId, { action: org.require2fa ? 'two_step_required' : 'two_step_not_required', memberId: auth.member.id, name: auth.member.name });
+  return json({ ok: true, require2fa: org.require2fa }, 200, request, env);
 }
 
 /* The squad's settings are one document on its board, the same one every tablet reads and writes. The console
@@ -566,7 +672,7 @@ async function agencyConfig(auth, request, env) {
   const res = await boardStub(env, auth.orgId).fetch('https://board.internal/doc', { method: 'POST', body: JSON.stringify({ path: 'squad/config' }) });
   const { data } = await res.json();
   const org = await kv(env).get(`org:${auth.orgId}`, 'json');
-  return json({ config: data || null, org: org ? { id: org.id, name: org.name, kind: org.kind || null } : null }, 200, request, env);
+  return json({ config: data || null, org: org ? { id: org.id, name: org.name, kind: org.kind || null, require2fa: !!org.require2fa } : null }, 200, request, env);
 }
 async function agencySave(auth, request, env) {
   if (!env.BOARD) return fail(503, 'This relay was deployed without board storage.', request, env);
@@ -814,7 +920,8 @@ async function ownerGuard(request, env) {
  * with the setup code, which also resets a forgotten password.
  * ------------------------------------------------------------------ */
 const OWNER_SESSION_DAYS = 30;
-const LOGIN_TRIES_PER_HOUR = 10;
+const LOGIN_TRIES_PER_HOUR = 10;        // wrong tries an hour for one address
+const LOGIN_TRIES_PER_NETWORK = 50;     // and from one network, where a whole station may sign in
 const normEmail = (v) => String(v || '').trim().toLowerCase();
 const emailOk = (v) => /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/.test(v);
 const hashIterations = (env) => Math.min(100000, Math.max(20000, Number(env.OWNER_HASH_ITERATIONS) || 30000));
@@ -825,11 +932,11 @@ async function passwordHash(password, salt, iterations) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
   return b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256));
 }
-async function setOwnerPassword(env, email, password, name) {
+async function setOwnerPassword(env, email, password, name, keepTwoStep = true) {
   const store = kv(env);
   const salt = crypto.getRandomValues(new Uint8Array(16)), it = hashIterations(env);
   const was = await store.get(`owner:${email}`, 'json');
-  const record = { email, name: String(name || (was && was.name) || '').trim().slice(0, 80), alg: 'pbkdf2-sha256', it, salt: b64(salt), hash: await passwordHash(password, salt, it), createdAt: (was && was.createdAt) || new Date().toISOString(), changedAt: new Date().toISOString() };
+  const record = { email, name: String(name || (was && was.name) || '').trim().slice(0, 80), alg: 'pbkdf2-sha256', it, salt: b64(salt), hash: await passwordHash(password, salt, it), createdAt: (was && was.createdAt) || new Date().toISOString(), changedAt: new Date().toISOString(), ...(keepTwoStep && was && was.totp ? { totp: was.totp } : {}) };
   await store.put(`owner:${email}`, JSON.stringify(record));
   return record;
 }
@@ -853,19 +960,93 @@ async function newOwnerSession(env, email, mustChange = false) {
   await kv(env).put(`osess:${await sha256(token)}`, JSON.stringify({ email, at: new Date().toISOString(), expiresAt, mustChange }), { expirationTtl: days * 86400 });
   return { token, expiresAt };
 }
-/* Ten tries an hour, per address and per network, so a password can't be guessed. */
+/* Ten wrong tries an hour per address, fifty per network, so a password or a code can't be guessed. Only wrong
+   tries count: a station full of people signing in at shift change is never locked out. */
+async function loginLimitKeys(request, email) {
+  const hour = Math.floor(Date.now() / 3600000);
+  return [`olim:ip:${await sha256(request.headers.get('cf-connecting-ip') || 'unknown')}:${hour}`, `olim:em:${await sha256(email)}:${hour}`];
+}
 async function tooManyTries(env, request, email) {
-  const store = kv(env), hour = Math.floor(Date.now() / 3600000);
-  const keys = [`olim:ip:${await sha256(request.headers.get('cf-connecting-ip') || 'unknown')}:${hour}`, `olim:em:${await sha256(email)}:${hour}`];
+  const counts = await Promise.all((await loginLimitKeys(request, email)).map((k) => kv(env).get(k)));
+  return Number(counts[0]) >= LOGIN_TRIES_PER_NETWORK || Number(counts[1]) >= LOGIN_TRIES_PER_HOUR;
+}
+async function wrongTry(env, request, email) {
+  const store = kv(env), keys = await loginLimitKeys(request, email);
   const counts = await Promise.all(keys.map((k) => store.get(k)));
-  if (counts.some((c) => Number(c) >= LOGIN_TRIES_PER_HOUR)) return true;
   await Promise.all(keys.map((k, i) => store.put(k, String(Number(counts[i] || 0) + 1), { expirationTtl: 7200 })));
-  return false;
 }
 function passwordProblem(p) {
   if (typeof p !== 'string' || p.length < 10) return 'The password needs at least 10 characters.';
   if (p.length > 200) return 'That password is too long.';
   return '';
+}
+
+/* ------------------------------------------------------------------ *
+ * Two-step sign-in: after the password, a code from an authenticator app (RFC 6238: HMAC-SHA1, 30-second steps,
+ * 6 digits) or one of ten one-time recovery codes. For the owner login and members' web logins. Stored with the
+ * login as { secret, last, recovery: [sha256 of each code], on }; `last` is the step of the last code used, so a
+ * code can't be used twice.
+ * ------------------------------------------------------------------ */
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function b32(bytes) {
+  let bits = 0, v = 0, out = '';
+  for (const b of bytes) { v = (v << 8) | b; bits += 8; while (bits >= 5) { out += B32[(v >>> (bits - 5)) & 31]; bits -= 5; } }
+  return bits ? out + B32[(v << (5 - bits)) & 31] : out;
+}
+function unb32(s) {
+  let bits = 0, v = 0; const out = [];
+  for (const ch of String(s).toUpperCase().replace(/[^A-Z2-7]/g, '')) { v = (v << 5) | B32.indexOf(ch); bits += 5; if (bits >= 8) { out.push((v >>> (bits - 8)) & 255); bits -= 8; } }
+  return new Uint8Array(out);
+}
+async function totpCode(secret, step) {
+  const key = await crypto.subtle.importKey('raw', unb32(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const msg = new Uint8Array(8);
+  for (let i = 7, s = step; i >= 0; i -= 1, s = Math.floor(s / 256)) msg[i] = s & 255;
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, msg)), o = mac[19] & 15;
+  return String((((mac[o] & 127) << 24) | (mac[o + 1] << 16) | (mac[o + 2] << 8) | mac[o + 3]) % 1000000).padStart(6, '0');
+}
+/* The step a code belongs to (now, or one either side for a phone clock a little off) and later than `last`; 0 if none. */
+async function totpStep(secret, code, last = 0) {
+  const c = String(code || '').replace(/\D/g, '');
+  if (c.length !== 6) return 0;
+  const now = Math.floor(Date.now() / 30000);
+  for (const step of [now, now - 1, now + 1]) if (step > last && safeEqual(await totpCode(secret, step), c)) return step;
+  return 0;
+}
+const recoveryKey = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+async function newRecoveryCodes() {
+  const codes = Array.from({ length: 10 }, () => randomCode(8).replace(/^(.{4})/, '$1-'));
+  return { codes, hashes: await Promise.all(codes.map((c) => sha256(recoveryKey(c)))) };
+}
+/* Checks the second step of a sign-in. { need } when no code came, { ok, tf } with what to store when it's right. */
+async function secondStep(tf, code) {
+  const raw = String(code || '').trim();
+  if (!raw) return { need: true };
+  const step = await totpStep(tf.secret, raw, tf.last || 0);
+  if (step) return { ok: true, tf: { ...tf, last: step } };
+  if (recoveryKey(raw).length === 8) {
+    const i = (tf.recovery || []).indexOf(await sha256(recoveryKey(raw)));
+    if (i >= 0) { const recovery = tf.recovery.filter((_, j) => j !== i); return { ok: true, tf: { ...tf, recovery }, recoveryLeft: recovery.length }; }
+  }
+  return { ok: false };
+}
+const needCode = (request, env) => json({ error: { message: 'Enter the 6-digit code from your authenticator app.', code: 'need_code' } }, 401, request, env);
+// 401 at sign-in; 403 from a signed-in screen, which is still signed in (a 401 there would sign it out)
+const badCode = (request, env, status = 401) => fail(status, 'That code isn\'t right. Use the newest code in the app, or one of your recovery codes.', request, env);
+/* Turning it on: a new secret waits 15 minutes for its first code, which proves the app has it. */
+async function twoStepStart(env, subject, label) {
+  const secret = b32(crypto.getRandomValues(new Uint8Array(20)));
+  await kv(env).put(`tfpend:${await sha256(subject)}`, JSON.stringify({ secret }), { expirationTtl: 900 });
+  return { secret, uri: `otpauth://totp/${encodeURIComponent('OpsBoard:' + label)}?secret=${secret}&issuer=OpsBoard&algorithm=SHA1&digits=6&period=30` };
+}
+async function twoStepConfirm(env, subject, code) {
+  const key = `tfpend:${await sha256(subject)}`, pending = await kv(env).get(key, 'json');
+  if (!pending) return { error: 'That took too long. Start again.' };
+  const step = await totpStep(pending.secret, code);
+  if (!step) return { error: 'That code isn\'t right. Type the code the app shows now; the phone\'s clock should be set automatically.' };
+  await kv(env).delete(key);
+  const { codes, hashes } = await newRecoveryCodes();
+  return { tf: { secret: pending.secret, last: step, recovery: hashes, on: new Date().toISOString() }, codes };
 }
 
 /* The admin of the owner's own squad sets up the owner login, once, before any exists. Or anyone with the setup
@@ -900,7 +1081,8 @@ async function ownerClaim(request, env) {
     by = `admin of ${auth.orgId}`;
     await audit(env, auth.orgId, { action: 'owner_login_set_up', memberId: auth.member.id, name: auth.member.name });
   }
-  await setOwnerPassword(env, email, password, name);
+  // the setup code is also the way back in after losing the phone, so a reset with it turns two-step sign-in off
+  await setOwnerPassword(env, email, password, name, by !== 'setup code');
   const session = await newOwnerSession(env, email);
   return json({ ok: true, email, by, ...session }, 200, request, env);
 }
@@ -920,15 +1102,24 @@ async function ownerLogin(request, env) {
   const first = ownerSetup(env);
   if (!record && first && first.email === email && first.until > Date.now() && safeEqual(password, first.temp)) {
     record = await setOwnerPassword(env, email, password, '');
-    record.mustChange = true;
+    record.mustChange = true; record.mustChangeUntil = new Date(first.until).toISOString();
     await store.put(`owner:${email}`, JSON.stringify(record));
   }
   // the same work and the same answer whether or not the address has an account
   const salt = record ? unb64(record.salt) : new Uint8Array(16);
   const hash = await passwordHash(password, salt, record ? record.it : hashIterations(env));
-  if (!record || !safeEqual(hash, record.hash)) return fail(401, 'That email and password don\'t match.', request, env);
+  if (!record || !safeEqual(hash, record.hash)) { await wrongTry(env, request, email); return fail(401, 'That email and password don\'t match.', request, env); }
+  if (record.mustChange && Date.parse(record.mustChangeUntil || '') < Date.now()) return fail(401, 'That one-time password has run out. Reset the password with the setup code.', request, env);
+  let recoveryLeft;
+  if (record.totp) {
+    const st = await secondStep(record.totp, body?.code);
+    if (st.need) return needCode(request, env);
+    if (!st.ok) { await wrongTry(env, request, email); return badCode(request, env); }
+    record.totp = st.tf; recoveryLeft = st.recoveryLeft;
+    await store.put(`owner:${email}`, JSON.stringify(record));
+  }
   const session = await newOwnerSession(env, email, !!record.mustChange);
-  return json({ email, name: record.name || '', mustChange: !!record.mustChange, ...session }, 200, request, env);
+  return json({ email, name: record.name || '', mustChange: !!record.mustChange, twoStep: !!record.totp, ...(recoveryLeft !== undefined ? { recoveryLeft } : {}), ...session }, 200, request, env);
 }
 async function ownerLogout(request, env) {
   const token = bearer(request);
@@ -939,14 +1130,14 @@ async function ownerMe(request, env) {
   const s = await ownerSession(request, env);
   if (!s) return fail(401, 'Sign in with your owner email and password.', request, env);
   const record = await kv(env).get(`owner:${s.email}`, 'json');
-  return json({ email: s.email, name: (record && record.name) || '', expiresAt: s.expiresAt, mustChange: !!s.mustChange }, 200, request, env);
+  return json({ email: s.email, name: (record && record.name) || '', expiresAt: s.expiresAt, mustChange: !!s.mustChange, twoStep: !!(record && record.totp), recoveryLeft: record && record.totp ? (record.totp.recovery || []).length : 0 }, 200, request, env);
 }
 async function ownerPassword(request, env) {
   const s = await ownerSession(request, env);
   if (!s) return fail(401, 'Sign in with your owner email and password.', request, env);
   const body = await request.json().catch(() => null);
   const record = await kv(env).get(`owner:${s.email}`, 'json');
-  if (!record || !safeEqual(await passwordHash(String(body?.current || ''), unb64(record.salt), record.it), record.hash)) return fail(401, 'The current password is not right.', request, env);
+  if (!record || !safeEqual(await passwordHash(String(body?.current || ''), unb64(record.salt), record.it), record.hash)) return fail(403, 'The current password is not right.', request, env);
   const weak = passwordProblem(body?.next);
   if (weak) return fail(400, weak, request, env);
   if (safeEqual(String(body.next), String(body.current || ''))) return fail(400, 'Choose a password different from the one you were given.', request, env);
@@ -955,6 +1146,57 @@ async function ownerPassword(request, env) {
   await kv(env).delete(`osess:${await sha256(bearer(request))}`);
   const session = await newOwnerSession(env, s.email);
   return json({ ok: true, ...session }, 200, request, env);
+}
+/* The owner's two-step sign-in: start (a secret and its QR address), confirm (the first code; returns the
+   recovery codes once, and a new sign-in, since every earlier one ends), recovery (new codes, with a current
+   code), off (the password and a current code). */
+async function ownerTwoStep(what, request, env) {
+  const s = await ownerSession(request, env);
+  if (!s) return fail(401, 'Sign in with your owner email and password.', request, env);
+  if (s.mustChange) return fail(403, 'Choose your own password first.', request, env);
+  const store = kv(env), key = `owner:${s.email}`, record = await store.get(key, 'json');
+  const body = await request.json().catch(() => ({}));
+  if (what === 'start') return json(await twoStepStart(env, key, s.email), 200, request, env);
+  if (what === 'confirm') {
+    const r = await twoStepConfirm(env, key, body?.code);
+    if (r.error) return fail(400, r.error, request, env);
+    record.totp = r.tf; record.changedAt = new Date().toISOString();
+    await store.put(key, JSON.stringify(record));
+    await store.delete(`osess:${await sha256(bearer(request))}`);
+    return json({ ok: true, recovery: r.codes, ...(await newOwnerSession(env, s.email)) }, 200, request, env);
+  }
+  if (!record.totp) return fail(400, 'Two-step sign-in is off.', request, env);
+  if (await tooManyTries(env, request, s.email)) return fail(429, 'Too many tries. Wait an hour.', request, env);
+  if (what === 'off' && !safeEqual(await passwordHash(String(body?.password || ''), unb64(record.salt), record.it), record.hash)) { await wrongTry(env, request, s.email); return fail(403, 'The password is not right.', request, env); }
+  const st = await secondStep(record.totp, body?.code);
+  if (!st.ok) { await wrongTry(env, request, s.email); return badCode(request, env, 403); }
+  if (what === 'recovery') {
+    const { codes, hashes } = await newRecoveryCodes();
+    record.totp = { ...st.tf, recovery: hashes };
+    await store.put(key, JSON.stringify(record));
+    return json({ ok: true, recovery: codes }, 200, request, env);
+  }
+  delete record.totp;
+  await store.put(key, JSON.stringify(record));
+  return json({ ok: true }, 200, request, env);
+}
+/* A new admin invite for an agency already on the relay, for when the first one was lost or used. Earlier admin
+   invites for it stop working. */
+async function ownerInvite(request, env) {
+  const refused = await ownerGuard(request, env);
+  if (refused) return refused;
+  const store = kv(env), body = await request.json().catch(() => null);
+  const org = body?.orgId ? await store.get(`org:${String(body.orgId)}`, 'json') : null;
+  if (!org) return fail(404, 'No squad with that ID on this relay.', request, env);
+  const list = await store.list({ prefix: 'invite:' });
+  for (const k of list.keys) {
+    const invite = await store.get(k.name, 'json');
+    if (invite?.orgId === org.id && invite.role === 'admin' && !invite.disabled) await store.put(k.name, JSON.stringify({ ...invite, disabled: true }));
+  }
+  const inviteCode = randomCode(), now = new Date().toISOString();
+  await store.put(`invite:${inviteCode}`, JSON.stringify({ orgId: org.id, role: 'admin', createdAt: now, disabled: false }));
+  await audit(env, org.id, { action: 'owner_made_admin_invite', name: 'OpsBoard owner' });
+  return json({ orgId: org.id, orgName: org.name, inviteCode, role: 'admin' }, 200, request, env);
 }
 /* The owner opens any agency's console to set it up or help, as a member named for the owner, logged in the
    agency's activity so its admins see it. The sign-in lasts 12 hours. */
@@ -969,7 +1211,7 @@ async function ownerActAs(request, env) {
   Object.assign(member, { role: 'admin', status: 'active', lastSeenAt: now });
   await store.put(key, JSON.stringify(member));
   const token = 'ws_' + randomToken();
-  await store.put(`tok:${await sha256(token)}`, JSON.stringify({ orgId: org.id, memberId: member.id, web: true, owner: true }), { expirationTtl: 12 * 3600 });
+  await store.put(`tok:${await sha256(token)}`, JSON.stringify({ orgId: org.id, memberId: member.id, web: true, owner: true, at: now }), { expirationTtl: 12 * 3600 });
   const s = await ownerSession(request, env);
   await audit(env, org.id, { action: 'owner_opened_console', name: 'OpsBoard owner', by: s ? s.email : 'setup code' });
   return json({ token, orgId: org.id, orgName: org.name }, 200, request, env);
@@ -1132,6 +1374,7 @@ async function openBoard(request, env) {
   if (auth.kind === 'revoked') return refuseSocket(4403, 'Your access to this organization has been withdrawn.');
   if (auth.kind === 'expired') return refuseSocket(4403, 'This guest access has ended. Ask the squad for a new guest link.');
   if (auth.kind !== 'member') return refuseSocket(4401, 'This tablet is not signed in to the squad.');
+  if (auth.enrollOnly) return refuseSocket(4403, 'Turn on two-step sign-in first.');
 
   // The trial starts the first time a squad shares a board, not when it was set
   // up, so a squad that has used narratives for a year still gets its 60 days.
@@ -1447,7 +1690,7 @@ export default {
           // Lets the app tell an org-capable relay from an older one and offer
           // the right screens, rather than failing on an endpoint that is not
           // there yet.
-          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans', 'guests', 'owner-login', 'agency-console'] : []), 'divert'],
+          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans', 'guests', 'owner-login', 'agency-console', 'two-step'] : []), 'divert'],
         },
         200,
         request,
@@ -1465,6 +1708,8 @@ export default {
     if (path === '/v1/owner/squad' && request.method === 'POST') return ownerSquad(request, env);
     if (path === '/v1/owner/create' && request.method === 'POST') return ownerCreate(request, env);
     if (path === '/v1/owner/act-as' && request.method === 'POST') return ownerActAs(request, env);
+    if (path === '/v1/owner/invite' && request.method === 'POST') return ownerInvite(request, env);
+    { const m = /^\/v1\/owner\/2fa\/(start|confirm|recovery|off)$/.exec(path); if (m && request.method === 'POST') return ownerTwoStep(m[1], request, env); }
     if (path === '/v1/owner/claim' && request.method === 'POST') return ownerClaim(request, env);
     if (path === '/v1/owner/login' && request.method === 'POST') return ownerLogin(request, env);
     if (path === '/v1/owner/logout' && request.method === 'POST') return ownerLogout(request, env);
@@ -1508,6 +1753,8 @@ export default {
       );
     }
 
+    if (auth.enrollOnly && !ENROLL_ROUTES.has(path)) return fail(403, 'Your agency requires two-step sign-in. Turn it on first.', request, env);
+
     // The daily cap is for AI narratives, the part that costs money; settings and members are not counted.
     const subject = auth.kind === 'member' ? `${auth.orgId}:${auth.member.id}` : auth.code;
 
@@ -1537,6 +1784,7 @@ export default {
     }
     if (path === '/v1/account/setup' && request.method === 'POST') return accountSetup(auth, request, env);
     if (path === '/v1/account/password' && request.method === 'POST') return accountPassword(auth, request, env);
+    { const m = /^\/v1\/account\/2fa\/(start|confirm|recovery|off)$/.exec(path); if (m && request.method === 'POST') return accountTwoStep(m[1], auth, request, env); }
 
     // Everything past here changes the org, so it is admins only.
     if (!isAdmin(auth)) {
@@ -1557,6 +1805,8 @@ export default {
     if (path === '/v1/invites/list' && request.method === 'POST') return listInvites(auth, request, env);
     if (path === '/v1/invites/revoke' && request.method === 'POST') return revokeInvite(auth, request, env);
     if (path === '/v1/audit' && request.method === 'GET') return readAudit(auth, request, env);
+    if (path === '/v1/members/2fa-reset' && request.method === 'POST') return memberTwoStepReset(auth, request, env);
+    if (path === '/v1/agency/security' && request.method === 'POST') return agencySecurity(auth, request, env);
 
     return fail(404, 'Not found.', request, env);
   },
