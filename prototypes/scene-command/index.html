@@ -5708,6 +5708,7 @@ function connectSheet() {
         ${planPanel()}
         ${isGuest() ? `<div class="note">Guest access for <b>${esc(AGENCIES[RELAY.agency] ? AGENCIES[RELAY.agency].long : 'another department')}</b>${RELAY.dept ? ' · ' + esc(RELAY.dept) : ''}${RELAY.until ? ` until <b>${esc(fmtDT(Date.parse(RELAY.until)))}</b>` : ''}. This device shares the MCI and events only.</div>` : ''}
         ${RELAY.role === 'admin' && !planEnded() ? guestInvitePanel() : ''}
+        ${RELAY.role === 'admin' && !IN_CLAUDE ? ownerClaimPanel() : ''}
         ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Add a tablet</h2></div>
           <div class="note">Makes a new invite link. Open it on the other tablet, or type its code there. Making a new one stops earlier invite links from working; tablets already joined are not affected.</div>
           ${f.invite ? `<div class="coord" style="word-break:break-all">${esc(f.invite.link)}<small>Invite code ${esc(f.invite.code)}</small></div>
@@ -5773,6 +5774,17 @@ function ownerSheet() {
     foot: `<button class="btn" data-act="sheet" data-arg="connect">Back</button><span class="grow"></span><button class="btn primary" data-act="close">Done</button>`,
   };
 }
+/* The relay owner's login (email and password) for the owner console, set up once from the owner's own squad. */
+function ownerClaimPanel() {
+  const f = UI.form;
+  if (f.oclaimed) return `<div class="ph"><h2>Owner login</h2></div><div class="note ok-t">Saved for <b>${esc(f.oclaimed)}</b>. Sign in to the owner console with that email and password, on any device.</div><a class="btn" href="owner.html">Open the owner console</a>`;
+  if (!f.oclaim) return `<div class="ph"><h2>Owner login</h2></div><div class="note">If you run OpsBoard for other squads: set up an email and password for the owner console, where you see every agency and its plan. Only the admin of your own squad can, once.</div><button class="btn" data-act="f-set" data-arg="oclaim=1">Set up the owner login</button>`;
+  return `<div class="ph"><h2>Owner login</h2></div>
+    ${field('Your email', input('oc-email', 'ocemail', f.ocemail, 'you@example.com', 'inputmode="email" autocapitalize="off" autocomplete="username"'))}
+    <div class="grid2">${field('Password · at least 10 characters', input('oc-pass', 'ocpass', f.ocpass, '', 'type="password" autocomplete="new-password"'))}${field('Again', input('oc-pass2', 'ocpass2', f.ocpass2, '', 'type="password" autocomplete="new-password"'))}</div>
+    ${f.ocerr ? `<div class="note crit-t">${esc(f.ocerr)}</div>` : ''}
+    <div class="toolbar"><button class="btn primary" data-act="owner-claim">Save the owner login</button><button class="btn" data-act="f-set" data-arg="oclaim=">Cancel</button></div>`;
+}
 /* Another department joins the MCI or an event: a guest link for one agency, good for a set time. Its devices see
    only the incident and event boards, in their own colors, never the squad's daily calls or roster. */
 function guestInvitePanel() {
@@ -5789,6 +5801,18 @@ function guestInvitePanel() {
 }
 const RELAY_ACTIONS = {
   'relay-retry'() { location.reload(); },
+  async 'owner-claim'() {
+    const f = UI.form, email = (f.ocemail || '').trim();
+    f.ocerr = '';
+    if (!email || !/@/.test(email)) { f.ocerr = 'Enter your email.'; return render(); }
+    if ((f.ocpass || '').length < 10) { f.ocerr = 'The password needs at least 10 characters.'; return render(); }
+    if (f.ocpass !== f.ocpass2) { f.ocerr = 'The two passwords don\'t match.'; return render(); }
+    try {
+      await relayCall('/v1/owner/claim', { email, password: f.ocpass, name: RELAY.name || '' }, { authorization: 'Bearer ' + RELAY.token });
+      f.oclaimed = email.toLowerCase(); f.ocpass = f.ocpass2 = ''; render();
+      showToast('Owner login saved.', false);
+    } catch (e) { f.ocerr = e.message; render(); }
+  },
   async 'relay-guest'() {
     const f = UI.form, agency = f.gagency || 'fire', hours = Number(f.ghours || 24);
     try {

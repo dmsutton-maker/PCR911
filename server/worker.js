@@ -651,14 +651,163 @@ const PLAN_REFUSALS = {
  * The relay owner's view of every squad and its plan. Guarded by the same
  * setup code that creates squads: both are the owner's, and only the owner's.
  */
-function ownerGuard(request, env) {
+async function ownerGuard(request, env) {
+  const store = kv(env);
+  if (!store) return fail(503, 'This relay has no storage bound.', request, env);
+  const session = await ownerSession(request, env);
+  if (session) return null;
   const bootstrap = (env.BOOTSTRAP_CODE || '').trim();
-  if (!kv(env)) return fail(503, 'This relay has no storage bound.', request, env);
-  if (!bootstrap) return fail(503, 'This relay has no BOOTSTRAP_CODE set.', request, env);
-  if (!safeEqual(bootstrap, request.headers.get('x-bootstrap-code') || '')) {
-    return fail(401, 'That setup code was not recognised.', request, env);
+  const presented = request.headers.get('x-bootstrap-code') || '';
+  if (presented && bootstrap && safeEqual(bootstrap, presented)) return null;
+  if (!presented && bearer(request)) return fail(401, 'Your owner sign-in has ended. Sign in again.', request, env);
+  if (!bootstrap && presented) return fail(503, 'This relay has no BOOTSTRAP_CODE set.', request, env);
+  return fail(401, presented ? 'That setup code was not recognised.' : 'Sign in with your owner email and password.', request, env);
+}
+
+/* ------------------------------------------------------------------ *
+ * The relay owner's own login: an email and a password, like any web
+ * service. Set up once, either by the admin of the owner's own squad
+ * (the first squad on the relay, or one on a plan with no end date) or
+ * with the setup code, which also resets a forgotten password.
+ * ------------------------------------------------------------------ */
+const OWNER_SESSION_DAYS = 30;
+const LOGIN_TRIES_PER_HOUR = 10;
+const normEmail = (v) => String(v || '').trim().toLowerCase();
+const emailOk = (v) => /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/.test(v);
+const hashIterations = (env) => Math.min(100000, Math.max(20000, Number(env.OWNER_HASH_ITERATIONS) || 30000));
+const b64 = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+async function passwordHash(password, salt, iterations) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  return b64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256));
+}
+async function setOwnerPassword(env, email, password, name) {
+  const store = kv(env);
+  const salt = crypto.getRandomValues(new Uint8Array(16)), it = hashIterations(env);
+  const was = await store.get(`owner:${email}`, 'json');
+  const record = { email, name: String(name || (was && was.name) || '').trim().slice(0, 80), alg: 'pbkdf2-sha256', it, salt: b64(salt), hash: await passwordHash(password, salt, it), createdAt: (was && was.createdAt) || new Date().toISOString(), changedAt: new Date().toISOString() };
+  await store.put(`owner:${email}`, JSON.stringify(record));
+  return record;
+}
+async function ownerCount(store) {
+  const page = await store.list({ prefix: 'owner:', limit: 1 });
+  return page.keys.length;
+}
+async function ownerSession(request, env) {
+  const token = bearer(request);
+  if (!token || !token.startsWith('os_')) return null;
+  const s = await kv(env).get(`osess:${await sha256(token)}`, 'json');
+  return s && Date.parse(s.expiresAt) > Date.now() ? s : null;
+}
+async function newOwnerSession(env, email) {
+  const token = 'os_' + randomToken();
+  const expiresAt = new Date(Date.now() + OWNER_SESSION_DAYS * 86400000).toISOString();
+  await kv(env).put(`osess:${await sha256(token)}`, JSON.stringify({ email, at: new Date().toISOString(), expiresAt }), { expirationTtl: OWNER_SESSION_DAYS * 86400 });
+  return { token, expiresAt };
+}
+/* Ten tries an hour, per address and per network, so a password can't be guessed. */
+async function tooManyTries(env, request, email) {
+  const store = kv(env), hour = Math.floor(Date.now() / 3600000);
+  const keys = [`olim:ip:${await sha256(request.headers.get('cf-connecting-ip') || 'unknown')}:${hour}`, `olim:em:${await sha256(email)}:${hour}`];
+  const counts = await Promise.all(keys.map((k) => store.get(k)));
+  if (counts.some((c) => Number(c) >= LOGIN_TRIES_PER_HOUR)) return true;
+  await Promise.all(keys.map((k, i) => store.put(k, String(Number(counts[i] || 0) + 1), { expirationTtl: 7200 })));
+  return false;
+}
+function passwordProblem(p) {
+  if (typeof p !== 'string' || p.length < 10) return 'The password needs at least 10 characters.';
+  if (p.length > 200) return 'That password is too long.';
+  return '';
+}
+
+/* The admin of the owner's own squad sets up the owner login, once, before any exists. Or anyone with the setup
+   code, at any time: that is also how a forgotten password is reset. */
+async function ownerClaim(request, env) {
+  const store = kv(env);
+  if (!store) return fail(503, 'This relay has no storage bound.', request, env);
+  const body = await request.json().catch(() => null);
+  const email = normEmail(body?.email), password = body?.password, name = String(body?.name || '').trim();
+  if (!emailOk(email)) return fail(400, 'Enter a valid email address.', request, env);
+  const weak = passwordProblem(password);
+  if (weak) return fail(400, weak, request, env);
+  const bootstrap = (env.BOOTSTRAP_CODE || '').trim(), presented = request.headers.get('x-bootstrap-code') || '';
+  let by;
+  if (presented) {
+    if (!bootstrap || !safeEqual(bootstrap, presented)) return fail(401, 'That setup code was not recognised.', request, env);
+    by = 'setup code';
+  } else {
+    const auth = await authenticate(request, env);
+    if (auth.kind !== 'member' || auth.member.role !== 'admin') return fail(403, 'Open this from your squad\'s admin tablet, or use the setup code.', request, env);
+    if (await ownerCount(store)) return fail(409, 'This relay already has an owner login. Sign in with it, or reset its password with the setup code.', request, env);
+    const plan = await store.get(`plan:${auth.orgId}`, 'json');
+    let first = null, cursor;
+    do {
+      const page = await store.list({ prefix: 'org:', cursor });
+      for (const { name: k } of page.keys) { const o = await store.get(k, 'json'); if (o && (!first || String(o.createdAt) < String(first.createdAt))) first = o; }
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor);
+    if (!(plan && plan.tier === 'comp') && !(first && first.id === auth.orgId)) {
+      return fail(403, 'Only the admin of the relay owner\'s own squad can set up the owner login. Use the setup code instead.', request, env);
+    }
+    by = `admin of ${auth.orgId}`;
+    await audit(env, auth.orgId, { action: 'owner_login_set_up', memberId: auth.member.id, name: auth.member.name });
   }
-  return null;
+  await setOwnerPassword(env, email, password, name);
+  const session = await newOwnerSession(env, email);
+  return json({ ok: true, email, by, ...session }, 200, request, env);
+}
+async function ownerLogin(request, env) {
+  const store = kv(env);
+  if (!store) return fail(503, 'This relay has no storage bound.', request, env);
+  const body = await request.json().catch(() => null);
+  const email = normEmail(body?.email), password = String(body?.password || '');
+  if (!email || !password) return fail(400, 'Enter your email and password.', request, env);
+  if (await tooManyTries(env, request, email)) return fail(429, 'Too many tries. Wait an hour, or reset the password with the setup code.', request, env);
+  const record = await store.get(`owner:${email}`, 'json');
+  // the same work and the same answer whether or not the address has an account
+  const salt = record ? unb64(record.salt) : new Uint8Array(16);
+  const hash = await passwordHash(password, salt, record ? record.it : hashIterations(env));
+  if (!record || !safeEqual(hash, record.hash)) return fail(401, 'That email and password don\'t match.', request, env);
+  const session = await newOwnerSession(env, email);
+  return json({ email, name: record.name || '', ...session }, 200, request, env);
+}
+async function ownerLogout(request, env) {
+  const token = bearer(request);
+  if (token && token.startsWith('os_')) await kv(env).delete(`osess:${await sha256(token)}`);
+  return json({ ok: true }, 200, request, env);
+}
+async function ownerMe(request, env) {
+  const s = await ownerSession(request, env);
+  if (!s) return fail(401, 'Sign in with your owner email and password.', request, env);
+  const record = await kv(env).get(`owner:${s.email}`, 'json');
+  return json({ email: s.email, name: (record && record.name) || '', expiresAt: s.expiresAt }, 200, request, env);
+}
+async function ownerPassword(request, env) {
+  const s = await ownerSession(request, env);
+  if (!s) return fail(401, 'Sign in with your owner email and password.', request, env);
+  const body = await request.json().catch(() => null);
+  const record = await kv(env).get(`owner:${s.email}`, 'json');
+  if (!record || !safeEqual(await passwordHash(String(body?.current || ''), unb64(record.salt), record.it), record.hash)) return fail(401, 'The current password is not right.', request, env);
+  const weak = passwordProblem(body?.next);
+  if (weak) return fail(400, weak, request, env);
+  await setOwnerPassword(env, s.email, body.next, record.name);
+  return json({ ok: true }, 200, request, env);
+}
+/* The owner adds an agency from the console and sends its admin an invite link: no setup code needed. */
+async function ownerCreate(request, env) {
+  const refused = await ownerGuard(request, env);
+  if (refused) return refused;
+  const store = kv(env);
+  const body = await request.json().catch(() => null);
+  const orgName = String(body?.orgName || '').trim().slice(0, 80);
+  if (!orgName) return fail(400, 'The agency needs a name.', request, env);
+  const orgId = crypto.randomUUID(), now = new Date().toISOString(), inviteCode = randomCode();
+  await store.put(`org:${orgId}`, JSON.stringify({ id: orgId, name: orgName, createdAt: now, config: null, kind: ['ems', 'fire', 'police'].includes(body?.kind) ? body.kind : 'ems' }));
+  await store.put(`invite:${inviteCode}`, JSON.stringify({ orgId, role: 'admin', createdAt: now, disabled: false }));
+  if (body?.plan === 'comp') await store.put(`plan:${orgId}`, JSON.stringify({ tier: 'comp', setAt: now, by: 'owner' }));
+  await audit(env, orgId, { action: 'org_created', name: 'Relay owner' });
+  return json({ orgId, orgName, inviteCode, role: 'admin' }, 200, request, env);
 }
 
 async function orgMembers(store, orgId) {
@@ -706,7 +855,7 @@ async function squadSummary(env, store, org, withStats) {
 }
 
 async function ownerSquads(request, env) {
-  const refused = ownerGuard(request, env);
+  const refused = await ownerGuard(request, env);
   if (refused) return refused;
   const store = kv(env);
   const orgs = [];
@@ -727,7 +876,7 @@ async function ownerSquads(request, env) {
 /* One squad in full, for the owner: its people (names and roles, never tokens), guests and when they run out,
    the devices that use its board, and its recent audit log. */
 async function ownerSquad(request, env) {
-  const refused = ownerGuard(request, env);
+  const refused = await ownerGuard(request, env);
   if (refused) return refused;
   const store = kv(env);
   const body = await request.json().catch(() => null);
@@ -746,7 +895,7 @@ async function ownerSquad(request, env) {
 }
 
 async function ownerSetPlan(request, env) {
-  const refused = ownerGuard(request, env);
+  const refused = await ownerGuard(request, env);
   if (refused) return refused;
   const store = kv(env);
   const body = await request.json().catch(() => null);
@@ -1101,7 +1250,7 @@ export default {
           // Lets the app tell an org-capable relay from an older one and offer
           // the right screens, rather than failing on an endpoint that is not
           // there yet.
-          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans'] : []), 'divert'],
+          features: [...(kv(env) ? ['orgs'] : []), ...(env.BOARD ? ['board'] : []), ...(env.BOARD && kv(env) ? ['plans', 'guests', 'owner-login'] : []), 'divert'],
         },
         200,
         request,
@@ -1117,6 +1266,12 @@ export default {
     if (path === '/v1/owner/squads' && request.method === 'POST') return ownerSquads(request, env);
     if (path === '/v1/owner/plan' && request.method === 'POST') return ownerSetPlan(request, env);
     if (path === '/v1/owner/squad' && request.method === 'POST') return ownerSquad(request, env);
+    if (path === '/v1/owner/create' && request.method === 'POST') return ownerCreate(request, env);
+    if (path === '/v1/owner/claim' && request.method === 'POST') return ownerClaim(request, env);
+    if (path === '/v1/owner/login' && request.method === 'POST') return ownerLogin(request, env);
+    if (path === '/v1/owner/logout' && request.method === 'POST') return ownerLogout(request, env);
+    if (path === '/v1/owner/me' && request.method === 'POST') return ownerMe(request, env);
+    if (path === '/v1/owner/password' && request.method === 'POST') return ownerPassword(request, env);
 
     // The board authenticates inside, from the WebSocket subprotocol, and is
     // not counted against the daily AI request limit: a tablet reconnecting

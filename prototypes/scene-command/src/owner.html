@@ -58,6 +58,9 @@ a { color: var(--accent); }
 input[type=text], input[type=password], input[type=date], input[type=search] { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); width: 100%; }
 input:focus-visible, .btn:focus-visible, .row:focus-visible, .chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .signin { max-width: 560px; display: flex; flex-direction: column; gap: 12px; }
+.h { margin: 0; font: 700 20px/1.1 var(--display); }
+details summary { cursor: pointer; }
+details .field { margin-top: 8px; }
 .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .stat .v { font: 700 28px/1 var(--mono); font-variant-numeric: tabular-nums; }
@@ -132,21 +135,29 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const today = v => Number.isFinite(t(v)) && Date.now() - t(v) < 86400000;
 
 const S = {
-  relay: base(ss.get('owner:relay') || BAKED_RELAY),
-  code: ss.get('owner:code') || '',
+  relay: base(ls.get('owner:relay') || BAKED_RELAY),
+  token: ls.get('owner:session') || '',   // the owner's sign-in, 30 days; Sign out ends it
+  email: ls.get('owner:email') || '',
+  code: ss.get('owner:code') || '',       // the setup code, if used instead: this tab only
+  way: 'login', panel: null, made: null, perr: '',
   squads: null, at: null, err: '', busy: false, filter: 'all', q: '', open: null, detail: null, paid: '',
 };
+const signedIn = () => !!(S.token || S.code);
 document.documentElement.dataset.mode = ls.get('owner:mode') || 'night';
 { const d = new Date(); d.setFullYear(d.getFullYear() + 1); S.paid = d.toISOString().slice(0, 10); }
 
-async function call(path, body) {
-  const r = await fetch(S.relay + path, { method: 'POST', headers: { 'content-type': 'application/json', 'x-bootstrap-code': S.code }, body: JSON.stringify(body || {}) });
+async function call(path, body, headers) {
+  const auth = headers || (S.token ? { authorization: 'Bearer ' + S.token } : S.code ? { 'x-bootstrap-code': S.code } : {});
+  const r = await fetch(S.relay + path, { method: 'POST', headers: { 'content-type': 'application/json', ...auth }, body: JSON.stringify(body || {}) });
   const data = await r.json().catch(() => ({}));
+  if (r.status === 401 && S.token && !headers) { endSession(); }
   if (!r.ok) throw new Error((data.error && data.error.message) || `The relay answered ${r.status}.`);
   return data;
 }
+function endSession() { S.token = ''; ls.set('owner:session', ''); S.squads = null; S.open = null; renderDrawer(); }
+function startSession(d) { S.token = d.token; S.email = d.email; S.code = ''; ss.set('owner:code', null); ls.set('owner:session', d.token); ls.set('owner:email', d.email); ls.set('owner:relay', S.relay); }
 async function load(quiet) {
-  if (!S.code || !S.relay) return;
+  if (!signedIn() || !S.relay) return;
   S.busy = true; if (!quiet) render();
   try { const d = await call('/v1/owner/squads', {}); S.squads = d.squads; S.at = d.at; S.err = ''; }
   catch (e) { S.err = e.message; if (!S.squads) S.squads = null; }
@@ -202,15 +213,55 @@ function setupText(sq) {
 
 /* ---------- screens ---------- */
 function signin() {
-  return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">OpsBoard · every agency on your relay</div></div></header>
-    <section class="panel signin">
-      <div class="note">For whoever runs OpsBoard's server. It shows every squad and department, its plan, its setup and how it is being used, and turns plans on and off. Nothing here shows patients, calls or anything a member typed.</div>
-      <div class="field"><span class="lbl">Relay address</span><input type="text" id="f-relay" value="${esc(S.relay)}" placeholder="https://pcr-relay.your-name.workers.dev" autocapitalize="off" inputmode="url"></div>
-      <div class="field"><span class="lbl">Owner setup code</span><input type="password" id="f-code" placeholder="The BOOTSTRAP_CODE" autocapitalize="off" autocomplete="current-password"></div>
+  const relayField = `<div class="field"><span class="lbl">Relay address</span><input type="text" id="f-relay" value="${esc(S.relay)}" placeholder="https://pcr-relay.your-name.workers.dev" autocapitalize="off" inputmode="url"></div>`;
+  const ways = {
+    login: `<div class="field"><span class="lbl">Email</span><input type="text" id="f-email" value="${esc(S.email)}" autocapitalize="off" autocomplete="username" inputmode="email"></div>
+      <div class="field"><span class="lbl">Password</span><input type="password" id="f-pass" autocomplete="current-password"></div>
+      ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
+      <div class="bar"><button class="btn primary" data-act="login" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Signing in…' : 'Sign in'}</button></div>
+      <div class="note"><b>First time?</b> Set up your owner login from your squad's admin iPad: in OpsBoard, Menu → Squad sharing → <b>Set up the owner login</b>. Then sign in here, on any device.</div>
+      <div class="bar"><button class="btn sm" data-act="way" data-arg="reset">Set up or reset with the setup code</button><button class="btn sm" data-act="way" data-arg="code">Use the setup code instead</button></div>`,
+    reset: `<div class="note">For a first owner login without the admin iPad, or a forgotten password. The setup code is the <b>BOOTSTRAP_CODE</b> saved in GitHub.</div>
+      <div class="field"><span class="lbl">Your email</span><input type="text" id="f-email" value="${esc(S.email)}" autocapitalize="off" autocomplete="username" inputmode="email"></div>
+      <div class="field"><span class="lbl">New password · at least 10 characters</span><input type="password" id="f-pass" autocomplete="new-password"></div>
+      <div class="field"><span class="lbl">Setup code</span><input type="password" id="f-code" autocapitalize="off" autocomplete="off"></div>
+      ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
+      <div class="bar"><button class="btn primary" data-act="reset" ${S.busy ? 'disabled' : ''}>Save and sign in</button><button class="btn sm" data-act="way" data-arg="login">Back</button></div>`,
+    code: `<div class="field"><span class="lbl">Setup code</span><input type="password" id="f-code" autocapitalize="off" autocomplete="off"></div>
       <div class="note">Kept only until you close this tab.</div>
       ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
-      <div><button class="btn primary" data-act="signin" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Opening…' : 'Open the console'}</button></div>
+      <div class="bar"><button class="btn primary" data-act="signin" ${S.busy ? 'disabled' : ''}>Open the console</button><button class="btn sm" data-act="way" data-arg="login">Back</button></div>`,
+  };
+  return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">OpsBoard · every agency on your relay</div></div></header>
+    <section class="panel signin">
+      <div class="note">For whoever runs OpsBoard. Every squad and department, its plan, its setup and how it is being used. Nothing here shows patients, calls or anything a member typed.</div>
+      ${ways[S.way] || ways.login}
+      <details><summary class="note">Relay</summary>${relayField}</details>
     </section>`;
+}
+function panels() {
+  if (S.panel === 'add') {
+    const m = S.made;
+    return `<section class="panel signin" aria-label="Add an agency"><h2 class="h">Add an agency</h2>
+      ${m ? `<div class="note">Send this link to <b>${esc(m.orgName)}</b>'s admin. Opening it on their iPad signs them in as the agency's admin; from there they invite their own members. Anyone with this link becomes an admin, until they make their own invite.</div>
+        <div class="field"><span class="lbl">Admin invite link</span><input type="text" readonly value="${esc(m.link)}" id="f-link"></div>
+        <div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(m.link)}">Copy link</button><button class="btn sm" data-act="copy" data-arg="${esc(m.inviteCode)}">Copy code ${esc(m.inviteCode)}</button>${navigator.share ? '<button class="btn sm" data-act="share">Send…</button>' : ''}<button class="btn sm" data-act="add-again">Add another</button><button class="btn sm" data-act="panel" data-arg="">Done</button></div>`
+      : `<div class="field"><span class="lbl">Name</span><input type="text" id="f-org" placeholder="e.g. Ocean Township First Aid" value="${esc(S.orgName || '')}"></div>
+        <div class="bar"><span class="lbl">Kind</span>${['ems', 'fire', 'police'].map(k => `<button class="chip" data-act="kind" data-arg="${k}" aria-pressed="${(S.kind || 'ems') === k}">${AG[k]}</button>`).join('')}</div>
+        <div class="bar"><span class="lbl">Plan</span><button class="chip" data-act="newplan" data-arg="trial" aria-pressed="${S.newplan !== 'comp'}">60-day free trial</button><button class="chip" data-act="newplan" data-arg="comp" aria-pressed="${S.newplan === 'comp'}">No end date</button></div>
+        ${S.perr ? `<div class="err">${esc(S.perr)}</div>` : ''}
+        <div class="bar"><button class="btn primary" data-act="create">Add and make the admin link</button><button class="btn sm" data-act="panel" data-arg="">Cancel</button></div>`}
+    </section>`;
+  }
+  if (S.panel === 'password') {
+    return `<section class="panel signin" aria-label="Change password"><h2 class="h">Change password</h2>
+      <div class="field"><span class="lbl">Current password</span><input type="password" id="f-cur" autocomplete="current-password"></div>
+      <div class="field"><span class="lbl">New password · at least 10 characters</span><input type="password" id="f-new" autocomplete="new-password"></div>
+      ${S.perr ? `<div class="err">${esc(S.perr)}</div>` : ''}
+      <div class="bar"><button class="btn primary" data-act="password">Change it</button><button class="btn sm" data-act="panel" data-arg="">Cancel</button></div>
+    </section>`;
+  }
+  return '';
 }
 function main() {
   const sqs = S.squads || [];
@@ -220,11 +271,14 @@ function main() {
   const online = sqs.reduce((a, sq) => a + ((sq.board && sq.board.online.length) || 0), 0);
   const guests = sqs.reduce((a, sq) => a + sq.members.guests, 0);
   const stat = (label, v, cls = '') => `<div class="stat ${cls}"><span class="lbl">${label}</span><span class="v">${v}</span></div>`;
-  return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">${esc(S.relay)} · ${S.at ? 'updated ' + esc(dt(S.at)) : ''}</div></div><span class="grow"></span>
+  return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">${S.token ? esc(S.email) : 'Signed in with the setup code'} · ${S.at ? 'updated ' + esc(dt(S.at)) : ''}</div></div><span class="grow"></span>
+      <button class="btn sm primary" data-act="panel" data-arg="add">Add an agency</button>
       <button class="btn sm" data-act="refresh" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Loading…' : 'Refresh'}</button>
       <button class="btn sm" data-act="csv">Download CSV</button>
+      ${S.token ? '<button class="btn sm" data-act="panel" data-arg="password">Password</button>' : ''}
       <button class="btn sm" data-act="mode">${document.documentElement.dataset.mode === 'day' ? 'Night' : 'Day'}</button>
       <button class="btn sm" data-act="signout">Sign out</button></header>
+    ${panels()}
     ${S.err ? `<div class="panel err">${esc(S.err)}</div>` : ''}
     <section class="stats" aria-label="Totals">
       ${stat('Agencies', sqs.length)}
@@ -311,7 +365,7 @@ function drawer() {
 const app = document.getElementById('app'), drawerRoot = document.getElementById('drawer-root');
 function render() {
   const focus = document.activeElement && document.activeElement.id, sel = focus && document.activeElement.selectionStart;
-  app.innerHTML = S.code && S.squads ? main() : signin();
+  app.innerHTML = signedIn() && S.squads ? main() : signin();
   if (focus) { const el = document.getElementById(focus); if (el) { el.focus(); try { if (sel != null) el.setSelectionRange(sel, sel); } catch (e) {} } }
 }
 function renderDrawer() { drawerRoot.innerHTML = S.open ? drawer() : ''; }
@@ -329,14 +383,54 @@ function csv() {
 
 const ACT = {
   async signin() {
-    S.relay = base(document.getElementById('f-relay').value); S.code = document.getElementById('f-code').value.trim();
+    S.relay = base(document.getElementById('f-relay').value); S.code = document.getElementById('f-code').value.trim(); S.token = '';
     if (!S.relay || !S.code) { S.err = 'The relay address and the setup code are both needed.'; S.code = ''; return render(); }
     S.squads = null; await load();
-    if (S.squads) { ss.set('owner:relay', S.relay); ss.set('owner:code', S.code); } else S.code = '';
+    if (S.squads) { ls.set('owner:relay', S.relay); ss.set('owner:code', S.code); } else S.code = '';
     render();
   },
+  async login() {
+    S.relay = base(document.getElementById('f-relay').value);
+    const email = document.getElementById('f-email').value.trim(), password = document.getElementById('f-pass').value;
+    S.email = email; S.err = ''; S.busy = true; render();
+    try { startSession(await call('/v1/owner/login', { email, password }, {})); S.busy = false; await load(); }
+    catch (e) { S.busy = false; S.err = e.message; render(); }
+  },
+  async reset() {
+    S.relay = base(document.getElementById('f-relay').value);
+    const email = document.getElementById('f-email').value.trim(), password = document.getElementById('f-pass').value, code = document.getElementById('f-code').value.trim();
+    S.email = email; S.err = '';
+    if (!code) { S.err = 'Enter the setup code.'; return render(); }
+    S.busy = true; render();
+    try { startSession(await call('/v1/owner/claim', { email, password }, { 'x-bootstrap-code': code })); S.busy = false; S.way = 'login'; toast('Owner login saved.'); await load(); }
+    catch (e) { S.busy = false; S.err = e.message; render(); }
+  },
+  way(k) { S.way = k; S.err = ''; render(); },
+  panel(k) { S.panel = k || null; S.made = null; S.perr = ''; render(); },
+  kind(k) { S.kind = k; render(); },
+  newplan(k) { S.newplan = k; render(); },
+  'add-again'() { S.made = null; render(); },
+  async create() {
+    const orgName = document.getElementById('f-org').value.trim();
+    if (!orgName) { S.perr = 'The agency needs a name.'; return render(); }
+    try {
+      const d = await call('/v1/owner/create', { orgName, kind: S.kind || 'ems', plan: S.newplan === 'comp' ? 'comp' : 'trial' });
+      S.made = { ...d, link: `${new URL('./', location.href).href}#join=1&u=${encodeURIComponent(S.relay)}&i=${encodeURIComponent(d.inviteCode)}` };
+      S.perr = ''; S.orgName = ''; render(); load(true);
+    } catch (e) { S.perr = e.message; render(); }
+  },
+  async password() {
+    const current = document.getElementById('f-cur').value, next = document.getElementById('f-new').value;
+    try { await call('/v1/owner/password', { current, next }); S.panel = null; render(); toast('Password changed.'); }
+    catch (e) { S.perr = e.message; render(); }
+  },
+  copy(text) { navigator.clipboard.writeText(text).then(() => toast('Copied'), () => { const el = document.getElementById('f-link'); if (el) { el.select(); } toast('Select it and copy.'); }); },
+  share() { const m = S.made; if (m && navigator.share) navigator.share({ title: 'OpsBoard admin invite', text: `${m.orgName}: your OpsBoard admin invite. Code ${m.inviteCode}.`, url: m.link }).catch(() => {}); },
   refresh() { load(); },
-  signout() { ss.set('owner:code', null); S.code = ''; S.squads = null; S.open = null; S.err = ''; renderDrawer(); render(); },
+  async signout() {
+    if (S.token) { try { await call('/v1/owner/logout', {}); } catch (e) { /* ends locally anyway */ } }
+    endSession(); ss.set('owner:code', null); S.code = ''; S.err = ''; S.panel = null; S.way = 'login'; render();
+  },
   mode() { const m = document.documentElement.dataset.mode === 'day' ? 'night' : 'day'; document.documentElement.dataset.mode = m; ls.set('owner:mode', m); render(); renderDrawer(); },
   filter(k) { S.filter = k; render(); },
   open(id) { openSquad(id); },
@@ -361,15 +455,18 @@ document.addEventListener('click', e => {
   if (el.dataset.act === 'close-bg' && e.target !== el) return;
   fn(el.dataset.arg, e);
 });
-document.addEventListener('input', e => { if (e.target.id === 'f-q') { S.q = e.target.value; render(); } });
+document.addEventListener('input', e => {
+  if (e.target.id === 'f-q') { S.q = e.target.value; render(); }
+  if (e.target.id === 'f-org') S.orgName = e.target.value;   // kept across redraws, like picking the kind
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && S.open) ACT.close();
-  if (e.key === 'Enter' && (e.target.id === 'f-code' || e.target.id === 'f-relay')) ACT.signin();
+  if (e.key === 'Enter' && !signedIn()) { if (S.way === 'login' && (e.target.id === 'f-pass' || e.target.id === 'f-email')) ACT.login(); else if (S.way === 'code' && e.target.id === 'f-code') ACT.signin(); else if (S.way === 'reset' && e.target.id === 'f-code') ACT.reset(); }
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.squads) load(true); });
 setInterval(() => { if (document.visibilityState === 'visible' && S.squads && !S.busy) load(true); }, 60000);
 render();
-if (S.code) load();
+if (signedIn()) load();
 })();
 </script>
 </body>
