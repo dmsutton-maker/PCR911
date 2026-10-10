@@ -157,7 +157,7 @@ async function call(path, body, headers) {
 function endSession() { S.token = ''; ls.set('owner:session', ''); S.squads = null; S.open = null; renderDrawer(); }
 function startSession(d) { S.token = d.token; S.email = d.email; S.code = ''; ss.set('owner:code', null); ls.set('owner:session', d.token); ls.set('owner:email', d.email); ls.set('owner:relay', S.relay); }
 async function load(quiet) {
-  if (!signedIn() || !S.relay) return;
+  if (!signedIn() || !S.relay || S.mustChange) return;
   S.busy = true; if (!quiet) render();
   try { const d = await call('/v1/owner/squads', {}); S.squads = d.squads; S.at = d.at; S.err = ''; }
   catch (e) { S.err = e.message; if (!S.squads) S.squads = null; }
@@ -212,6 +212,17 @@ function setupText(sq) {
 }
 
 /* ---------- screens ---------- */
+function choosePassword() {
+  return `<header class="top">${MARK}<div><h1>Owner console</h1><div class="sub">${esc(S.email)}</div></div></header>
+    <section class="panel signin">
+      <h2 class="h">Choose your password</h2>
+      <p class="note">You signed in with the one-time password you were given. Choose your own now: at least 10 characters, something only you know. The one-time password stops working once you do.</p>
+      <div class="field"><span class="lbl">New password</span><input type="password" id="f-new1" autocomplete="new-password"></div>
+      <div class="field"><span class="lbl">Again</span><input type="password" id="f-new2" autocomplete="new-password"></div>
+      ${S.err ? `<div class="err">${esc(S.err)}</div>` : ''}
+      <div class="bar"><button class="btn primary" data-act="choose">Save and open the console</button><button class="btn sm" data-act="signout">Sign out</button></div>
+    </section>`;
+}
 function signin() {
   const relayField = `<div class="field"><span class="lbl">Relay address</span><input type="text" id="f-relay" value="${esc(S.relay)}" placeholder="https://pcr-relay.your-name.workers.dev" autocapitalize="off" inputmode="url"></div>`;
   const ways = {
@@ -319,6 +330,10 @@ function drawer() {
   return `<div class="scrim" data-act="close-bg"><aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(sq.name)}">
     <div class="top"><div><h2><span class="ag ${kind(sq)}">${AG[kind(sq)]}</span>${esc(sq.name)}</h2><div class="sub">${esc(sq.id)}</div></div><span class="grow"></span><button class="btn sm" data-act="close">Close</button></div>
     ${d && d.error ? `<div class="err">${esc(d.error)}</div>` : ''}
+    <section class="panel"><h3>Set up this agency</h3>
+      <p class="note">Open ${esc(sq.name)}'s own agency console to set up its name, logo, units, member roster, hospitals and invite links for it. It shows in the agency's activity log as the OpsBoard owner.</p>
+      <div class="plans"><button class="btn sm primary" data-act="act-as">Open ${esc(sq.name)}'s console</button></div>
+    </section>
     <section class="panel"><h3>Plan</h3>
       <p><span class="pill ${pi.cls}">${esc(pi.label)}</span> <span class="note">${esc(pi.note)}</span></p>
       <div class="plans">
@@ -365,7 +380,7 @@ function drawer() {
 const app = document.getElementById('app'), drawerRoot = document.getElementById('drawer-root');
 function render() {
   const focus = document.activeElement && document.activeElement.id, sel = focus && document.activeElement.selectionStart;
-  app.innerHTML = signedIn() && S.squads ? main() : signin();
+  app.innerHTML = S.mustChange && S.token ? choosePassword() : signedIn() && S.squads ? main() : signin();
   if (focus) { const el = document.getElementById(focus); if (el) { el.focus(); try { if (sel != null) el.setSelectionRange(sel, sel); } catch (e) {} } }
 }
 function renderDrawer() { drawerRoot.innerHTML = S.open ? drawer() : ''; }
@@ -393,8 +408,31 @@ const ACT = {
     S.relay = base(document.getElementById('f-relay').value);
     const email = document.getElementById('f-email').value.trim(), password = document.getElementById('f-pass').value;
     S.email = email; S.err = ''; S.busy = true; render();
-    try { startSession(await call('/v1/owner/login', { email, password }, {})); S.busy = false; await load(); }
-    catch (e) { S.busy = false; S.err = e.message; render(); }
+    try {
+      const d = await call('/v1/owner/login', { email, password }, {});
+      startSession(d); S.busy = false;
+      if (d.mustChange) { S.mustChange = true; S.firstPass = password; return render(); }
+      await load();
+    } catch (e) { S.busy = false; S.err = e.message; render(); }
+  },
+  async choose() {
+    const a = document.getElementById('f-new1').value, b = document.getElementById('f-new2').value;
+    S.err = '';
+    if (a.length < 10) { S.err = 'The password needs at least 10 characters.'; return render(); }
+    if (a !== b) { S.err = 'The two passwords don\'t match.'; return render(); }
+    try {
+      const d = await call('/v1/owner/password', { current: S.firstPass, next: a });
+      startSession({ token: d.token, email: S.email }); S.mustChange = false; S.firstPass = '';
+      toast('Password set. You\'re signed in.'); await load();
+    } catch (e) { S.err = e.message; render(); }
+  },
+  async 'act-as'() {
+    const sq = (S.squads || []).find(x => x.id === S.open);
+    try {
+      const d = await call('/v1/owner/act-as', { orgId: S.open });
+      window.open(`agency.html#owner=1&relay=${encodeURIComponent(S.relay)}&session=${encodeURIComponent(d.token)}`, '_blank', 'noopener');
+      toast(`Opened ${sq ? sq.name : 'the agency'}'s console. It shows in their activity log.`);
+    } catch (e) { toast(e.message); }
   },
   async reset() {
     S.relay = base(document.getElementById('f-relay').value);
@@ -461,10 +499,11 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && S.open) ACT.close();
+  if (e.key === 'Enter' && S.mustChange && e.target.id === 'f-new2') ACT.choose();
   if (e.key === 'Enter' && !signedIn()) { if (S.way === 'login' && (e.target.id === 'f-pass' || e.target.id === 'f-email')) ACT.login(); else if (S.way === 'code' && e.target.id === 'f-code') ACT.signin(); else if (S.way === 'reset' && e.target.id === 'f-code') ACT.reset(); }
 });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.squads) load(true); });
-setInterval(() => { if (document.visibilityState === 'visible' && S.squads && !S.busy) load(true); }, 60000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.squads && Date.now() - t(S.at) > 120000) load(true); });
+setInterval(() => { if (document.visibilityState === 'visible' && S.squads && !S.busy) load(true); }, 300000);   // every 5 minutes: each refresh counts against the free plan's daily lookups
 render();
 if (signedIn()) load();
 })();

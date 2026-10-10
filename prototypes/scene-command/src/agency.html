@@ -156,6 +156,18 @@ const S = {
   members: null, invites: null, audit: null, overview: null, made: {}, err: '', busy: false, form: {},
 };
 document.documentElement.dataset.mode = ls.get('agency:mode') || 'night';
+/* Opened from the owner console: its sign-in arrives in the address's fragment (never sent to the web server),
+   is kept for this tab only, and is taken off the address at once. */
+{
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('session')) {
+    S.token = h.get('session'); S.relay = base(h.get('relay') || S.relay); S.asOwner = true; S.email = '';
+    try { sessionStorage.setItem('agency:owner', JSON.stringify({ token: S.token, relay: S.relay })); } catch (e) {}
+    history.replaceState(null, '', location.pathname);
+  } else {
+    try { const o = JSON.parse(sessionStorage.getItem('agency:owner') || 'null'); if (o) { S.token = o.token; S.relay = o.relay; S.asOwner = true; S.email = ''; } } catch (e) {}
+  }
+}
 
 async function call(path, body, method = 'POST') {
   const r = await fetch(S.relay + path, { method, headers: { 'content-type': 'application/json', ...(S.token ? { authorization: 'Bearer ' + S.token } : {}) }, ...(method === 'GET' ? {} : { body: JSON.stringify(body || {}) }) });
@@ -165,7 +177,7 @@ async function call(path, body, method = 'POST') {
   return data;
 }
 function toast(msg) { const r = document.getElementById('toast-root'); r.innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => { r.innerHTML = ''; }, 4000); }
-function signOutLocal() { S.token = ''; ls.set('agency:session', null); S.me = S.cfg = S.members = S.invites = S.audit = S.overview = null; }
+function signOutLocal() { S.token = ''; ls.set('agency:session', null); try { sessionStorage.removeItem('agency:owner'); } catch (e) {} S.asOwner = false; S.me = S.cfg = S.members = S.invites = S.audit = S.overview = null; }
 function defaults() {
   return { v: 1, agency: { name: (S.org && S.org.name) || '', num: '', logo: '', type: (S.org && S.org.kind) || 'ems' }, features: { par: false }, roster: [], members: [], contacts: [], favHosp: [], feeds: [], cameras: [] };
 }
@@ -238,6 +250,7 @@ const TABS = [
 function main() {
   const tab = TABS.find(x => x[0] === S.tab) ? S.tab : 'overview';
   return `${top()}
+    ${S.asOwner ? '<div class="panel"><p class="note"><b>Opened by the OpsBoard owner.</b> Changes here are the agency\'s own settings, and this visit shows in its activity log. This sign-in ends in 12 hours, or when you sign out.</p></div>' : ''}
     ${S.err ? `<div class="panel err">${esc(S.err)}</div>` : ''}
     <div class="layout">
       <nav class="tabs" aria-label="Sections">${TABS.map(([k, label, n]) => `<button class="tab" data-act="tab" data-arg="${k}" ${tab === k ? 'aria-current="page"' : ''}>${label}${n ? `<small>${n()}</small>` : ''}</button>`).join('')}</nav>
@@ -313,9 +326,9 @@ const VIEWS = {
         const seen = devs.filter(d => d.name === m.name).map(d => d.at).concat([t(m.lastSeenAt)]).filter(Number.isFinite);
         const me = S.me && m.id === S.me.id, guest = m.role === 'guest';
         return `<tr><td><b>${esc(m.name)}</b>${me ? ' <span class="note">(you)</span>' : ''}${guest ? `<br><small class="note">${esc(m.agency === 'police' ? 'Police' : 'Fire')} guest${m.dept ? ' · ' + esc(m.dept) : ''} · until ${esc(dt(m.expiresAt))}</small>` : ''}</td>
-          <td>${m.status !== 'active' ? '<span class="pill crit">Removed</span>' : guest ? '<span class="pill">Guest</span>' : m.role === 'admin' ? '<span class="pill ok">Admin</span>' : '<span class="pill">Member</span>'}</td>
+          <td>${m.status !== 'active' ? '<span class="pill crit">Removed</span>' : guest ? '<span class="pill">Guest</span>' : m.role === 'display' ? '<span class="pill">Display</span>' : m.role === 'admin' ? '<span class="pill ok">Admin</span>' : '<span class="pill">Member</span>'}</td>
           <td>${m.email ? esc(m.email) : '<span class="note">—</span>'}</td><td>${seen.length ? esc(ago(Math.max(...seen))) : '<span class="note">never</span>'}</td>
-          <td style="text-align:right;white-space:nowrap">${me ? '' : m.status !== 'active' ? `<button class="btn sm" data-act="member-status" data-arg="${esc(m.id)}=active">Restore</button>` : `${guest ? '' : m.role === 'admin' ? `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=member">Make member</button>` : `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=admin">Make admin</button>`} <button class="btn sm danger" data-act="member-status" data-arg="${esc(m.id)}=revoked">Remove</button>`}</td></tr>`;
+          <td style="text-align:right;white-space:nowrap">${me ? '' : m.status !== 'active' ? `<button class="btn sm" data-act="member-status" data-arg="${esc(m.id)}=active">Restore</button>` : `${guest || m.role === 'display' ? '' : m.role === 'admin' ? `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=member">Make member</button>` : `<button class="btn sm" data-act="member-role" data-arg="${esc(m.id)}=admin">Make admin</button>`} <button class="btn sm danger" data-act="member-status" data-arg="${esc(m.id)}=revoked">Remove</button>`}</td></tr>`;
       }).join('')}</tbody></table></div>` : '<p class="empty">Nobody yet.</p>'}
       <div class="bar"><button class="btn sm" data-act="reload" data-arg="members">Refresh</button></div>
     </section>
@@ -324,13 +337,15 @@ const VIEWS = {
       <div class="bar"><button class="btn" data-act="password">Change password</button></div></section>`}`;
   },
   invites() {
-    const inv = S.invites || [], member = inv.find(i => i.role === 'member'), admin = inv.find(i => i.role === 'admin'), guests = inv.filter(i => i.role === 'guest');
+    const inv = S.invites || [], member = inv.find(i => i.role === 'member'), admin = inv.find(i => i.role === 'admin'), display = inv.find(i => i.role === 'display'), guests = inv.filter(i => i.role === 'guest');
     const linkBox = (i, what) => i ? `<div class="link">${esc(linkFor(i.code))}</div><div class="bar"><button class="btn sm primary" data-act="copy" data-arg="${esc(linkFor(i.code))}">Copy link</button><button class="btn sm" data-act="copy" data-arg="${esc(i.code)}">Copy code ${esc(i.code)}</button>${navigator.share ? `<button class="btn sm" data-act="send" data-arg="${esc(i.code)}=${what}">Send…</button>` : ''}<button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(i.code)}">Stop this link</button></div>` : '';
     return `<section class="panel"><h2>Tablets and members' phones</h2><p class="note">Open this link on a tablet or a member's phone to sign it in to your board. Making a new link stops the old one; devices already signed in keep working.</p>
       ${member ? linkBox(member, 'member') : '<p class="empty">No member link right now.</p>'}
       <div class="bar"><button class="btn" data-act="invite-new" data-arg="member">${member ? 'Make a new link' : 'Make a link'}</button></div></section>
     <section class="panel"><h2>Another admin</h2><p class="note">Signs a device in as an admin, who can use this console and make invite links. Stop it once it's been used.</p>
       ${admin ? linkBox(admin, 'admin') : ''}<div class="bar"><button class="btn" data-act="invite-new" data-arg="admin">${admin ? 'Make a new admin link' : 'Make an admin link'}</button></div></section>
+    <section class="panel"><h2>Big-screen displays</h2><p class="note">For a TV or monitor in your building, at the command post or at OEM. Open this link on the computer or smart TV that drives it: it shows the board live and can't change anything. Each screen picks what to show (MCI, units, hospitals, the map, today's calls, an event) with the gear in its corner.</p>
+      ${display ? linkBox(display, 'display') : ''}<div class="bar"><button class="btn" data-act="invite-new" data-arg="display">${display ? 'Make a new display link' : 'Make a display link'}</button></div></section>
     <section class="panel"><h2>Other departments (guests)</h2><p class="note">For fire or police working an MCI or event with you. Their devices see only the MCI and events, in their own colors, and stop when the link runs out.</p>
       ${guests.length ? `<div class="tw"><table><thead><tr><th>For</th><th>Until</th><th>Code</th><th></th></tr></thead><tbody>${guests.map(g => `<tr><td>${g.agency === 'police' ? 'Police' : 'Fire'}${g.dept ? ' · ' + esc(g.dept) : ''}</td><td>${esc(dt(g.expiresAt))}</td><td class="num">${esc(g.code)}</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" data-act="copy" data-arg="${esc(linkFor(g.code))}">Copy link</button> <button class="btn sm danger" data-act="invite-revoke" data-arg="${esc(g.code)}">Stop</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">No guest links running.</p>'}
       <div class="grid3"><div class="field"><span class="lbl">Department</span><select id="f-gag" data-form="gag"><option value="fire" ${f('gag') !== 'police' ? 'selected' : ''}>Fire</option><option value="police" ${f('gag') === 'police' ? 'selected' : ''}>Police</option></select></div>

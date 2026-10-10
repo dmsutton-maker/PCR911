@@ -1293,6 +1293,35 @@ textarea { padding: 12px 14px; min-height: 140px; resize: vertical; font: 500 16
 .rail .brand { padding: 4px 0 8px; margin-bottom: 4px; border-bottom-color: var(--line); border-radius: var(--r) var(--r) 0 0; }
 .rail .brand[aria-current="page"] { border-color: var(--line); }
 .home { max-width: 1180px; }
+/* unified command */
+.ucres { display: flex; flex-direction: column; gap: 6px; padding: 6px 0; border-top: 1px solid var(--line); }
+.ucres:first-of-type { border-top: 0; }
+.c-R { color: var(--red); } .c-Y { color: var(--yellow); } .c-G { color: var(--green); }
+/* big screen */
+.app.wallmode { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "main"; }
+.whead h1 { font-size: 34px; }
+.wall { display: grid; gap: 14px; height: 100%; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+.wall.n1 { grid-template-columns: minmax(0, 1fr); }
+.wall.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wall.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.wall.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wall.n5, .wall.n6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.wpanel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 18px; overflow: hidden; display: flex; flex-direction: column; gap: 8px; min-height: 0; position: relative; }
+.wpanel h2 { margin: 0 0 4px; font: 700 26px/1.1 var(--display); }
+.wpanel.w-map { padding: 0; }
+.wpanel.w-map .mapslot { position: absolute; inset: 0; }
+.wrow { display: flex; gap: 12px; align-items: baseline; font-size: 20px; line-height: 1.25; padding: 4px 0; border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+.wrow > span { flex: 1; min-width: 0; color: var(--muted); }
+.wrow > .agtag { flex: none; }
+.wrow small { color: var(--faint); font-size: 0.75em; }
+.wtri { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.wt { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.wt b { font: 700 54px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.wt small { color: var(--muted); font-size: 15px; }
+.wt.k-R { box-shadow: inset 6px 0 0 var(--red); } .wt.k-Y { box-shadow: inset 6px 0 0 var(--yellow); } .wt.k-G { box-shadow: inset 6px 0 0 var(--green); }
+.wt.k-B, .wt.k-X { box-shadow: inset 6px 0 0 var(--black-edge); }
+.wall.big .wrow { font-size: 28px; } .wall.big .wpanel h2 { font-size: 36px; } .wall.big .wt b { font-size: 76px; }
+@media (max-width: 900px) { .wall.n2, .wall.n3, .wall.n4, .wall.n5, .wall.n6 { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; } .wpanel.w-map { min-height: 50vh; } }
 .home-q { margin: 2px 0 2px; font: 700 26px/1.15 var(--display); }
 .ws-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
 .ws { display: flex; flex-direction: column; gap: 10px; background: var(--surface); border: 2px solid var(--line); border-radius: calc(var(--r) * 1.5); padding: 16px; }
@@ -2020,6 +2049,8 @@ const ROLES = {
   transport: { name: 'Transport', home: 'transport', note: 'Loading units, hospital capacity, the transport log' },
   fire:      { name: 'Fire',      home: 'fire',      note: 'Fire command at the MCI: apparatus and assignments, PAR, fire benchmarks, hazards' },
   police:    { name: 'Police',    home: 'police',    note: 'Police command at the MCI: traffic points and closures on the map, police units, benchmarks' },
+  oem:       { name: 'Unified command', home: 'unified', note: 'OEM or unified command: every agency at the MCI on one screen: commanders, benchmarks, resources, patients, hospitals, requests' },
+  display:   { name: 'Big screen', home: 'wall',     note: 'A TV or monitor: shows the board live and changes nothing' },
   event:     { name: 'Event',     home: 'event',     note: 'A planned event: posts on the map, members at their posts, patients' },
   member:    { name: 'Member',    home: 'member',    note: 'For a phone: active calls, I\'m responding, on scene, directions' },
 };
@@ -2030,30 +2061,37 @@ const RAILS = {
   transport: ['transport', 'hospitals', 'units', 'map', 'board', 'phone', 'log'],
   fire:      ['fire', 'map', 'units', 'ics', 'radio', 'phone', 'log'],
   police:    ['police', 'map', 'ics', 'phone', 'radio', 'log'],
+  oem:       ['unified', 'map', 'units', 'hospitals', 'ics', 'radio', 'phone', 'log'],
+  display:   [],
   supervisor: ['shift', 'hospitals', 'map', 'phone', 'radio', 'log'],
   event:     ['event', 'map', 'hospitals', 'phone', 'radio', 'log'],
   member:    ['member', 'shift', 'phone'],
 };
-const MCI_ROLES = ['command', 'triage', 'transport', 'fire', 'police'];
+const MCI_ROLES = ['command', 'triage', 'transport', 'fire', 'police', 'oem'];
 /* Who is using this device: an EMS squad, a fire department or a police department. Each gets its own colors, Home
    and jobs. The squad sets what it is under My agency; one tablet can be set apart (a squad tablet handed to the
    fire chief); a guest from another department is locked to theirs. */
 const AGENCIES = {
-  ems:    { name: 'EMS',    long: 'EMS squad',         jobs: ['command', 'triage', 'transport', 'fire', 'police'] },
-  fire:   { name: 'Fire',   long: 'Fire department',   jobs: ['fire'] },
-  police: { name: 'Police', long: 'Police department', jobs: ['police'] },
+  ems:    { name: 'EMS',    long: 'EMS squad',         jobs: ['command', 'triage', 'transport', 'fire', 'police', 'oem'] },
+  fire:   { name: 'Fire',   long: 'Fire department',   jobs: ['fire', 'oem'] },
+  police: { name: 'Police', long: 'Police department', jobs: ['police', 'oem'] },
 };
 const isGuest = () => !!(RELAY && RELAY.guest);
+const isDisplay = () => !!(RELAY && RELAY.role === 'display');   // a big screen: shows the board, never changes it
 const myAgency = () => (isGuest() && AGENCIES[RELAY.agency] ? RELAY.agency : AGENCIES[DEV.agency] ? DEV.agency : C && AGENCIES[C.agency.type] ? C.agency.type : 'ems');
-const allowedRoles = () => { const a = myAgency(); return a === 'ems' && !isGuest() ? Object.keys(ROLES) : [...AGENCIES[a].jobs, 'event', ...(isGuest() ? [] : ['supervisor'])]; };
+const allowedRoles = () => {
+  if (isDisplay()) return ['display'];
+  const a = myAgency();
+  return a === 'ems' && !isGuest() ? Object.keys(ROLES).filter(r => r !== 'display') : [...AGENCIES[a].jobs, 'event', ...(isGuest() ? [] : ['supervisor'])];
+};
 function fitRole() {   // keep the tablet on a job its agency has; true when it had to move
   if (allowedRoles().includes(DEV.role)) return false;
-  DEV.role = AGENCIES[myAgency()].jobs[0]; saveDev(); return true;
+  DEV.role = isDisplay() ? 'display' : AGENCIES[myAgency()].jobs[0]; saveDev(); return true;
 }
 /* Which workspace the screen is in: the Home screen, the Supervisor board, an MCI, an event, or a member's phone.
    The workspace's own views say so; the shared ones (map, hospitals, phone, radio, log) follow the tablet's job. */
-const VIEW_WS = { shift: 'sup', event: 'event', member: 'member', board: 'mci', triage: 'mci', transport: 'mci', units: 'mci', ics: 'mci', fire: 'mci', police: 'mci' };
-const ROLE_WS = { supervisor: 'sup', event: 'event', member: 'member', command: 'mci', triage: 'mci', transport: 'mci', fire: 'mci', police: 'mci' };
+const VIEW_WS = { shift: 'sup', event: 'event', member: 'member', board: 'mci', triage: 'mci', transport: 'mci', units: 'mci', ics: 'mci', fire: 'mci', police: 'mci', unified: 'mci', wall: 'display' };
+const ROLE_WS = { supervisor: 'sup', event: 'event', member: 'member', command: 'mci', triage: 'mci', transport: 'mci', fire: 'mci', police: 'mci', oem: 'mci', display: 'display' };
 const wsNow = () => (UI.view === 'home' ? 'home' : VIEW_WS[UI.view] || ROLE_WS[DEV.role] || 'mci');
 const mciLive = () => !S.fresh && !S.sample && !S.bench.clear;
 /* A tablet left alone this long opens on the Home screen, to pick what it's working on. Phones stay on My calls. */
@@ -2283,7 +2321,7 @@ function saveConfig() { C.savedAt = now(); write(K.cfg, C); Sync.pushConfig(); }
 function loadUi() {
   const v = read(K.ui) || {};
   const stale = !v.view || !v.at || now() - v.at > HOME_AFTER;
-  UI.view = DEV.role === 'member' ? (v.view && !stale ? v.view : homeView()) : stale ? 'home' : v.view;
+  UI.view = isDisplay() ? 'wall' : DEV.role === 'member' ? (v.view && !stale ? v.view : homeView()) : stale ? 'home' : v.view;
   if (UI.view !== 'home' && UI.view !== homeView() && !(RAILS[DEV.role] || RAILS.command).includes(UI.view)) UI.view = homeView();
   if (v.mapLayer) UI.mapLayer = v.mapLayer;
 }
@@ -2347,7 +2385,8 @@ function render() {
   document.documentElement.dataset.agency = myAgency();
   parkMap();
 
-  app.innerHTML = header() + rail() + `<main class="main" data-scroll="main-${UI.view}">${view()}</main>`;
+  app.classList.toggle('wallmode', wsNow() === 'display');
+  app.innerHTML = header() + (wsNow() === 'display' ? '' : rail()) + `<main class="main" data-scroll="main-${UI.view}">${view()}</main>`;
   sheetRoot.innerHTML = UI.sheet ? sheetHtml() : '';
 
   document.querySelectorAll('[data-scroll]').forEach(el => {
@@ -2360,6 +2399,7 @@ function render() {
 
 function header() {
   const w = wsNow();
+  if (w === 'display') return wallHeader();
   if (w === 'home') return homeHeader();
   if (w === 'sup') return shiftHeader();
   if (w === 'member') return memberHeader();
@@ -2400,6 +2440,7 @@ const VIEWS = [
   { id: 'event',     label: 'Event',     icon: 'flag' },
   { id: 'fire',      label: 'Fire',      icon: 'flame' },
   { id: 'police',    label: 'Police',    icon: 'shield' },
+  { id: 'unified',   label: 'Unified',   icon: 'ics' },
   { id: 'member',    label: 'My calls',  icon: 'person' },
   { id: 'map',       label: 'Map',       icon: 'map' },
   { id: 'transport', label: 'Transport', icon: 'amb' },
@@ -2430,6 +2471,8 @@ function view() {
     case 'map': return mapView();
     case 'triage': return triageView();
     case 'fire': return fireView();
+    case 'unified': return unifiedView();
+    case 'wall': return wallView();
     case 'police': return policeView();
     case 'shift': return shiftView();
     case 'member': return memberView();
@@ -2672,6 +2715,164 @@ function txForPolicePanel() {
     <div class="note">Counts only, from EMS's transport log. No names on the board.</div>
   </section>`;
 }
+/* ---------- Unified command and OEM: every agency at the MCI on one screen ---------- */
+const AG_GROUPS = [
+  { k: 'ems', name: 'EMS', test: u => kindOf(u.kind).g === 'ems' },
+  { k: 'fire', name: 'Fire & special ops', test: u => ['fire', 'spec'].includes(kindOf(u.kind).g) },
+  { k: 'police', name: 'Police', test: u => u.kind === 'PD' },
+  { k: 'sup', name: 'OEM & support', test: u => kindOf(u.kind).g === 'sup' && u.kind !== 'PD' },
+];
+const allStamped = () => [
+  ...BENCHMARKS.map(b => ({ ...b, ag: 'EMS', c: 'ems' })),
+  ...FIRE_BENCH.filter(b => b.id !== 'extrication').map(b => ({ ...b, ag: 'Fire', c: 'fire' })),
+  ...PD_BENCH.map(b => ({ ...b, ag: 'Police', c: 'police' })),
+].filter(b => S.bench[b.id]).sort((a, b) => S.bench[a.id] - S.bench[b.id]);
+function ucBenchPanel() {
+  const list = allStamped(), T0 = S.incident.dispatchAt;
+  const n = (arr, c) => `${arr.filter(b => S.bench[b.id]).length}/${arr.length}`;
+  return `<section class="panel" aria-label="Benchmarks, every agency">
+    <div class="ph"><h2>Benchmarks · every agency</h2><span class="meta">EMS ${n(BENCHMARKS)} · Fire ${n(FIRE_BENCH.filter(b => b.id !== 'extrication'))} · Police ${n(PD_BENCH)}</span></div>
+    <div class="rows ucb">${list.map(b => `<div class="row"><span class="agtag ${b.c}">${b.ag}</span><div class="t1">${esc(b.label)}</div><span class="r num">${hhmm(S.bench[b.id])} <small class="note">+${dur(S.bench[b.id] - T0)}</small></span></div>`).join('') || '<div class="empty">Nothing stamped yet.</div>'}</div>
+  </section>`;
+}
+function ucResourcesPanel() {
+  const active = S.units.filter(u => !['available', 'released'].includes(u.status));
+  const cnt = (us, st) => us.filter(u => u.status === st).length;
+  return `<section class="panel" aria-label="Resources by agency">
+    <div class="ph"><h2>Resources by agency</h2><span class="meta">${plural(active.length, 'unit')} working</span></div>
+    ${AG_GROUPS.map(g => { const us = active.filter(g.test); return us.length ? `<div class="ucres"><div class="t1"><b>${g.name}</b> <span class="note">${[['onscene', 'on scene'], ['staged', 'staged'], ['enroute', 'en route'], ['transporting', 'transporting']].map(([k, l]) => cnt(us, k) ? `${cnt(us, k)} ${l}` : '').filter(Boolean).join(' · ')}</span></div><div class="chips">${us.map(u => `<span class="schip unit">${kindTag(u.kind)} ${esc(u.name)}<small>${esc(u.task || statusName(u.status))}</small></span>`).join('')}</div></div>` : ''; }).join('') || '<div class="empty">No units working yet.</div>'}
+  </section>`;
+}
+function ucPatientsPanel() {
+  const sent = S.transports.reduce((a, x) => a + x.n, 0);
+  return `<section class="panel" aria-label="Patients">
+    <div class="ph"><h2>Patients</h2><span class="meta">${plural(totalPts(), 'patient')}${S.incident.est ? ' · est. ' + S.incident.est : ''}</span></div>
+    <div class="stats">${catsList().filter(c => c.k !== 'W').map(c => `<div class="stat k-${c.k}"><span class="lbl">${c.color}</span><span class="v num">${S.triage[c.k] || 0}</span>${TX_CATS.includes(c.k) ? `<span class="note">${remaining(c.k)} on scene</span>` : ''}</div>`).join('')}<div class="stat"><span class="lbl">Transported</span><span class="v num">${sent}</span></div></div>
+  </section>`;
+}
+function ucHospitalsPanel() {
+  const hs = HOSPITALS.filter(h => S.hospitals[h.id] || hospSent(h.id));
+  return `<section class="panel" aria-label="Hospitals">
+    <div class="ph"><h2>Hospitals</h2><span class="meta">${hs.filter(h => hospState(h.id).notifiedAt).length} notified</span></div>
+    <div class="rows">${hs.map(h => { const st = hospState(h.id), d = liveEd(h); return `<div class="row"><div class="t1">${esc(h.short)} ${d ? `<span class="pill ${/divert|closed/i.test(d.status) ? 'diversion' : 'open'}">${esc(d.status)}</span>` : st.ed ? `<span class="pill">${esc(st.ed)}</span>` : ''}</div><span class="r num">${TX_CATS.map(k => `<span class="c-${k}">${hospSent(h.id, k)}</span>`).join(' · ')}</span></div>`; }).join('') || '<div class="empty">No hospital notified or sent patients yet.</div>'}</div>
+  </section>`;
+}
+function ucPointsPanel() {
+  const list = points();
+  return list.length ? `<section class="panel" aria-label="Traffic and perimeter">
+    <div class="ph"><h2>Traffic and perimeter</h2><span class="meta">police</span></div>
+    <div class="rows">${list.map(pt => `<div class="row"><span class="pk pt k-${esc(pt.kind)}">${esc(pointKind(pt.kind).tag)}</span><div><div class="t1">${esc(pt.name)}</div><div class="t2">${esc(pointKind(pt.kind).name)}${pt.unit ? ' · ' + esc(pt.unit) : ''}</div></div></div>`).join('')}</div>
+  </section>` : '';
+}
+function ucLogPanel() {
+  const list = S.log.slice(-10).reverse();
+  return `<section class="panel" aria-label="Latest">
+    <div class="ph"><h2>Latest</h2><button class="btn small" data-act="view" data-arg="log">Full log</button></div>
+    <div class="log">${list.map(e => `<div class="entry"><span class="lt">${hhmm(e.t)}</span><span class="lk">${esc(e.kind || 'note')}${e.role ? `<small>${esc(roleName(e.role))}</small>` : ''}</span><span class="lx">${esc(e.text)}</span></div>`).join('') || '<div class="empty">Nothing yet.</div>'}</div>
+  </section>`;
+}
+function unifiedView() {
+  const reqs = openRequests();
+  return `<div class="board agency">
+    <div class="col c1" data-scroll="u1">${ucPanel('')}${ucPatientsPanel()}${ucHospitalsPanel()}</div>
+    <div class="col c2" data-scroll="u2">${ucBenchPanel()}${ucResourcesPanel()}
+      <section class="panel" aria-label="Requests"><div class="ph"><h2>Resource requests</h2><button class="btn small" data-act="sheet" data-arg="request">${icon('plus')} Request</button></div><div class="rows">${reqs.length ? reqs.map(reqRow).join('') : '<div class="empty">No open requests</div>'}</div></section></div>
+    <div class="col c3" data-scroll="u3">${miniMap()}${ucPointsPanel()}${ucLogPanel()}</div>
+  </div>`;
+}
+
+/* ---------- Big screen: a TV or monitor that shows the board and changes nothing ---------- */
+const WALL_PANELS = [
+  { k: 'mci', name: 'MCI · patients and triage' }, { k: 'units', name: 'MCI · units by agency' }, { k: 'hosp', name: 'MCI · hospitals' },
+  { k: 'bench', name: 'MCI · benchmarks, every agency' }, { k: 'uc', name: 'MCI · unified command' }, { k: 'map', name: 'Map' },
+  { k: 'calls', name: 'Today · active calls' }, { k: 'sunits', name: 'Today · our units and crew' }, { k: 'today', name: 'Today · numbers' },
+  { k: 'event', name: 'Event · posts and members' }, { k: 'ed', name: 'Hospital ED status' }, { k: 'log', name: 'Latest activity' },
+];
+const wallPrefs = () => ({ auto: true, pick: ['calls', 'sunits', 'ed', 'map'], big: false, ...(read(NS + 'wall') || {}) });
+function wallPanels() {
+  const w = wallPrefs();
+  if (!w.auto && w.pick.length) return w.pick.filter(k => WALL_PANELS.some(p => p.k === k));
+  if (mciLive()) return ['mci', 'units', 'hosp', 'map', 'bench', 'uc'];
+  if (eventLive()) return ['event', 'map', 'calls', 'ed'];
+  return ['calls', 'sunits', 'today', 'ed', 'map'];
+}
+function wallHeader() {
+  const I = S.incident, focus = !wallPrefs().auto ? '' : mciLive() ? `<span class="tag mci">MCI · ${esc(I.type || 'incident')}${I.location ? ' · ' + esc(I.location) : ''}</span>` : eventLive() ? `<span class="tag live">Event · ${esc(EV.event.name)}</span>` : '<span class="tag">Today</span>';
+  return `<header class="head whead">
+    <div class="inc"><div class="inc-top">${focus}<span class="tag" id="sync-chip">${Sync.state === 'ready' ? (offline() ? 'Offline' : '● Live') : 'Connecting…'}</span></div>
+      <h1>${agencyLogo()}${esc(C.agency.name)}</h1></div>
+    <div class="clocks">
+      ${mciLive() ? `<div class="clock"><span class="lbl">Since dispatch</span><span class="v" data-since="${I.dispatchAt}">--:--</span></div>` : ''}
+      <div class="clock"><span class="lbl">Time</span><span class="v" data-clock="now">--:--</span></div>
+      <button class="iconbtn" data-act="sheet" data-arg="wall" aria-label="Choose what this screen shows">${icon('menu')}<span class="lbl">Show</span></button>
+    </div>
+  </header>`;
+}
+const WALL = {
+  mci() {
+    const sent = S.transports.reduce((a, x) => a + x.n, 0);
+    if (S.fresh) return '<h2>MCI</h2><div class="empty">No MCI running.</div>';
+    return `<h2>${S.incident.mciLevel ? esc(levelLabel(S.incident.mciLevel)) : 'Incident'} · ${plural(totalPts(), 'patient')}</h2>
+      <div class="wtri">${catsList().filter(c => c.k !== 'W').map(c => `<div class="wt k-${c.k}"><span class="lbl">${c.color}</span><b>${S.triage[c.k] || 0}</b>${TX_CATS.includes(c.k) ? `<small>${remaining(c.k)} on scene</small>` : ''}</div>`).join('')}<div class="wt"><span class="lbl">Transported</span><b>${sent}</b></div></div>`;
+  },
+  units() {
+    const active = S.units.filter(u => !['available', 'released'].includes(u.status));
+    return `<h2>Units · ${active.length} working</h2>${AG_GROUPS.map(g => { const us = active.filter(g.test); return us.length ? `<div class="wrow"><b>${g.name}</b><span>${us.map(u => `${esc(u.name)} <small>${esc(statusName(u.status))}</small>`).join(' · ')}</span></div>` : ''; }).join('') || '<div class="empty">No units working yet.</div>'}`;
+  },
+  hosp() {
+    const hs = HOSPITALS.filter(h => S.hospitals[h.id] || hospSent(h.id));
+    return `<h2>Hospitals</h2>${hs.map(h => { const d = liveEd(h); return `<div class="wrow"><b>${esc(h.short)}</b><span>${TX_CATS.map(k => `<span class="c-${k}">${cat(k).color[0]} ${hospSent(h.id, k)}</span>`).join(' ')}${d ? ` · ${esc(d.status)}` : ''}</span></div>`; }).join('') || '<div class="empty">None notified yet.</div>'}`;
+  },
+  bench() {
+    const list = allStamped().slice(-8).reverse();
+    return `<h2>Benchmarks</h2>${list.map(b => `<div class="wrow"><span class="agtag ${b.c}">${b.ag}</span><span>${esc(b.label)}</span><b class="num">${hhmm(S.bench[b.id])}</b></div>`).join('') || '<div class="empty">Nothing stamped yet.</div>'}`;
+  },
+  uc() {
+    return `<h2>Unified command</h2>${[['EMS', 'uc-ems', 'ems'], ['Fire', 'uc-fire', 'fire'], ['Police', 'uc-pd', 'police']].map(([n, k, c]) => `<div class="wrow"><span class="agtag ${c}">${n}</span><b>${S.ics[k] ? esc(S.ics[k].who) : '<span class="note">not assigned</span>'}</b></div>`).join('')}${S.incident.staging ? `<div class="wrow"><b>Staging</b><span>${esc(S.incident.staging)}</span></div>` : ''}`;
+  },
+  map() { return '<div class="mapslot" data-map-slot="full"></div>'; },
+  calls() {
+    const active = SH.calls.filter(c => c.status !== 'clear').sort((a, b) => a.times.disp - b.times.disp);
+    return `<h2>Active calls · ${active.length}</h2>${active.map(c => `<div class="wrow"><b>${esc(c.type)}</b><span>${esc(c.address)}${c.unit ? ' · ' + esc(c.unit) : ''} · ${esc(STEP_NAMES[c.status] || c.status)}</span><b class="num" data-since="${c.times.disp}">--:--</b></div>`).join('') || '<div class="empty">No active calls.</div>'}`;
+  },
+  sunits() {
+    const on = SH.crew.filter(p => !p.out);
+    return `<h2>Our units · ${on.length} on duty</h2>${SH.units.map(u => { const c = busyCall(u); return `<div class="wrow"><b>${esc(u.name)}</b><span>${u.status === 'oos' ? 'Out of service' : c ? esc(STEP_NAMES[c.status] || 'On a call') : 'In service'}${on.filter(p => p.unit === u.name).length ? ' · ' + on.filter(p => p.unit === u.name).map(p => esc(p.name)).join(', ') : ''}</span></div>`; }).join('') || '<div class="empty">No units on the board.</div>'}`;
+  },
+  today() {
+    const st = shiftStats();
+    return `<h2>Today</h2><div class="wtri"><div class="wt"><span class="lbl">Calls</span><b>${st.total}</b></div><div class="wt"><span class="lbl">Active</span><b>${st.active}</b></div><div class="wt"><span class="lbl">Transports</span><b>${st.transports}</b></div><div class="wt"><span class="lbl">Avg response</span><b>${st.response != null ? fmtMin(st.response) : '—'}</b></div></div>`;
+  },
+  event() {
+    if (EV.none) return '<h2>Event</h2><div class="empty">No event running.</div>';
+    return `<h2>${esc(EV.event.name)} · ${plural(EV.people.filter(x => x.st !== 'off').length, 'member')} · ${plural(EV.pts.length, 'patient')}</h2>${EV.posts.map(po => { const st = postStaff(po); return `<div class="wrow"><b>${esc(postLabel(po) ? postLabel(po) + ' · ' : '')}${esc(po.name)}</b><span>${st.length ? st.map(x => esc(x.name)).join(', ') : '<span class="warn-t">nobody</span>'}</span></div>`; }).join('')}`;
+  },
+  ed() {
+    const list = favFirst(byDistance(HOSPITALS)).slice(0, 8);
+    return `<h2>Hospital ED status</h2>${list.map(h => { const d = liveEd(h); return `<div class="wrow"><b>${isFav(h) ? '★ ' : ''}${esc(h.short)}</b><span>${d ? `<span class="pill ${/divert|closed/i.test(d.status) ? 'diversion' : 'open'}">${esc(d.status)}</span>${d.reason ? ' ' + esc(d.reason) : ''}` : '<span class="note">no live status</span>'}</span></div>`; }).join('')}`;
+  },
+  log() {
+    const list = (mciLive() ? S.log : eventLive() ? EV.log : SH.log).slice(-8).reverse();
+    return `<h2>Latest</h2>${list.map(e => `<div class="wrow"><b class="num">${hhmm(e.t)}</b><span>${esc(e.text)}</span></div>`).join('') || '<div class="empty">Nothing yet.</div>'}`;
+  },
+};
+function wallView() {
+  const ks = wallPanels();
+  return `<div class="wall n${Math.min(ks.length, 6)} ${wallPrefs().big ? 'big' : ''}">${ks.map(k => `<section class="wpanel w-${k}">${WALL[k]()}</section>`).join('')}</div>`;
+}
+function wallSheet() {
+  const w = wallPrefs();
+  return {
+    title: 'What this screen shows',
+    body: `<div class="switch"><span>Show</span><div class="chips">${opt('wall-auto', '1', w.auto, 'What\'s happening · switches to the MCI or event')}${opt('wall-auto', '0', !w.auto, 'My choice')}</div></div>
+      ${w.auto ? '<div class="note">Today\'s calls, units and hospitals; when an event runs, the event; when an MCI starts, the MCI.</div>' : `<div class="opt-grid">${WALL_PANELS.map(p => opt('wall-pick', p.k, w.pick.includes(p.k), esc(p.name))).join('')}</div><div class="note">Shown in the order picked, up to six fit well.</div>`}
+      <div class="switch"><span>Text</span><div class="chips">${opt('wall-big', '0', !w.big, 'Normal')}${opt('wall-big', '1', w.big, 'Large · across the room')}</div></div>
+      <div class="switch"><span>Colors</span><div class="chips">${opt('mode-set', 'night', DEV.mode !== 'day', 'Night')}${opt('mode-set', 'day', DEV.mode === 'day', 'Day')}</div></div>
+      <div class="note">This screen only shows the board; nothing can be changed from it. Each screen keeps its own choice.</div>`,
+    foot: `<button class="btn primary" data-act="close">Done</button>`,
+  };
+}
+
 function policeView() {
   return `<div class="board agency">
     <div class="col c1" data-scroll="p1">${ucPanel('police')}${agencyBenchPanel(PD_BENCH, 'Police benchmarks')}</div>
@@ -3472,7 +3673,7 @@ function placeMap() {
 function frameMap(kind) {
   const I = S.incident, w = wsNow();
   const center = sceneLL();
-  const evPts = (kind === 'event' || (kind === 'full' && w === 'event')) && eventLive() ? EV.posts.map(po => po.ll).concat([EV.event.ll]).filter(Boolean) : [];
+  const evPts = (kind === 'event' || (kind === 'full' && (w === 'event' || (w === 'display' && !mciLive())))) && eventLive() ? EV.posts.map(po => po.ll).concat([EV.event.ll]).filter(Boolean) : [];
   if (evPts.length > 1) MAP.fitBounds(L.latLngBounds(evPts).pad(0.25), { maxZoom: 17.5 });
   else if (evPts.length === 1) MAP.setView(evPts[0], 16.5);
   else if (kind === 'mini' || kind === 'event') { if (center) MAP.setView(center, I.ll ? 16.5 : 13); else MAP.setView([40.27, -74.17], 10); }
@@ -3822,7 +4023,7 @@ function sheetHtml() {
     'person-add': personSheet, person: personSheet, 'load-members': loadMembersSheet, 'contact-add': contactSheet,
     role: roleSheet, agency: agencySheet, connect: connectSheet, owner: ownerSheet, 'cam-add': camAddSheet, cam: camSheet, 'feed-add': feedAddSheet, 'inc-clear': incClearSheet,
     'ev-new': evNewSheet, 'post-new': postNewSheet, post: postSheet, 'ev-person': evPersonSheet, 'ev-unit': evUnitSheet, 'ev-pt': evPtSheet, 'ev-end': evEndSheet,
-    report: reportSheet, 'point-new': pointNewSheet, point: pointSheet,
+    report: reportSheet, 'point-new': pointNewSheet, point: pointSheet, wall: wallSheet,
     'call-new': callNewSheet, call: callSheet, 'call-hosp': callHospSheet, 'call-resp': callRespSheet, sunit: sunitSheet, 'crew-in': crewSheet, crew: crewSheet, 'shift-new': shiftNewSheet,
   }[kind];
   const body = make ? make(arg) : { title: '', body: '' };
@@ -4194,6 +4395,7 @@ Stream.prototype.load = function (fallback) {
   this.rebuild();
 };
 Stream.prototype.dispatch = function (type, p, text, kind = 'note', { toast = true } = {}) {
+  if (isDisplay()) return null;   // a big screen only shows the board
   const e = { id: `${DEV.id}.${Date.now().toString(36)}.${(seq++).toString(36)}`, dev: DEV.id, role: DEV.role, t: now(), type, p, text: text || '', kind };
   this.events.set(e.id, e);
   this.rebuild(); this.saveLocal(); render();
@@ -4405,6 +4607,19 @@ const streamOfView = () => { const w = wsNow(); return w === 'mci' ? INC : w ===
    boards run on this tablet alone.
    ===================================================================== */
 const CONFIG_DOC = 'squad/config';
+/* A device that set things up before it was signed in (its logo, units, roster, numbers) keeps them: on its first
+   sync they fill in whatever the squad's copy doesn't have yet, rather than that copy replacing them. The squad's
+   own values win wherever it has any. Null when the device adds nothing. */
+function mergeConfig(remote, local) {
+  const r = migrateConfig({ ...defaultConfig(), ...remote }), l = local || {}, out = JSON.parse(JSON.stringify(r));
+  let added = false;
+  for (const k of ['name', 'num', 'logo', 'type']) if (!out.agency[k] && l.agency && l.agency[k]) { out.agency[k] = l.agency[k]; added = true; }
+  // only into a list the squad has nothing in yet, so a unit someone removed doesn't come back from an old tablet
+  const union = (key, idOf) => { if (out[key].length) return; const have = new Set(); for (const x of l[key] || []) if (!have.has(idOf(x))) { out[key].push(x); have.add(idOf(x)); added = true; } };
+  union('roster', x => x.name); union('members', x => memNum(x.num)); union('contacts', x => x.id || x.name + x.num); union('feeds', x => x.id || x.url); union('cameras', x => x.id || x.url);
+  if (!out.favHosp.length && (l.favHosp || []).length) { out.favHosp = l.favHosp.slice(); added = true; }
+  return added ? out : null;
+}
 const guestStream = str => !isGuest() || str !== SHIFT;   // a guest shares the incident and the event, not the day
 const STOP_CODES = ['revoked', 'not_granted', 'capability_disabled', 'capability_removed'];
 const CHUNK = 300;   // events per document, well under the store's 256 KiB per document
@@ -4472,7 +4687,7 @@ const Sync = {
 
   /* Make this tablet's board the one every tablet follows. */
   async announce(str) {
-    if (!this.db || !guestStream(str)) return;
+    if (!this.db || !guestStream(str) || isDisplay()) return;
     const id = str.base.id;
     str.sharing = true; syncChip();
     try {
@@ -4485,7 +4700,7 @@ const Sync = {
   },
 
   push(str) {
-    if (!this.db || !guestStream(str)) return;
+    if (!this.db || !guestStream(str) || isDisplay()) return;
     if (!str.shared || str.id !== str.base.id) return str.sharing ? null : this.announce(str);
     return this.flush(str);
   },
@@ -4527,8 +4742,19 @@ const Sync = {
   /* The squad's settings are one document: the newest save wins. A tablet whose save never reached the store
      (offline, reconnecting) keeps its newer copy and sends it again, instead of being overwritten by the old one. */
   onConfig(snap) {
-    if (!snap.exists) { if (C.savedAt) this.pushConfig(); return; }
+    if (!snap.exists) { if (C.savedAt) this.pushConfig(); write(NS + 'cfg-joined', 1); return; }
     const d = snap.data() || {};
+    if (!read(NS + 'cfg-joined') && !isGuest() && !isDisplay()) {
+      write(NS + 'cfg-joined', 1);
+      const merged = mergeConfig(d, C);
+      if (merged) {
+        C = migrateConfig({ ...defaultConfig(), ...merged, savedAt: Math.max(now(), (d.savedAt || 0) + 1) });
+        write(K.cfg, C); this.pushConfig();
+        if (!UI.sheet) render();
+        showToast('This tablet\'s own setup (logo, units, roster) was added to the squad\'s.', false);
+        return;
+      }
+    }
     if ((d.savedAt || 0) < (C.savedAt || 0)) { this.pushConfig(); return; }
     if ((d.savedAt || 0) === (C.savedAt || 0) && C.savedAt) return;
     C = migrateConfig({ ...defaultConfig(), ...d });
@@ -4540,7 +4766,7 @@ const Sync = {
     if (!UI.sheet) render();
   },
   pushConfig() {
-    if (!this.db || isGuest()) return;
+    if (!this.db || isGuest() || isDisplay()) return;
     const go = () => this.db.doc(CONFIG_DOC).set(JSON.parse(JSON.stringify(C))).then(() => { this.cfgDirty = false; }).catch(() => { this.cfgDirty = true; });
     this.cfgWriting = (this.cfgWriting || Promise.resolve()).then(go);
   },
@@ -4614,7 +4840,7 @@ let turningDay = false;
 function maybeNewDay() {
   const t = now();
   // Only ever forward: a tablet whose clock is behind must not drag the squad back to an older day's board.
-  if (!SH || SH.sample || turningDay || dayKey(t) <= (SH.day || dayKey(SH.startedAt))) return;
+  if (!SH || SH.sample || turningDay || isDisplay() || dayKey(t) <= (SH.day || dayKey(SH.startedAt))) return;
   // A tablet that was closed for days must not turn yesterday's stale copy
   // into today's board; wait to hear what the other tablets have.
   if (Sync.state === 'connecting' || (Sync.state === 'ready' && (!SHIFT.booted || (SHIFT.id && !SHIFT.shared)))) return;
@@ -5712,6 +5938,7 @@ function connectSheet() {
         ${planPanel()}
         ${isGuest() ? `<div class="note">Guest access for <b>${esc(AGENCIES[RELAY.agency] ? AGENCIES[RELAY.agency].long : 'another department')}</b>${RELAY.dept ? ' · ' + esc(RELAY.dept) : ''}${RELAY.until ? ` until <b>${esc(fmtDT(Date.parse(RELAY.until)))}</b>` : ''}. This device shares the MCI and events only.</div>` : ''}
         ${RELAY.role === 'admin' && !planEnded() ? guestInvitePanel() : ''}
+        ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Big screen</h2></div><div class="note">A TV or monitor that shows the board live and can't change it. Open the link on the computer or smart TV that drives it.</div>${UI.form.dlink ? `<div class="coord" style="word-break:break-all">${esc(UI.form.dlink)}</div><div class="toolbar"><button class="btn small" data-act="copy-text" data-arg="${esc(UI.form.dlink)}">${icon('copy')} Copy link</button></div>` : '<button class="btn" data-act="relay-display">Make a big-screen link</button>'}` : ''}
         ${!isGuest() && !IN_CLAUDE ? webLoginPanel() : ''}
         ${RELAY.role === 'admin' && !IN_CLAUDE ? ownerClaimPanel() : ''}
         ${RELAY.role === 'admin' && !planEnded() ? `<div class="ph"><h2>Add a tablet</h2></div>
@@ -5842,6 +6069,10 @@ const RELAY_ACTIONS = {
       showToast('Owner login saved.', false);
     } catch (e) { f.ocerr = e.message; render(); }
   },
+  async 'relay-display'() {
+    try { const { url, data } = await relayCall('/v1/invites', { role: 'display' }, { authorization: 'Bearer ' + RELAY.token }); UI.form.dlink = inviteLinkFor(url, data.inviteCode); render(); }
+    catch (e) { showToast(e.message, false); }
+  },
   async 'relay-guest'() {
     const f = UI.form, agency = f.gagency || 'fire', hours = Number(f.ghours || 24);
     try {
@@ -5876,7 +6107,7 @@ const RELAY_ACTIONS = {
     if (fromLink && fromLink.url) f.rurl = fromLink.url;
     const name = (f.rname2 || '').trim();
     if (!code) { f.rerr = 'Paste the invite link or type its code.'; return render(); }
-    if (!name) { f.rerr = 'Give this tablet a name, so the log can say who did what.'; return render(); }
+    if (!name) { f.rerr = 'Give this tablet a name, so the log can say who did what. For a big screen: where it is, like "Building TV".'; return render(); }
     try { const { url, data } = await relayCall('/v1/join', { inviteCode: code, name }); relaySaved(url, data); }
     catch (e) { f.rerr = e.message; render(); }
   },
@@ -5919,6 +6150,7 @@ function openSheet(name) { UI.sheet = name; UI.form = {}; if (/^report(:|$)/.tes
 function setJob(r) { if (!ROLES[r] || DEV.role === r) return; DEV.role = r; saveDev(); Sync.setRole(); }
 function closeSheet() { UI.sheet = null; UI.form = {}; render(); }
 function showToast(msg, undoId) {
+  if (isDisplay()) return;   // a big screen shows the board, not notes meant for whoever is tapping
   clearTimeout(toastTimer);
   toastRoot.innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${undoId ? `<button data-act="undo" data-arg="${esc(undoId)}">Undo</button>` : ''}</div>`;
   toastTimer = setTimeout(() => { toastRoot.innerHTML = ''; }, 5000);
@@ -6282,6 +6514,9 @@ const A = {
   'inc-clear'() { startIncident(freshIncident(), 'Sample cleared', { stay: true }); },
 
   'log-filter'(k) { UI.logFilter = k; render(); },
+  'wall-auto'(v) { write(NS + 'wall', { ...wallPrefs(), auto: v === '1' }); mapKind = null; render(); },
+  'wall-pick'(k) { const w = wallPrefs(), pick = w.pick.includes(k) ? w.pick.filter(x => x !== k) : [...w.pick, k]; write(NS + 'wall', { ...w, pick }); mapKind = null; render(); },
+  'wall-big'(v) { write(NS + 'wall', { ...wallPrefs(), big: v === '1' }); render(); },
   'report-pdf'(kind) { saveReportPdf(kind); },
   'report-print'() { printReport(); },
   'offline-info'() { showToast('No internet right now. Everything you do is saved on this tablet and goes to the other tablets when it\'s back. Live ED status and aerial imagery need the internet; the built-in map works.', false); },
@@ -6344,7 +6579,7 @@ function tick() {
   const set = (k, v) => document.querySelectorAll(`[data-clock="${k}"]`).forEach(el => { if (el.textContent !== v) el.textContent = v; });
   set('now', hhmm(t));
   document.querySelectorAll('[data-since]').forEach(el => { const v = dur(t - Number(el.dataset.since)); if (el.textContent !== v) el.textContent = v; });
-  if (['shift', 'member', 'event', 'home'].includes(UI.view) && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
+  if (['shift', 'member', 'event', 'home', 'wall', 'unified'].includes(UI.view) && !UI.sheet && t - lastShiftDraw > 20000) { lastShiftDraw = t; render(); return; }
   set('elapsed', S.fresh ? '--:--' : dur(t - S.incident.dispatchAt));
   const due = S.par.last + S.par.interval * 60000, left = due - t;
   set('par', left >= 0 ? dur(left) : '+' + dur(-left));

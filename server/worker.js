@@ -325,7 +325,7 @@ async function join(request, env) {
   if (guest && !(Date.parse(invite.expiresAt || '') > Date.now())) {
     return fail(401, 'That guest invite has run out. Ask the squad for a new one.', request, env);
   }
-  const role = guest ? 'guest' : invite.role === 'admin' ? 'admin' : 'member';
+  const role = guest ? 'guest' : ['admin', 'display'].includes(invite.role) ? invite.role : 'member';
 
   const org = await store.get(`org:${invite.orgId}`, 'json');
   if (!org) return fail(404, 'That invite points at an organization that no longer exists.', request, env);
@@ -467,14 +467,14 @@ async function setMemberStatus(auth, request, env) {
 async function rotateInvite(auth, request, env) {
   const store = kv(env);
   const body = await request.json().catch(() => ({}));
-  const role = body?.role === 'admin' ? 'admin' : 'member';
+  const role = ['admin', 'display'].includes(body?.role) ? body.role : 'member';
 
   // Disable every current code for this org, so a link that has been forwarded
   // around stops working the moment an admin decides it should.
   const list = await store.list({ prefix: 'invite:' });
   for (const key of list.keys) {
     const invite = await store.get(key.name, 'json');
-    if (invite?.orgId === auth.orgId && !invite.disabled && invite.role !== 'guest' && (invite.role === 'admin') === (role === 'admin')) {
+    if (invite?.orgId === auth.orgId && !invite.disabled && invite.role !== 'guest' && (invite.role || 'member') === role) {
       await store.put(key.name, JSON.stringify({ ...invite, disabled: true }));
     }
   }
@@ -504,7 +504,7 @@ const WEB_SESSION_DAYS = 30;
    signed in as them. Doing it again replaces it: that is also how a forgotten password is reset. */
 async function accountSetup(auth, request, env) {
   const store = kv(env);
-  if (auth.member.role === 'guest') return fail(403, 'Guests sign in with their guest link.', request, env);
+  if (auth.member.role === 'guest' || auth.member.role === 'display') return fail(403, 'This device signs in with its own link.', request, env);
   const body = await request.json().catch(() => null);
   const email = normEmail(body?.email), password = body?.password;
   if (!emailOk(email)) return fail(400, 'Enter a valid email address.', request, env);
@@ -594,7 +594,7 @@ async function setMemberRole(auth, request, env) {
   if (memberId === auth.member.id) return fail(400, 'You cannot change your own role.', request, env);
   const key = `mem:${auth.orgId}:${memberId}`, member = await store.get(key, 'json');
   if (!member) return fail(404, 'No such member.', request, env);
-  if (member.role === 'guest') return fail(400, 'A guest stays a guest.', request, env);
+  if (member.role === 'guest' || member.role === 'display') return fail(400, 'A guest or a display keeps its role.', request, env);
   member.role = role;
   await store.put(key, JSON.stringify(member));
   await audit(env, auth.orgId, { action: role === 'admin' ? 'made_admin' : 'admin_removed', memberId: auth.member.id, name: auth.member.name, subject: member.name });
@@ -797,6 +797,7 @@ async function ownerGuard(request, env) {
   const store = kv(env);
   if (!store) return fail(503, 'This relay has no storage bound.', request, env);
   const session = await ownerSession(request, env);
+  if (session && session.mustChange) return fail(403, 'Choose your own password first.', request, env);
   if (session) return null;
   const bootstrap = (env.BOOTSTRAP_CODE || '').trim();
   const presented = request.headers.get('x-bootstrap-code') || '';
@@ -840,12 +841,16 @@ async function ownerSession(request, env) {
   const token = bearer(request);
   if (!token || !token.startsWith('os_')) return null;
   const s = await kv(env).get(`osess:${await sha256(token)}`, 'json');
-  return s && Date.parse(s.expiresAt) > Date.now() ? s : null;
+  if (!s || !(Date.parse(s.expiresAt) > Date.now())) return null;
+  // a new or reset password ends every sign-in made before it
+  const record = await kv(env).get(`owner:${s.email}`, 'json');
+  return record && !(Date.parse(s.at) < Date.parse(record.changedAt || '')) ? s : null;
 }
-async function newOwnerSession(env, email) {
+async function newOwnerSession(env, email, mustChange = false) {
   const token = 'os_' + randomToken();
-  const expiresAt = new Date(Date.now() + OWNER_SESSION_DAYS * 86400000).toISOString();
-  await kv(env).put(`osess:${await sha256(token)}`, JSON.stringify({ email, at: new Date().toISOString(), expiresAt }), { expirationTtl: OWNER_SESSION_DAYS * 86400 });
+  const days = mustChange ? 1 : OWNER_SESSION_DAYS;   // a sign-in with the first password only lasts until it is changed
+  const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+  await kv(env).put(`osess:${await sha256(token)}`, JSON.stringify({ email, at: new Date().toISOString(), expiresAt, mustChange }), { expirationTtl: days * 86400 });
   return { token, expiresAt };
 }
 /* Ten tries an hour, per address and per network, so a password can't be guessed. */
@@ -899,6 +904,11 @@ async function ownerClaim(request, env) {
   const session = await newOwnerSession(env, email);
   return json({ ok: true, email, by, ...session }, 200, request, env);
 }
+/* A first password the relay's owner is given once, to be changed at the first sign-in: the OWNER_SETUP secret,
+   { "email": …, "temp": …, "until": ISO date }. It works only while that email has no owner login yet. */
+function ownerSetup(env) {
+  try { const o = JSON.parse(env.OWNER_SETUP || 'null'); return o && emailOk(normEmail(o.email)) && typeof o.temp === 'string' && o.temp.length >= 12 ? { email: normEmail(o.email), temp: o.temp, until: Date.parse(o.until || '') } : null; } catch { return null; }
+}
 async function ownerLogin(request, env) {
   const store = kv(env);
   if (!store) return fail(503, 'This relay has no storage bound.', request, env);
@@ -906,13 +916,19 @@ async function ownerLogin(request, env) {
   const email = normEmail(body?.email), password = String(body?.password || '');
   if (!email || !password) return fail(400, 'Enter your email and password.', request, env);
   if (await tooManyTries(env, request, email)) return fail(429, 'Too many tries. Wait an hour, or reset the password with the setup code.', request, env);
-  const record = await store.get(`owner:${email}`, 'json');
+  let record = await store.get(`owner:${email}`, 'json');
+  const first = ownerSetup(env);
+  if (!record && first && first.email === email && first.until > Date.now() && safeEqual(password, first.temp)) {
+    record = await setOwnerPassword(env, email, password, '');
+    record.mustChange = true;
+    await store.put(`owner:${email}`, JSON.stringify(record));
+  }
   // the same work and the same answer whether or not the address has an account
   const salt = record ? unb64(record.salt) : new Uint8Array(16);
   const hash = await passwordHash(password, salt, record ? record.it : hashIterations(env));
   if (!record || !safeEqual(hash, record.hash)) return fail(401, 'That email and password don\'t match.', request, env);
-  const session = await newOwnerSession(env, email);
-  return json({ email, name: record.name || '', ...session }, 200, request, env);
+  const session = await newOwnerSession(env, email, !!record.mustChange);
+  return json({ email, name: record.name || '', mustChange: !!record.mustChange, ...session }, 200, request, env);
 }
 async function ownerLogout(request, env) {
   const token = bearer(request);
@@ -923,7 +939,7 @@ async function ownerMe(request, env) {
   const s = await ownerSession(request, env);
   if (!s) return fail(401, 'Sign in with your owner email and password.', request, env);
   const record = await kv(env).get(`owner:${s.email}`, 'json');
-  return json({ email: s.email, name: (record && record.name) || '', expiresAt: s.expiresAt }, 200, request, env);
+  return json({ email: s.email, name: (record && record.name) || '', expiresAt: s.expiresAt, mustChange: !!s.mustChange }, 200, request, env);
 }
 async function ownerPassword(request, env) {
   const s = await ownerSession(request, env);
@@ -933,9 +949,32 @@ async function ownerPassword(request, env) {
   if (!record || !safeEqual(await passwordHash(String(body?.current || ''), unb64(record.salt), record.it), record.hash)) return fail(401, 'The current password is not right.', request, env);
   const weak = passwordProblem(body?.next);
   if (weak) return fail(400, weak, request, env);
-  await setOwnerPassword(env, s.email, body.next, record.name);
-  return json({ ok: true }, 200, request, env);
+  if (safeEqual(String(body.next), String(body.current || ''))) return fail(400, 'Choose a password different from the one you were given.', request, env);
+  await setOwnerPassword(env, s.email, body.next, record.name);   // a fresh record: no mustChange
+  // every sign-in made with the old password ends (ownerSession checks changedAt); this one carries on, fully
+  await kv(env).delete(`osess:${await sha256(bearer(request))}`);
+  const session = await newOwnerSession(env, s.email);
+  return json({ ok: true, ...session }, 200, request, env);
 }
+/* The owner opens any agency's console to set it up or help, as a member named for the owner, logged in the
+   agency's activity so its admins see it. The sign-in lasts 12 hours. */
+async function ownerActAs(request, env) {
+  const refused = await ownerGuard(request, env);
+  if (refused) return refused;
+  const store = kv(env), body = await request.json().catch(() => null);
+  const org = body?.orgId ? await store.get(`org:${String(body.orgId)}`, 'json') : null;
+  if (!org) return fail(404, 'No squad with that ID on this relay.', request, env);
+  const key = `mem:${org.id}:opsboard-owner`, now = new Date().toISOString();
+  const member = (await store.get(key, 'json')) || { id: 'opsboard-owner', orgId: org.id, name: 'OpsBoard owner', certLevel: '', joinedAt: now, requests: 0 };
+  Object.assign(member, { role: 'admin', status: 'active', lastSeenAt: now });
+  await store.put(key, JSON.stringify(member));
+  const token = 'ws_' + randomToken();
+  await store.put(`tok:${await sha256(token)}`, JSON.stringify({ orgId: org.id, memberId: member.id, web: true, owner: true }), { expirationTtl: 12 * 3600 });
+  const s = await ownerSession(request, env);
+  await audit(env, org.id, { action: 'owner_opened_console', name: 'OpsBoard owner', by: s ? s.email : 'setup code' });
+  return json({ token, orgId: org.id, orgName: org.name }, 200, request, env);
+}
+
 /* The owner adds an agency from the console and sends its admin an invite link: no setup code needed. */
 async function ownerCreate(request, env) {
   const refused = await ownerGuard(request, env);
@@ -1144,6 +1183,7 @@ export class Board extends DurableObject {
       member: request.headers.get('x-member-id') || '',
       name: request.headers.get('x-member-name') || '',
       guest: request.headers.get('x-member-role') === 'guest',
+      display: request.headers.get('x-member-role') === 'display',
       plan: JSON.parse(request.headers.get('x-plan') || 'null'),
       peer: '', dev: '', role: '', at: Date.now(), subs: [],
     });
@@ -1186,6 +1226,8 @@ export class Board extends DurableObject {
     const a = ws.deserializeAttachment() || { subs: [] };
     const bad = (why) => this.send(ws, { type: 'err', rid: m.rid, code: 'invalid_argument', message: why });
     const pathOk = typeof m.path === 'string' && BOARD_PATH.test(m.path) && !m.path.split('/').some((x) => x === '.' || x === '..');
+    // A big-screen display only watches.
+    if (a.display && m.type === 'set') return this.send(ws, { type: 'err', rid: m.rid, path: m.path, code: 'permission_denied', message: 'A display only shows the board.' });
     if (a.guest && pathOk && ['sub', 'get', 'set'].includes(m.type) && !guestPathOk(m.path)) {
       return this.send(ws, { type: 'err', rid: m.rid, path: m.path, code: 'permission_denied', message: 'Guests see the incident and event boards only.' });
     }
@@ -1422,6 +1464,7 @@ export default {
     if (path === '/v1/owner/plan' && request.method === 'POST') return ownerSetPlan(request, env);
     if (path === '/v1/owner/squad' && request.method === 'POST') return ownerSquad(request, env);
     if (path === '/v1/owner/create' && request.method === 'POST') return ownerCreate(request, env);
+    if (path === '/v1/owner/act-as' && request.method === 'POST') return ownerActAs(request, env);
     if (path === '/v1/owner/claim' && request.method === 'POST') return ownerClaim(request, env);
     if (path === '/v1/owner/login' && request.method === 'POST') return ownerLogin(request, env);
     if (path === '/v1/owner/logout' && request.method === 'POST') return ownerLogout(request, env);
@@ -1471,7 +1514,7 @@ export default {
     if (path === '/v1/generate') {
       if (request.method !== 'POST') return fail(405, 'Method not allowed.', request, env);
       if (await overDailyLimit(env, subject)) return fail(429, "Today's request limit for this account has been reached.", request, env);
-      if (auth.kind === 'member' && auth.member.role === 'guest') return fail(403, 'Guests use the shared boards only.', request, env);
+      if (auth.kind === 'member' && (auth.member.role === 'guest' || auth.member.role === 'display')) return fail(403, 'This device uses the shared boards only.', request, env);
       return generate(auth, request, env);
     }
 
